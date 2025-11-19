@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # MAX Networking App
 
 React-приложение для интеграции с MAX Platform через MAX Bridge.
@@ -118,3 +119,6 @@ function MyComponent() {
 2. Получение данных пользователя
 3. Работу Bridge функций (requestContact, closeApp)
 4. Отправку данных на backend API
+=======
+# StudNet
+>>>>>>> 93331bcbd0e38a1bead56533467412dbcd106e12
