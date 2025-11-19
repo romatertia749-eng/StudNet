@@ -96,11 +96,6 @@ const UserCard = () => {
     }
   };
 
-  const handleGoToMaxProfile = () => {
-    // Deep link в MAX (mock)
-    const userId = profile.userId || profile.id;
-    window.open(`https://max.ru/user/${userId}`, '_blank');
-  };
 
   if (loading || !profile) {
     return (
@@ -202,8 +197,8 @@ const UserCard = () => {
                 <p className="text-center text-emerald-700 font-semibold mb-3">
                   ✅ Вы замэтчились!
                 </p>
-                <Button variant="secondary" onClick={handleGoToMaxProfile} className="w-full">
-                  Перейти в профиль в MAX
+                <Button variant="secondary" onClick={() => navigate('/network-list')} className="w-full">
+                  Перейти к мэтчам
                 </Button>
               </Card>
             </>

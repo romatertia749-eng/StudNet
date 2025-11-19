@@ -1,124 +1,221 @@
-<<<<<<< HEAD
-# MAX Networking App
+# Telegram Networking App
 
-React-приложение для интеграции с MAX Platform через MAX Bridge.
+React-приложение для нетворкинга, работающее как Telegram Web App.
+
+## Описание
+
+Приложение для поиска и взаимодействия с другими пользователями через Telegram. Пользователи создают профили, просматривают других пользователей и получают мэтчи при взаимной симпатии.
+
+## Технологический стек
+
+- **Frontend**: React, Tailwind CSS
+- **Backend**: FastAPI (Python)
+- **База данных**: PostgreSQL
+- **Платформа**: Telegram Web Apps
 
 ## Структура проекта
 
 ```
-src/
-├── contexts/
-│   └── WebAppContext.js    # Контекст для работы с MAX WebApp API
-├── App.js                   # Основной компонент приложения
-├── App.css                  # Стили приложения (mobile-first)
-└── index.js                 # Точка входа приложения
+├── src/                    # React приложение
+│   ├── components/         # React компоненты
+│   ├── pages/             # Страницы приложения
+│   ├── contexts/          # React контексты (WebAppContext)
+│   ├── config/            # Конфигурация API
+│   └── utils/             # Утилиты
+├── backend_python/         # FastAPI бэкенд
+│   └── app/
+│       ├── routers/       # API роутеры
+│       ├── services/      # Бизнес-логика
+│       ├── models.py      # SQLAlchemy модели
+│       └── schemas.py     # Pydantic схемы
+├── database/              # SQL схемы
+└── public/                # Статические файлы
 ```
 
-## Интеграция с MAX Platform
+## Быстрый старт
 
-### MAX Bridge
-Скрипт MAX Bridge подключен в `public/index.html`:
-```html
-<script src="https://st.max.ru/js/max-web-app.js"></script>
-```
+### 1. База данных
 
-### WebApp API
-Приложение использует глобальный объект `window.WebApp` для:
-- Получения данных пользователя (`initDataUnsafe.user`)
-- Вызова Bridge функций (`requestContact()`, `close()`)
-- Инициализации приложения (`ready()`)
-
-## Разработка
-
-### Установка зависимостей
 ```bash
+# Создайте базу данных
+psql -U postgres
+CREATE DATABASE networking_app;
+\q
+
+# Примените схему
+psql -U postgres -d networking_app -f database/schema.sql
+```
+
+### 2. Бэкенд
+
+```bash
+cd backend_python
+
+# Создайте виртуальное окружение
+python -m venv venv
+
+# Активируйте (Windows)
+venv\Scripts\activate
+
+# Установите зависимости
+pip install -r requirements.txt
+
+# Создайте .env файл (см. backend_python/ENV_EXPLANATION.md)
+# DATABASE_URL=postgresql://user:password@localhost:5432/networking_app
+
+# Запустите сервер
+uvicorn app.main:app --reload --port 8080
+```
+
+API будет доступен на `http://localhost:8080`
+- Swagger UI: `http://localhost:8080/docs`
+- ReDoc: `http://localhost:8080/redoc`
+
+### 3. Фронтенд
+
+```bash
+# Установите зависимости
 npm install
-```
 
-### Запуск в режиме разработки
-```bash
+# Создайте .env файл
+echo "REACT_APP_API_BASE_URL=http://localhost:8080" > .env
+
+# Запустите в режиме разработки
 npm start
 ```
-Приложение откроется на [http://localhost:3000](http://localhost:3000)
 
-### Сборка для production
-```bash
-npm run build
-```
-Собранные файлы будут в папке `build/`
+Приложение откроется на `http://localhost:3000`
 
-## Развертывание
+## Интеграция с Telegram
 
-1. Соберите проект:
-   ```bash
-   npm run build
-   ```
+### Telegram Web App SDK
 
-2. Загрузите содержимое папки `build/` на хостинг с поддержкой HTTPS:
-   - Vercel
-   - Netlify
-   - GitHub Pages
-   - Любой другой хостинг с HTTPS
-
-3. Получите HTTPS-ссылку на приложение (например: `https://your-app.vercel.app`)
-
-4. Зарегистрируйтесь на бизнес-платформе MAX: [business.max.ru/self](https://business.max.ru/self)
-
-5. Создайте чат-бота и пройдите модерацию
-
-6. В настройках чат-бота укажите URL вашего мини-приложения
-
-7. Сохраните настройки и протестируйте приложение в MAX на мобильном устройстве
-
-## Backend API
-
-Приложение отправляет запросы на ваш backend API. Укажите правильный URL в `src/App.js`:
-
-```javascript
-fetch('https://your-backend/api/new-user', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ 
-    userId: userInfo.id,
-    // ...
-  }),
-});
+SDK подключен в `public/index.html`:
+```html
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 ```
 
-## Использование WebApp API
+### Использование в коде
 
-### В компонентах
+Приложение использует `WebAppContext` для работы с Telegram API:
+
 ```javascript
 import { useWebApp } from './contexts/WebAppContext';
 
 function MyComponent() {
-  const { webApp, userInfo, requestContact, closeApp } = useWebApp();
+  const { userInfo, webApp, token, closeApp } = useWebApp();
   
-  // userInfo содержит данные пользователя из MAX
-  // webApp - прямой доступ к window.WebApp
+  // userInfo содержит данные пользователя из Telegram
+  // { id, first_name, last_name, username, language_code }
 }
 ```
 
 ### Доступные функции
-- `requestContact()` - запрос контакта пользователя
+
+- `userInfo` - информация о пользователе Telegram
+- `token` - JWT токен после авторизации
+- `webApp` - прямой доступ к `window.Telegram.WebApp`
 - `closeApp()` - закрытие мини-приложения
-- `userInfo` - информация о пользователе (id, username, first_name, last_name)
-- `webApp` - прямой доступ к объекту WebApp для расширенных функций
+- `requestContact()` - запрос контакта пользователя
 
-## Mobile-first дизайн
+## Развертывание
 
-Приложение оптимизировано для мобильных устройств:
-- Адаптивная верстка
-- Touch-friendly кнопки
-- Простой интерфейс без сложных многоуровневых меню
+### Локальное тестирование с ngrok
 
-## Тестирование
+Для тестирования в Telegram нужен HTTPS. Используйте ngrok:
 
-После развертывания проверьте:
-1. Запуск приложения в MAX
-2. Получение данных пользователя
-3. Работу Bridge функций (requestContact, closeApp)
-4. Отправку данных на backend API
-=======
-# StudNet
->>>>>>> 93331bcbd0e38a1bead56533467412dbcd106e12
+1. Запустите ngrok для фронтенда:
+   ```bash
+   ngrok http 3000
+   ```
+
+2. Запустите ngrok для бэкенда:
+   ```bash
+   ngrok http 8080
+   ```
+
+3. Обновите `.env`:
+   ```env
+   REACT_APP_API_BASE_URL=https://your-backend.ngrok.io
+   ```
+
+4. Обновите URL в BotFather (команда `/myapps` → `Edit Web App URL`)
+
+Подробнее: `TELEGRAM_LAUNCH.md`
+
+### Production деплой
+
+1. **Фронтенд** (Vercel/Netlify):
+   ```bash
+   npm run build
+   # Загрузите build/ на хостинг
+   ```
+
+2. **Бэкенд** (Railway/Render):
+   - Настройте переменные окружения
+   - Подключите PostgreSQL
+   - Деплой через Git
+
+3. **Настройка бота**:
+   - Откройте [@BotFather](https://t.me/BotFather)
+   - `/myapps` → выберите приложение
+   - `Edit Web App URL` → укажите URL фронтенда
+
+## API Endpoints
+
+### Аутентификация
+- `POST /api/auth` - авторизация через Telegram initData
+
+### Профили
+- `GET /api/profiles?userId=...` - получить список профилей
+- `POST /api/profiles` - создать/обновить профиль
+- `GET /api/profiles/{id}` - получить профиль по ID
+- `POST /api/profiles/{id}/like` - лайкнуть профиль
+- `POST /api/profiles/{id}/pass` - пропустить профиль
+
+### Мэтчи
+- `GET /api/matches?userId=...` - получить список мэтчей
+
+## Документация
+
+- `QUICK_START.md` - быстрый старт
+- `TELEGRAM_SETUP.md` - настройка Telegram
+- `TELEGRAM_LAUNCH.md` - запуск в Telegram
+- `backend_python/README.md` - документация бэкенда
+- `backend_python/ENV_EXPLANATION.md` - переменные окружения
+
+## Особенности
+
+- ✅ Автоматическая авторизация через Telegram
+- ✅ Мобильный-first дизайн
+- ✅ Swipe-интерфейс для карточек
+- ✅ Система мэтчинга
+- ✅ Загрузка фото профиля
+- ✅ Фильтрация по интересам
+
+## Разработка
+
+### Сборка для production
+
+```bash
+npm run build
+```
+
+Собранные файлы будут в папке `build/`
+
+### Тестирование
+
+```bash
+npm test
+```
+
+## Требования
+
+- Node.js 16+
+- Python 3.8+
+- PostgreSQL 12+
+- Telegram бот (созданный через @BotFather)
+
+## Лицензия
+
+MIT

@@ -22,18 +22,22 @@ psql -U postgres -d networking_app -f database/schema.sql
 ### 2. Бэкенд (10 минут)
 
 ```bash
-# Создайте Spring Boot проект через https://start.spring.io/
-# Добавьте зависимости: Web, JPA, PostgreSQL, Validation
+cd backend_python
 
-# Скопируйте код из BACKEND_IMPLEMENTATION.md
+# Создайте виртуальное окружение
+python -m venv venv
 
-# Настройте application.properties:
-spring.datasource.url=jdbc:postgresql://localhost:5432/networking_app
-spring.datasource.username=postgres
-spring.datasource.password=ваш_пароль
+# Активируйте (Windows)
+venv\Scripts\activate
 
-# Запустите
-./mvnw spring-boot:run
+# Установите зависимости
+pip install -r requirements.txt
+
+# Создайте .env файл (см. backend_python/ENV_EXPLANATION.md)
+# DATABASE_URL=postgresql://user:password@localhost:5432/networking_app
+
+# Запустите сервер
+uvicorn app.main:app --reload --port 8080
 ```
 
 ### 3. Фронтенд (2 минуты)
@@ -73,8 +77,9 @@ npm run build
 ---
 
 📖 **Подробные инструкции:**
-- `SETUP_GUIDE.md` - полная инструкция по настройке
+- `README.md` - основная документация
 - `TELEGRAM_SETUP.md` - настройка Telegram
-- `BACKEND_IMPLEMENTATION.md` - примеры кода бэкенда
-- `BACKEND_TASK.md` - техническое задание для бэкенда
+- `TELEGRAM_LAUNCH.md` - запуск в Telegram
+- `backend_python/README.md` - документация бэкенда
+- `backend_python/ENV_EXPLANATION.md` - переменные окружения
 

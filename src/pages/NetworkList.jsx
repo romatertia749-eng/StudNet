@@ -108,10 +108,6 @@ const NetworkList = () => {
     fetchMatches();
   }, [userInfo, localMatches]);
 
-  const handleGoToMaxProfile = (userId) => {
-    // Deep link в MAX (mock)
-    window.open(`https://max.ru/user/${userId}`, '_blank');
-  };
 
   return (
     <div className="min-w-[320px] min-h-[600px] max-w-4xl w-full mx-auto p-4 md:p-6 pb-20 md:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
@@ -163,10 +159,10 @@ const NetworkList = () => {
 
                   <Button
                     variant="secondary"
-                    onClick={() => handleGoToMaxProfile(person.id)}
+                    onClick={() => navigate(`/profiles/${person.id}`)}
                     className="w-full text-sm py-2 min-h-[40px]"
                   >
-                    Перейти в профиль в MAX
+                    Посмотреть профиль
                   </Button>
                 </Card>
               ))}
