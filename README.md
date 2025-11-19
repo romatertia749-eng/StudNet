@@ -1,70 +1,120 @@
-# Getting Started with Create React App
+# MAX Networking App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React-приложение для интеграции с MAX Platform через MAX Bridge.
 
-## Available Scripts
+## Структура проекта
 
-In the project directory, you can run:
+```
+src/
+├── contexts/
+│   └── WebAppContext.js    # Контекст для работы с MAX WebApp API
+├── App.js                   # Основной компонент приложения
+├── App.css                  # Стили приложения (mobile-first)
+└── index.js                 # Точка входа приложения
+```
 
-### `npm start`
+## Интеграция с MAX Platform
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### MAX Bridge
+Скрипт MAX Bridge подключен в `public/index.html`:
+```html
+<script src="https://st.max.ru/js/max-web-app.js"></script>
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### WebApp API
+Приложение использует глобальный объект `window.WebApp` для:
+- Получения данных пользователя (`initDataUnsafe.user`)
+- Вызова Bridge функций (`requestContact()`, `close()`)
+- Инициализации приложения (`ready()`)
 
-### `npm test`
+## Разработка
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Установка зависимостей
+```bash
+npm install
+```
 
-### `npm run build`
+### Запуск в режиме разработки
+```bash
+npm start
+```
+Приложение откроется на [http://localhost:3000](http://localhost:3000)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Сборка для production
+```bash
+npm run build
+```
+Собранные файлы будут в папке `build/`
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Развертывание
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. Соберите проект:
+   ```bash
+   npm run build
+   ```
 
-### `npm run eject`
+2. Загрузите содержимое папки `build/` на хостинг с поддержкой HTTPS:
+   - Vercel
+   - Netlify
+   - GitHub Pages
+   - Любой другой хостинг с HTTPS
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+3. Получите HTTPS-ссылку на приложение (например: `https://your-app.vercel.app`)
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+4. Зарегистрируйтесь на бизнес-платформе MAX: [business.max.ru/self](https://business.max.ru/self)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+5. Создайте чат-бота и пройдите модерацию
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+6. В настройках чат-бота укажите URL вашего мини-приложения
 
-## Learn More
+7. Сохраните настройки и протестируйте приложение в MAX на мобильном устройстве
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Backend API
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Приложение отправляет запросы на ваш backend API. Укажите правильный URL в `src/App.js`:
 
-### Code Splitting
+```javascript
+fetch('https://your-backend/api/new-user', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ 
+    userId: userInfo.id,
+    // ...
+  }),
+});
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Использование WebApp API
 
-### Analyzing the Bundle Size
+### В компонентах
+```javascript
+import { useWebApp } from './contexts/WebAppContext';
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+function MyComponent() {
+  const { webApp, userInfo, requestContact, closeApp } = useWebApp();
+  
+  // userInfo содержит данные пользователя из MAX
+  // webApp - прямой доступ к window.WebApp
+}
+```
 
-### Making a Progressive Web App
+### Доступные функции
+- `requestContact()` - запрос контакта пользователя
+- `closeApp()` - закрытие мини-приложения
+- `userInfo` - информация о пользователе (id, username, first_name, last_name)
+- `webApp` - прямой доступ к объекту WebApp для расширенных функций
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Mobile-first дизайн
 
-### Advanced Configuration
+Приложение оптимизировано для мобильных устройств:
+- Адаптивная верстка
+- Touch-friendly кнопки
+- Простой интерфейс без сложных многоуровневых меню
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Тестирование
 
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+После развертывания проверьте:
+1. Запуск приложения в MAX
+2. Получение данных пользователя
+3. Работу Bridge функций (requestContact, closeApp)
+4. Отправку данных на backend API

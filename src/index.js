@@ -3,11 +3,17 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { WebAppProvider } from './contexts/WebAppContext';
+import { MatchProvider } from './contexts/MatchContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    <WebAppProvider>
+      <MatchProvider>
+        <App />
+      </MatchProvider>
+    </WebAppProvider>
   </React.StrictMode>
 );
 

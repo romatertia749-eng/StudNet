@@ -1,0 +1,23 @@
+import { useWebApp } from '../contexts/WebAppContext';
+
+const Header = () => {
+  const { userInfo } = useWebApp();
+
+  return (
+    <header className="sticky top-0 z-50 bg-white/20 backdrop-blur-xl shadow-xl border-b border-white/40">
+      <div className="px-4 md:px-6 py-3 max-w-7xl mx-auto" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))', paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
+        <h1 className="text-xl font-bold text-gray-900 text-center">
+          StudNet
+        </h1>
+        {userInfo && (
+          <p className="text-sm text-gray-800 font-medium text-center mt-1">
+            Привет, {userInfo.first_name || userInfo.username}!
+          </p>
+        )}
+      </div>
+    </header>
+  );
+};
+
+export default Header;
+
