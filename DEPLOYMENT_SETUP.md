@@ -10,7 +10,14 @@
 REACT_APP_API_BASE_URL=https://your-backend-url.com
 ```
 
-**Важно:** Замените `https://your-backend-url.com` на реальный URL вашего бэкенда (Railway, Render, Heroku и т.д.)
+**Важно:** Замените `https://your-backend-url.com` на реальный URL вашего бэкенда.
+
+**Как найти URL бэкенда?** См. файл `HOW_TO_FIND_BACKEND_URL.md`
+
+**Примеры:**
+- Railway: `https://your-app.up.railway.app`
+- Render: `https://your-app.onrender.com`
+- Heroku: `https://your-app.herokuapp.com`
 
 ### На бэкенде (Railway/Render/Heroku)
 

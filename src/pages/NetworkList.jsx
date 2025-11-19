@@ -8,7 +8,7 @@ import { API_ENDPOINTS } from '../config/api';
 
 const NetworkList = () => {
   const navigate = useNavigate();
-  const { matchedProfiles: localMatches, addMatch } = useMatches();
+  const { matchedProfiles: localMatches } = useMatches();
   const { userInfo } = useWebApp();
   const [matchedProfiles, setMatchedProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
