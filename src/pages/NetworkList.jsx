@@ -22,13 +22,13 @@ const NetworkList = () => {
       }
       
       try {
-        const response = await fetch(`${API_ENDPOINTS.MATCHES}?userId=${userInfo.id}`);
+        const response = await fetch(`${API_ENDPOINTS.MATCHES}?user_id=${userInfo.id}`);
         if (response.ok) {
           const data = await response.json();
           // Преобразуем данные из API в формат для отображения
           const formattedMatches = data.map(match => ({
             id: match.matchedProfile.id,
-            userId: match.matchedProfile.userId || match.matchedProfile.id,
+            userId: match.matchedProfile.user_id || match.matchedProfile.id,
             name: match.matchedProfile.name,
             age: match.matchedProfile.age,
             city: match.matchedProfile.city,

@@ -141,7 +141,7 @@ const Profiles = () => {
       
       try {
         const params = new URLSearchParams({
-          userId: userInfo.id,
+          user_id: userInfo.id,
           ...(selectedCity && { city: selectedCity }),
           ...(selectedUniversity && { university: selectedUniversity }),
           ...(selectedInterests.length > 0 && { interests: selectedInterests.join(',') }),
@@ -242,7 +242,7 @@ const Profiles = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: userInfo.id }),
+        body: JSON.stringify({ user_id: userInfo.id }),
       });
       
       if (response.ok) {
@@ -284,7 +284,7 @@ const Profiles = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: userInfo.id }),
+        body: JSON.stringify({ user_id: userInfo.id }),
       });
     } catch (error) {
       console.error('Error passing profile:', error);

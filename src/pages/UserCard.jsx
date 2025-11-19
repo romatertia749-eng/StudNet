@@ -22,7 +22,7 @@ const UserCard = () => {
           // Преобразуем данные из API в формат для отображения
           setProfile({
             id: data.id,
-            userId: data.userId,
+            userId: data.user_id,
             name: data.name,
             gender: data.gender === 'male' ? 'Мужской' : data.gender === 'female' ? 'Женский' : 'Другой',
             age: data.age,
@@ -80,7 +80,7 @@ const UserCard = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: userInfo.id }),
+        body: JSON.stringify({ user_id: userInfo.id }),
       });
       
       if (response.ok) {

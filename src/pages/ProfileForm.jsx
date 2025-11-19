@@ -124,43 +124,72 @@ const ProfileForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!userInfo || !validateForm()) return;
+    
+    if (!userInfo) {
+      alert('Ошибка: данные пользователя не загружены. Пожалуйста, обновите страницу.');
+      console.error('userInfo is missing:', userInfo);
+      return;
+    }
+    
+    if (!validateForm()) {
+      return;
+    }
 
     setLoading(true);
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append('userId', userInfo.id);
+      formDataToSend.append('user_id', userInfo.id.toString());
       formDataToSend.append('username', userInfo.username || '');
-      formDataToSend.append('firstName', userInfo.first_name || '');
-      formDataToSend.append('lastName', userInfo.last_name || '');
+      formDataToSend.append('first_name', userInfo.first_name || '');
+      formDataToSend.append('last_name', userInfo.last_name || '');
       formDataToSend.append('name', formData.name);
       formDataToSend.append('gender', formData.gender);
-      formDataToSend.append('age', formData.age);
+      formDataToSend.append('age', formData.age.toString());
       formDataToSend.append('city', formData.city);
       formDataToSend.append('university', formData.university);
       formDataToSend.append('interests', JSON.stringify(formData.interests));
       formDataToSend.append('goals', JSON.stringify(formData.goals));
-      formDataToSend.append('bio', formData.bio);
+      formDataToSend.append('bio', formData.bio || '');
 
       if (formData.photos.length > 0) {
         formDataToSend.append('photo', formData.photos[0].file);
       }
+
+      console.log('Sending profile data to:', API_ENDPOINTS.PROFILES);
+      console.log('User ID:', userInfo.id);
 
       const response = await fetch(API_ENDPOINTS.PROFILES, {
         method: 'POST',
         body: formDataToSend,
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (response.ok) {
         const data = await response.json();
-        console.log('Profile created:', data);
+        console.log('Profile created successfully:', data);
+        alert('Профиль успешно создан!');
         navigate('/');
       } else {
-        throw new Error('Ошибка при сохранении профиля');
+        const errorText = await response.text();
+        console.error('Server error:', response.status, errorText);
+        let errorMessage = 'Ошибка при сохранении профиля';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          errorMessage = `Ошибка ${response.status}: ${errorText}`;
+        }
+        alert(errorMessage);
       }
     } catch (error) {
-      console.error('Error creating profile:', error);
-      alert('Ошибка при сохранении профиля. Попробуйте ещё раз.');
+      console.error('Network error creating profile:', error);
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        alert('Не удалось подключиться к серверу. Проверьте, что бэкенд запущен и доступен.');
+      } else {
+        alert(`Ошибка при сохранении профиля: ${error.message}`);
+      }
     } finally {
       setLoading(false);
     }
