@@ -14,6 +14,21 @@ export const API_ENDPOINTS = {
   MATCHES: `${API_BASE_URL}/api/matches`,
 };
 
+// Функция для формирования полного URL фотографии
+export const getPhotoUrl = (photoPath) => {
+  if (!photoPath) return null;
+  // Если уже полный URL (начинается с http), возвращаем как есть
+  if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
+    return photoPath;
+  }
+  // Если относительный путь, добавляем базовый URL бэкенда
+  if (photoPath.startsWith('/')) {
+    return `${API_BASE_URL}${photoPath}`;
+  }
+  // Если путь без слэша, добавляем /uploads/photos/
+  return `${API_BASE_URL}/uploads/photos/${photoPath}`;
+};
+
 console.log('API_ENDPOINTS.PROFILES:', API_ENDPOINTS.PROFILES);
 
 export default API_BASE_URL;

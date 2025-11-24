@@ -5,7 +5,7 @@ import Autocomplete from '../components/Autocomplete';
 import { russianCities, universities, interests } from '../data/formData';
 import { useMatches } from '../contexts/MatchContext';
 import { useWebApp } from '../contexts/WebAppContext';
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
 import { fetchWithAuth } from '../utils/api';
 
 const Profiles = () => {
@@ -141,13 +141,23 @@ const Profiles = () => {
             navigate('/profile/edit');
             return;
           }
+        } else if (response.status === 404) {
+          // Профиля нет - это нормально, перенаправляем на создание
+          alert('Сначала создайте свой профиль, чтобы начать искать знакомства');
+          navigate('/profile/edit');
+          return;
         } else {
-          // При ошибке не блокируем, возможно бэкенд недоступен
-          console.warn('Could not check profile, continuing anyway');
+          // При другой ошибке не блокируем, возможно бэкенд недоступен
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Could not check profile, continuing anyway');
+          }
         }
       } catch (error) {
-        console.error('Error checking profile:', error);
-        // При ошибке не блокируем, возможно бэкенд недоступен
+        // При ошибке сети не блокируем, возможно бэкенд недоступен
+        // Логируем только в режиме разработки
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error checking profile:', error);
+        }
       } finally {
         setCheckingProfile(false);
       }
@@ -211,7 +221,12 @@ const Profiles = () => {
             setAllProfiles([]);
           } else {
             console.log('Using backend data, profiles count:', profiles.length);
-            setAllProfiles(profiles);
+            // Преобразуем photo_url в массив photos с правильным URL
+            const processedProfiles = profiles.map(profile => ({
+              ...profile,
+              photos: profile.photo_url ? [getPhotoUrl(profile.photo_url)] : []
+            }));
+            setAllProfiles(processedProfiles);
           }
         } else {
           console.error('Response not OK, status:', response.status);
@@ -610,14 +625,17 @@ const Profiles = () => {
           >
             <Card className="relative">
               {/* Фото профиля */}
-              {currentProfile.photos && currentProfile.photos.length > 0 ? (
+              {currentProfile.photo_url || (currentProfile.photos && currentProfile.photos.length > 0) ? (
                 <div className="grid grid-cols-3 gap-1.5 mb-3">
-                  {currentProfile.photos.map((photo, index) => (
+                  {(currentProfile.photos && currentProfile.photos.length > 0 ? currentProfile.photos : [getPhotoUrl(currentProfile.photo_url)]).map((photo, index) => (
                     <img
                       key={index}
                       src={photo}
                       alt={`${index + 1}`}
                       className="w-full h-20 md:h-32 object-cover rounded-lg"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
                     />
                   ))}
                 </div>

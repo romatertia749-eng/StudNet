@@ -6,7 +6,7 @@ import Card from '../components/Card';
 import Autocomplete from '../components/Autocomplete';
 import MultiSelect from '../components/MultiSelect';
 import { russianCities, universities, interests, goals } from '../data/formData';
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
 
 const ProfileForm = () => {
   const { userInfo, isReady } = useWebApp();
@@ -41,9 +41,7 @@ const ProfileForm = () => {
     const loadProfile = async () => {
       try {
         const url = API_ENDPOINTS.PROFILE_BY_USER_ID(userInfo.id);
-        console.log('Loading profile from:', url);
         const response = await fetch(url);
-        console.log('Profile load response status:', response.status);
         
         if (response.ok) {
           const data = await response.json();
@@ -82,23 +80,26 @@ const ProfileForm = () => {
             customGoal: '',
             bio: data.bio || '',
             photos: data.photo_url ? [{ 
-              preview: data.photo_url, 
+              preview: getPhotoUrl(data.photo_url), 
               id: 'existing',
               isExisting: true 
             }] : [],
           });
         } else if (response.status === 404) {
           // Профиля нет - это нормально, оставляем форму пустой для создания
+          // Не логируем и не показываем ошибку пользователю
           setIsEditing(false);
-          console.log('Profile not found, showing empty form for creation');
         } else {
-          // Другая ошибка
+          // Другая ошибка - логируем только в консоль, не показываем пользователю
           console.warn('Unexpected error loading profile:', response.status);
           setIsEditing(false);
         }
       } catch (error) {
-        console.error('Error loading profile:', error);
-        // При ошибке сети оставляем форму пустой
+        // При ошибке сети оставляем форму пустой, не показываем ошибку
+        // Логируем только в консоль для отладки
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error loading profile:', error);
+        }
         setIsEditing(false);
       } finally {
         setLoadingProfile(false);

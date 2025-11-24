@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { useWebApp } from '../contexts/WebAppContext';
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
 
 const UserCard = () => {
   const { id } = useParams();
@@ -31,7 +31,7 @@ const UserCard = () => {
             interests: Array.isArray(data.interests) ? data.interests : JSON.parse(data.interests || '[]'),
             goals: Array.isArray(data.goals) ? data.goals : JSON.parse(data.goals || '[]'),
             bio: data.bio || '',
-            photos: data.photoUrl ? [data.photoUrl] : [],
+            photos: data.photo_url ? [getPhotoUrl(data.photo_url)] : [],
           });
         } else {
           // Fallback на мок данные если профиль не найден
@@ -121,6 +121,9 @@ const UserCard = () => {
                 src={photo}
                 alt={`${index + 1}`}
                 className="w-full h-32 object-cover rounded-xl"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
               />
             ))}
           </div>

@@ -4,7 +4,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import { useMatches } from '../contexts/MatchContext';
 import { useWebApp } from '../contexts/WebAppContext';
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
 
 const NetworkList = () => {
   const navigate = useNavigate();
@@ -35,13 +35,23 @@ const NetworkList = () => {
             navigate('/profile/edit');
             return;
           }
+        } else if (response.status === 404) {
+          // Профиля нет - это нормально, перенаправляем на создание
+          alert('Сначала создайте свой профиль, чтобы начать искать знакомства');
+          navigate('/profile/edit');
+          return;
         } else {
-          // При ошибке не блокируем, возможно бэкенд недоступен
-          console.warn('Could not check profile, continuing anyway');
+          // При другой ошибке не блокируем, возможно бэкенд недоступен
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Could not check profile, continuing anyway');
+          }
         }
       } catch (error) {
-        console.error('Error checking profile:', error);
-        // При ошибке не блокируем, возможно бэкенд недоступен
+        // При ошибке сети не блокируем, возможно бэкенд недоступен
+        // Логируем только в режиме разработки
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error checking profile:', error);
+        }
       } finally {
         setCheckingProfile(false);
       }
@@ -77,7 +87,7 @@ const NetworkList = () => {
             university: match.matchedProfile.university,
             bio: match.matchedProfile.bio,
             interests: match.matchedProfile.interests || [],
-            photos: match.matchedProfile.photoUrl ? [match.matchedProfile.photoUrl] : [],
+            photos: match.matchedProfile.photo_url ? [getPhotoUrl(match.matchedProfile.photo_url)] : [],
           }));
           setMatchedProfiles(formattedMatches);
         } else {
@@ -184,6 +194,9 @@ const NetworkList = () => {
                         src={person.photos[0]}
                         alt={person.name}
                         className="w-16 h-16 rounded-full object-cover flex-shrink-0"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
                       />
                     ) : (
                       <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center flex-shrink-0 border border-white/40">

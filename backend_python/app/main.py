@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.routers import profiles, matches, auth
 import os
+from pathlib import Path
 
 app = FastAPI(title="Networking App API", version="1.0.0")
 
@@ -29,6 +31,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Статические файлы (фотографии)
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads/photos")
+upload_path = Path(UPLOAD_DIR)
+upload_path.mkdir(parents=True, exist_ok=True)
+
+# Монтируем статические файлы только если директория существует
+if upload_path.exists():
+    app.mount("/uploads", StaticFiles(directory=str(upload_path.parent)), name="uploads")
 
 # Роутеры
 app.include_router(auth.router)
