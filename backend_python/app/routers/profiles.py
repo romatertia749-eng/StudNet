@@ -93,6 +93,14 @@ def check_profile_exists(user_id: int, db: Session = Depends(get_db)):
     profile = profile_service.get_profile_by_user_id(db, user_id)
     return {"exists": profile is not None}
 
+@router.get("/user/{user_id}", response_model=ProfileResponse)
+def get_profile_by_user_id(user_id: int, db: Session = Depends(get_db)):
+    """Получает профиль пользователя по user_id"""
+    profile = profile_service.get_profile_by_user_id(db, user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Профиль не найден")
+    return profile
+
 @router.get("/{profile_id}", response_model=ProfileResponse)
 def get_profile(profile_id: int, db: Session = Depends(get_db)):
     profile = profile_service.get_profile_by_id(db, profile_id)

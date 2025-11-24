@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWebApp } from '../contexts/WebAppContext';
 import Button from '../components/Button';
@@ -9,9 +9,11 @@ import { russianCities, universities, interests, goals } from '../data/formData'
 import { API_ENDPOINTS } from '../config/api';
 
 const ProfileForm = () => {
-  const { userInfo } = useWebApp();
+  const { userInfo, isReady } = useWebApp();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -28,6 +30,74 @@ const ProfileForm = () => {
   });
 
   const [errors, setErrors] = useState({});
+
+  // Загрузка существующего профиля
+  useEffect(() => {
+    if (!isReady || !userInfo?.id) {
+      setLoadingProfile(false);
+      return;
+    }
+
+    const loadProfile = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.PROFILE_BY_USER_ID(userInfo.id));
+        if (response.ok) {
+          const data = await response.json();
+          setIsEditing(true);
+          
+          // Парсим interests и goals
+          let parsedInterests = [];
+          let parsedGoals = [];
+          
+          try {
+            parsedInterests = Array.isArray(data.interests) 
+              ? data.interests 
+              : (data.interests ? JSON.parse(data.interests) : []);
+          } catch (e) {
+            console.warn('Error parsing interests:', e);
+          }
+          
+          try {
+            parsedGoals = Array.isArray(data.goals) 
+              ? data.goals 
+              : (data.goals ? JSON.parse(data.goals) : []);
+          } catch (e) {
+            console.warn('Error parsing goals:', e);
+          }
+
+          // Заполняем форму существующими данными
+          setFormData({
+            name: data.name || '',
+            gender: data.gender || '',
+            age: data.age?.toString() || '',
+            city: data.city || '',
+            university: data.university || '',
+            interests: parsedInterests,
+            goals: parsedGoals,
+            customInterest: '',
+            customGoal: '',
+            bio: data.bio || '',
+            photos: data.photo_url ? [{ 
+              preview: data.photo_url, 
+              id: 'existing',
+              isExisting: true 
+            }] : [],
+          });
+        } else if (response.status === 404) {
+          // Профиля нет, оставляем форму пустой
+          setIsEditing(false);
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+        // При ошибке оставляем форму пустой
+        setIsEditing(false);
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    loadProfile();
+  }, [isReady, userInfo]);
 
   const handleInputChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
@@ -151,7 +221,8 @@ const ProfileForm = () => {
       formDataToSend.append('goals', JSON.stringify(formData.goals));
       formDataToSend.append('bio', formData.bio || '');
 
-      if (formData.photos.length > 0) {
+      // Отправляем фото только если оно новое (не существующее)
+      if (formData.photos.length > 0 && formData.photos[0].file && !formData.photos[0].isExisting) {
         formDataToSend.append('photo', formData.photos[0].file);
       }
 
@@ -168,8 +239,8 @@ const ProfileForm = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Profile created successfully:', data);
-        alert('Профиль успешно создан!');
+        console.log('Profile saved successfully:', data);
+        alert(isEditing ? 'Профиль успешно обновлён!' : 'Профиль успешно создан!');
         navigate('/');
       } else {
         const errorText = await response.text();
@@ -196,11 +267,21 @@ const ProfileForm = () => {
   };
 
 
+  if (loadingProfile) {
+    return (
+      <div className="min-w-[320px] min-h-[600px] max-w-2xl w-full mx-auto p-4 md:p-6 pb-20 md:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+        <Card className="mt-4">
+          <p className="text-center text-gray-800 font-medium py-8">Загрузка профиля...</p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-w-[320px] min-h-[600px] max-w-2xl w-full mx-auto p-4 md:p-6 pb-20 md:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       <Card className="mt-4">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
-          Добавить мой профиль
+          {isEditing ? 'Редактировать профиль' : 'Добавить мой профиль'}
         </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Имя */}
@@ -377,6 +458,11 @@ const ProfileForm = () => {
                   >
                     ×
                   </button>
+                  {formData.photos[0].isExisting && (
+                    <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs rounded">
+                      Текущее фото
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -392,7 +478,7 @@ const ProfileForm = () => {
               Отмена
             </Button>
             <Button type="submit" variant="primary" disabled={loading} className="flex-1">
-              {loading ? 'Сохранение...' : 'Сохранить'}
+              {loading ? 'Сохранение...' : isEditing ? 'Обновить профиль' : 'Сохранить'}
             </Button>
           </div>
         </form>
