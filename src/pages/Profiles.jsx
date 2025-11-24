@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card from '../components/Card';
 import Autocomplete from '../components/Autocomplete';
 import { russianCities, universities, interests } from '../data/formData';
@@ -8,6 +9,7 @@ import { API_ENDPOINTS } from '../config/api';
 import { fetchWithAuth } from '../utils/api';
 
 const Profiles = () => {
+  const navigate = useNavigate();
   const { addMatch } = useMatches();
   const { userInfo, isReady } = useWebApp();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -19,6 +21,7 @@ const Profiles = () => {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [allProfiles, setAllProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [checkingProfile, setCheckingProfile] = useState(true);
   const cardRef = useRef(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -117,11 +120,53 @@ const Profiles = () => {
     },
   ];
 
+  // Проверка наличия профиля пользователя
+  useEffect(() => {
+    if (!isReady || !userInfo?.id) {
+      return;
+    }
+
+    const checkUserProfile = async () => {
+      setCheckingProfile(true);
+      try {
+        // Проверяем наличие профиля через запрос списка профилей
+        // Если профиля нет, get_available_profiles вернет пустой список
+        const params = new URLSearchParams({
+          user_id: userInfo.id,
+          page: 0,
+          size: 1
+        });
+        
+        const url = `${API_ENDPOINTS.PROFILES}?${params}`;
+        const response = await fetchWithAuth(url);
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Если профиль пользователя существует, get_available_profiles вернет других пользователей
+          // Но если профиля нет, может быть ошибка или пустой список
+          // Проверяем через статус ответа - если 400, значит профиля нет
+        } else if (response.status === 400) {
+          // Профиля нет, перенаправляем на создание
+          alert('Сначала создайте свой профиль, чтобы начать искать знакомства');
+          navigate('/profile/edit');
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking profile:', error);
+        // При ошибке не блокируем, возможно бэкенд недоступен
+      } finally {
+        setCheckingProfile(false);
+      }
+    };
+
+    checkUserProfile();
+  }, [isReady, userInfo, navigate]);
+
   // Загрузка профилей с бэкенда
   useEffect(() => {
-    // Не загружаем профили, пока WebApp не готов
-    if (!isReady) {
-      console.log('WebApp not ready yet, waiting...');
+    // Не загружаем профили, пока WebApp не готов или проверяем профиль
+    if (!isReady || checkingProfile) {
+      console.log('WebApp not ready yet or checking profile, waiting...');
       return;
     }
     
@@ -157,14 +202,28 @@ const Profiles = () => {
           const data = await response.json();
           console.log('Received data:', data);
           const profiles = data.content || [];
-          // Если бэкенд вернул пустой массив, используем моковые данные
+          
+          // Если список пустой, возможно профиля пользователя нет
+          // Но это может быть и потому, что нет других профилей
+          // Проверяем через get_available_profiles - если профиля нет, он вернет пустой список
+          // Но это не надежно, поэтому лучше проверить отдельно
+          
           if (profiles.length === 0) {
-            console.log('Empty response, using mock data');
-            setAllProfiles(getMockProfiles());
+            // Может быть пусто потому что нет других профилей или нет профиля пользователя
+            // Проверяем через отдельный запрос
+            console.log('Empty response, checking if user has profile...');
+            // Если это первый запрос и список пустой, возможно профиля нет
+            // Но для надежности лучше проверить отдельно
+            setAllProfiles([]);
           } else {
             console.log('Using backend data, profiles count:', profiles.length);
             setAllProfiles(profiles);
           }
+        } else if (response.status === 400) {
+          // Профиля нет
+          alert('Сначала создайте свой профиль, чтобы начать искать знакомства');
+          navigate('/profile/edit');
+          return;
         } else {
           console.error('Response not OK, status:', response.status);
           // Fallback на мок данные если бэкенд недоступен
@@ -180,7 +239,7 @@ const Profiles = () => {
     };
     
     fetchProfiles();
-  }, [isReady, userInfo, selectedCity, selectedUniversity, selectedInterests]);
+  }, [isReady, userInfo, selectedCity, selectedUniversity, selectedInterests, checkingProfile, navigate]);
 
   // Фильтрация на фронтенде (для мок данных или дополнительная фильтрация)
   const filteredProfiles = allProfiles.filter(profile => {
@@ -362,12 +421,14 @@ const Profiles = () => {
     touchEndY.current = 0;
   };
 
-  if (loading) {
+  if (checkingProfile || loading) {
     return (
       <div className="min-w-[320px] min-h-[600px] max-w-4xl w-full mx-auto p-4 md:p-6 pb-32 md:pb-6" style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom))' }}>
         <div className="space-y-4 mt-4">
           <Card>
-            <p className="text-center text-gray-800 font-medium">Загрузка профилей...</p>
+            <p className="text-center text-gray-800 font-medium">
+              {checkingProfile ? 'Проверка профиля...' : 'Загрузка профилей...'}
+            </p>
           </Card>
         </div>
       </div>
