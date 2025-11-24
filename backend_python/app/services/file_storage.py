@@ -45,6 +45,14 @@ def store_file(file: UploadFile) -> str:
         )
     
     try:
+        # Проверяем, что Cloudinary настроен правильно
+        cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
+        if not cloud_name:
+            raise HTTPException(
+                status_code=500,
+                detail="CLOUDINARY_CLOUD_NAME не задан. Проверьте переменные окружения в Koyeb."
+            )
+        
         # Читаем содержимое файла
         content = file.file.read()
         file.file.seek(0)  # Возвращаем указатель в начало
@@ -62,9 +70,18 @@ def store_file(file: UploadFile) -> str:
         
         # Возвращаем URL загруженного изображения
         return upload_result.get("secure_url") or upload_result.get("url")
+    except HTTPException:
+        raise
     except Exception as e:
+        error_msg = str(e)
+        # Более понятное сообщение об ошибке
+        if "invalid cloud name" in error_msg.lower():
+            raise HTTPException(
+                status_code=500,
+                detail=f"Неверный Cloud name. Проверьте, что CLOUDINARY_CLOUD_NAME в Koyeb равен вашему Cloud name из Cloudinary Dashboard (сейчас: '{cloud_name}'). Cloud name должен быть без пробелов и специальных символов."
+            )
         raise HTTPException(
             status_code=500,
-            detail=f"Ошибка при загрузке файла: {str(e)}"
+            detail=f"Ошибка при загрузке файла в Cloudinary: {error_msg}"
         )
 
