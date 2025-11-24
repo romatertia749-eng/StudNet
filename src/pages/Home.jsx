@@ -1,10 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { useWebApp } from '../contexts/WebAppContext';
 import Button from '../components/Button';
 import Card from '../components/Card';
 
 const Home = () => {
-  const { userInfo } = useWebApp();
   const navigate = useNavigate();
 
   return (
@@ -19,13 +17,6 @@ const Home = () => {
           </p>
         </Card>
 
-        {userInfo && (
-          <Card>
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">
-              Привет, {userInfo.first_name || userInfo.username}!
-            </h2>
-          </Card>
-        )}
 
         <div className="space-y-6 md:grid md:grid-cols-3 md:gap-8 md:space-y-0">
           <Button
