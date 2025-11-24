@@ -1,6 +1,5 @@
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { useWebApp } from './contexts/WebAppContext';
-import Header from './components/Header';
 import Loader from './components/Loader';
 import BottomNav from './components/BottomNav';
 import Home from './pages/Home';
@@ -31,7 +30,6 @@ function App() {
       >
         {/* Затемнение для лучшей читаемости контента */}
         <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px] pointer-events-none"></div>
-        <Header />
         <main className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto -webkit-overflow-scrolling-touch pb-20 md:pb-4 relative z-10">
           <Routes>
             <Route path="/" element={<Home />} />
