@@ -87,6 +87,7 @@ def get_profiles(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при получении профилей: {str(e)}")
 
+# Важно: более специфичные роуты должны быть ПЕРЕД общим роутом /{profile_id}
 @router.get("/check/{user_id}")
 def check_profile_exists(user_id: int, db: Session = Depends(get_db)):
     """Проверяет наличие профиля у пользователя"""

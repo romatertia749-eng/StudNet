@@ -40,7 +40,11 @@ const ProfileForm = () => {
 
     const loadProfile = async () => {
       try {
-        const response = await fetch(API_ENDPOINTS.PROFILE_BY_USER_ID(userInfo.id));
+        const url = API_ENDPOINTS.PROFILE_BY_USER_ID(userInfo.id);
+        console.log('Loading profile from:', url);
+        const response = await fetch(url);
+        console.log('Profile load response status:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
           setIsEditing(true);
@@ -84,12 +88,17 @@ const ProfileForm = () => {
             }] : [],
           });
         } else if (response.status === 404) {
-          // Профиля нет, оставляем форму пустой
+          // Профиля нет - это нормально, оставляем форму пустой для создания
+          setIsEditing(false);
+          console.log('Profile not found, showing empty form for creation');
+        } else {
+          // Другая ошибка
+          console.warn('Unexpected error loading profile:', response.status);
           setIsEditing(false);
         }
       } catch (error) {
         console.error('Error loading profile:', error);
-        // При ошибке оставляем форму пустой
+        // При ошибке сети оставляем форму пустой
         setIsEditing(false);
       } finally {
         setLoadingProfile(false);
