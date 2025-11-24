@@ -35,7 +35,7 @@ const BottomNav = () => {
               alt={item.label} 
               className="w-6 h-6 mb-1 object-contain"
             />
-            <span className="text-xs font-black text-black">{item.label}</span>
+            <span className="text-xs font-semibold text-black">{item.label}</span>
           </button>
         ))}
       </div>

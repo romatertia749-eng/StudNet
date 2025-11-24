@@ -30,8 +30,15 @@ export const WebAppProvider = ({ children }) => {
         const initData = tg.initData;
         const initDataUnsafe = tg.initDataUnsafe;
         
+        console.log('Telegram WebApp initialized');
+        console.log('initDataUnsafe:', initDataUnsafe);
+        console.log('initDataUnsafe.user:', initDataUnsafe?.user);
+        
         if (initDataUnsafe?.user) {
+          console.log('Setting userInfo from Telegram:', initDataUnsafe.user);
           setUserInfo(initDataUnsafe.user);
+        } else {
+          console.warn('initDataUnsafe.user is missing, userInfo will be null');
         }
         
         // Отправляем initData на бэкенд для валидации и получения JWT токена

@@ -62,15 +62,12 @@ def get_available_profiles(
             "number": page
         }
     
-    # Получаем ID профилей, с которыми уже взаимодействовали
-    # Swipe.user_id - это user_id пользователя, который сделал свайп
-    # Swipe.target_profile_id - это id профиля, на который свайпнули
-    # Нужно найти все профили, на которые уже свайпнул текущий пользователь
-    swiped_profile_ids = [
-        row[0] for row in db.query(Swipe.target_profile_id).filter(
-            Swipe.user_id == user_id
-        ).all()
-    ] if current_profile else []
+    # Получаем ID всех профилей, с которыми уже взаимодействовали
+    # (лайк, пасс, любой свайп - все действия создают запись в Swipe)
+    swiped_profile_ids = db.query(Swipe.target_profile_id).filter(
+        Swipe.user_id == user_id
+    ).distinct().all()
+    swiped_profile_ids = [row[0] for row in swiped_profile_ids]
     
     # Получаем user_id пользователей, с которыми уже есть мэтч
     matched_user_ids = set()
@@ -82,26 +79,27 @@ def get_available_profiles(
         matched_user_ids.add(row[0])
     
     # Получаем ID профилей, с которыми уже есть мэтч
-    matched_profile_ids = [
-        row[0] for row in db.query(Profile.id).filter(
-            Profile.user_id.in_(matched_user_ids)
-        ).all()
-    ] if matched_user_ids else []
+    matched_profile_ids = []
+    if matched_user_ids:
+        matched_profile_ids = [
+            row[0] for row in db.query(Profile.id).filter(
+                Profile.user_id.in_(matched_user_ids)
+            ).all()
+        ]
     
-    # Базовый запрос
+    # Объединяем все исключаемые ID профилей
+    excluded_profile_ids = set(swiped_profile_ids) | set(matched_profile_ids)
+    
+    # Базовый запрос: исключаем свой профиль и все просмотренные
     query = db.query(Profile).filter(
         Profile.user_id != user_id
     )
     
-    # Исключаем профили, с которыми уже взаимодействовали
-    if swiped_profile_ids:
-        query = query.filter(~Profile.id.in_(swiped_profile_ids))
+    # Исключаем все профили, с которыми уже взаимодействовали (лайк, пасс, мэтч)
+    if excluded_profile_ids:
+        query = query.filter(~Profile.id.in_(excluded_profile_ids))
     
-    # Исключаем профили, с которыми уже есть мэтч
-    if matched_profile_ids:
-        query = query.filter(~Profile.id.in_(matched_profile_ids))
-    
-    # Фильтры
+    # Фильтры по городу и университету
     if city:
         query = query.filter(Profile.city == city)
     if university:

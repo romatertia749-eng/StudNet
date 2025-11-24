@@ -271,6 +271,9 @@ const Profiles = () => {
     } else {
       setCurrentIndex(0);
     }
+    
+    // Прокручиваем наверх страницы
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handlePass = async () => {
@@ -300,6 +303,9 @@ const Profiles = () => {
     } else {
       setCurrentIndex(0);
     }
+    
+    // Прокручиваем наверх страницы
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
 
@@ -345,6 +351,8 @@ const Profiles = () => {
         // Свайп вправо - лайк
         handleLike();
       }
+      // Прокручиваем наверх страницы после свайпа
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     
     setSwipeOffset(0);
@@ -457,8 +465,8 @@ const Profiles = () => {
   }
 
   return (
-    <div className="min-w-[320px] min-h-[600px] max-w-md w-full mx-auto p-4 pb-32" style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom))' }}>
-      <div className="space-y-4 mt-4">
+    <div className="min-w-[320px] min-h-[600px] max-w-md w-full mx-auto p-3 md:p-4 pb-24 md:pb-32" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+      <div className="space-y-3 md:space-y-4 mt-2 md:mt-4">
         {/* Фильтры */}
         <Card>
           <div className="flex items-center justify-between">
@@ -553,43 +561,43 @@ const Profiles = () => {
             <Card className="relative">
               {/* Фото профиля */}
               {currentProfile.photos && currentProfile.photos.length > 0 ? (
-                <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="grid grid-cols-3 gap-1.5 mb-3">
                   {currentProfile.photos.map((photo, index) => (
                     <img
                       key={index}
                       src={photo}
                       alt={`${index + 1}`}
-                      className="w-full h-32 object-cover rounded-xl"
+                      className="w-full h-20 md:h-32 object-cover rounded-lg"
                     />
                   ))}
                 </div>
               ) : (
-                <div className="w-full h-64 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center mb-4 border border-white/40">
-                  <span className="text-6xl">👤</span>
+                <div className="w-full h-40 md:h-64 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center mb-3 border border-white/40">
+                  <span className="text-4xl md:text-6xl">👤</span>
                 </div>
               )}
 
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
                 {currentProfile.name}, {currentProfile.age}
               </h2>
 
-              <div className="space-y-3 text-sm mb-4">
+              <div className="space-y-2 text-xs md:text-sm mb-3">
                 <div>
                   <span className="font-semibold text-gray-800">Город:</span>{' '}
                   <span className="text-gray-800 font-medium">{currentProfile.city}</span>
                 </div>
                 <div>
                   <span className="font-semibold text-gray-800">Вуз:</span>{' '}
-                  <span className="text-gray-600">{currentProfile.university}</span>
+                  <span className="text-gray-600 text-xs md:text-sm">{currentProfile.university}</span>
                 </div>
 
                 <div>
                   <span className="font-semibold text-gray-800">Интересы:</span>
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {currentProfile.interests.map((interest, index) => (
                       <span
                         key={index}
-                        className="px-2 py-1 bg-white/20 backdrop-blur-md text-teal-700 rounded-lg text-xs border border-white/40"
+                        className="px-1.5 py-0.5 bg-white/20 backdrop-blur-md text-teal-700 rounded text-xs border border-white/40"
                       >
                         {interest}
                       </span>
@@ -599,11 +607,11 @@ const Profiles = () => {
 
                 <div>
                   <span className="font-semibold text-gray-800">Цели:</span>
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {currentProfile.goals.map((goal, index) => (
                       <span
                         key={index}
-                        className="px-2 py-1 bg-white/20 backdrop-blur-md text-emerald-700 rounded-lg text-xs border border-white/40"
+                        className="px-1.5 py-0.5 bg-white/20 backdrop-blur-md text-emerald-700 rounded text-xs border border-white/40"
                       >
                         {goal}
                       </span>
@@ -613,7 +621,7 @@ const Profiles = () => {
 
                 <div>
                   <span className="font-semibold text-gray-800">О себе:</span>
-                  <p className="text-gray-800 mt-1 leading-relaxed">{currentProfile.bio}</p>
+                  <p className="text-gray-800 mt-1 leading-relaxed text-xs md:text-sm line-clamp-3">{currentProfile.bio}</p>
                 </div>
               </div>
             </Card>
@@ -621,11 +629,11 @@ const Profiles = () => {
         )}
 
         {/* Кнопки действий */}
-        <div className="flex items-center justify-center gap-6 pt-4 max-w-2xl mx-auto">
+        <div className="flex items-center justify-center gap-4 md:gap-6 pt-2 md:pt-4 max-w-2xl mx-auto">
           <button
             onClick={handlePass}
             disabled={!currentProfile}
-            className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white flex items-center justify-center text-3xl md:text-4xl shadow-lg shadow-red-500/50 hover:shadow-xl hover:shadow-red-500/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white flex items-center justify-center text-2xl md:text-4xl shadow-lg shadow-red-500/50 hover:shadow-xl hover:shadow-red-500/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Пропустить"
           >
             ✕
@@ -634,7 +642,7 @@ const Profiles = () => {
           <button
             onClick={handleLike}
             disabled={!currentProfile}
-            className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white flex items-center justify-center text-3xl md:text-4xl shadow-lg shadow-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white flex items-center justify-center text-2xl md:text-4xl shadow-lg shadow-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Лайк"
           >
             ❤️
@@ -642,7 +650,7 @@ const Profiles = () => {
         </div>
 
         {/* Подсказка для свайпов */}
-        <p className="text-xs text-gray-500 text-center mt-2">
+        <p className="text-xs text-gray-500 text-center mt-1 md:mt-2">
           Свайп влево = пропустить, вправо = лайк
         </p>
       </div>
