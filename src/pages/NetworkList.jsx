@@ -183,7 +183,8 @@ const NetworkList = () => {
           <h2 className="text-xl font-bold text-gray-800 mb-4">Нет-Лист</h2>
           {matchedProfiles.length === 0 ? (
             <p className="text-gray-800 text-center py-8 font-medium">
-              У вас пока нет контактов. Начните знакомиться!
+              У вас пока нет контактов. 
+              Начните знакомиться!
             </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
