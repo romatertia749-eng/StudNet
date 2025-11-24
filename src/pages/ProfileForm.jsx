@@ -460,6 +460,12 @@ const ProfileForm = () => {
                     src={formData.photos[0].preview}
                     alt="Preview"
                     className="w-full h-64 object-cover rounded-xl"
+                    onError={(e) => {
+                      console.error('Error loading image:', formData.photos[0].preview);
+                      e.target.style.display = 'none';
+                      e.target.nextElementSibling?.style?.display === 'none' && 
+                        (e.target.nextElementSibling.style.display = 'block');
+                    }}
                   />
                   <button
                     type="button"

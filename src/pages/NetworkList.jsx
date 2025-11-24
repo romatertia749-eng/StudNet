@@ -88,6 +88,7 @@ const NetworkList = () => {
             bio: match.matchedProfile.bio,
             interests: match.matchedProfile.interests || [],
             photos: match.matchedProfile.photo_url ? [getPhotoUrl(match.matchedProfile.photo_url)] : [],
+            username: match.matchedProfile.username || null,
           }));
           setMatchedProfiles(formattedMatches);
         } else {
@@ -222,13 +223,38 @@ const NetworkList = () => {
                     </div>
                   </div>
 
-                  <Button
-                    variant="secondary"
-                    onClick={() => navigate(`/profiles/${person.id}`)}
-                    className="w-full text-sm py-2 min-h-[40px]"
-                  >
-                    Посмотреть профиль
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => navigate(`/profiles/${person.id}`)}
+                      className="w-full text-sm py-2 min-h-[40px]"
+                    >
+                      Посмотреть профиль
+                    </Button>
+                    {person.username ? (
+                      <Button
+                        variant="primary"
+                        onClick={() => {
+                          // Открываем Telegram по username
+                          // Убираем @ если есть, и формируем ссылку
+                          const cleanUsername = person.username.replace('@', '').trim();
+                          if (cleanUsername) {
+                            const telegramUrl = `https://t.me/${cleanUsername}`;
+                            window.open(telegramUrl, '_blank');
+                          } else {
+                            alert('Username не указан');
+                          }
+                        }}
+                        className="w-full text-sm py-2 min-h-[40px]"
+                      >
+                        💬 Написать
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-gray-500 text-center py-2">
+                        Username не указан
+                      </p>
+                    )}
+                  </div>
                 </Card>
               ))}
             </div>
