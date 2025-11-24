@@ -87,6 +87,12 @@ def get_profiles(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при получении профилей: {str(e)}")
 
+@router.get("/check/{user_id}")
+def check_profile_exists(user_id: int, db: Session = Depends(get_db)):
+    """Проверяет наличие профиля у пользователя"""
+    profile = profile_service.get_profile_by_user_id(db, user_id)
+    return {"exists": profile is not None}
+
 @router.get("/{profile_id}", response_model=ProfileResponse)
 def get_profile(profile_id: int, db: Session = Depends(get_db)):
     profile = profile_service.get_profile_by_id(db, profile_id)

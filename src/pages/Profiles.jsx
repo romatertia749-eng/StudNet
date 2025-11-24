@@ -129,27 +129,21 @@ const Profiles = () => {
     const checkUserProfile = async () => {
       setCheckingProfile(true);
       try {
-        // Проверяем наличие профиля через запрос списка профилей
-        // Если профиля нет, get_available_profiles вернет пустой список
-        const params = new URLSearchParams({
-          user_id: userInfo.id,
-          page: 0,
-          size: 1
-        });
-        
-        const url = `${API_ENDPOINTS.PROFILES}?${params}`;
+        // Проверяем наличие профиля через специальный эндпоинт
+        const url = API_ENDPOINTS.CHECK_PROFILE(userInfo.id);
         const response = await fetchWithAuth(url);
         
         if (response.ok) {
           const data = await response.json();
-          // Если профиль пользователя существует, get_available_profiles вернет других пользователей
-          // Но если профиля нет, может быть ошибка или пустой список
-          // Проверяем через статус ответа - если 400, значит профиля нет
-        } else if (response.status === 400) {
-          // Профиля нет, перенаправляем на создание
-          alert('Сначала создайте свой профиль, чтобы начать искать знакомства');
-          navigate('/profile/edit');
-          return;
+          if (!data.exists) {
+            // Профиля нет, перенаправляем на создание
+            alert('Сначала создайте свой профиль, чтобы начать искать знакомства');
+            navigate('/profile/edit');
+            return;
+          }
+        } else {
+          // При ошибке не блокируем, возможно бэкенд недоступен
+          console.warn('Could not check profile, continuing anyway');
         }
       } catch (error) {
         console.error('Error checking profile:', error);
@@ -219,11 +213,6 @@ const Profiles = () => {
             console.log('Using backend data, profiles count:', profiles.length);
             setAllProfiles(profiles);
           }
-        } else if (response.status === 400) {
-          // Профиля нет
-          alert('Сначала создайте свой профиль, чтобы начать искать знакомства');
-          navigate('/profile/edit');
-          return;
         } else {
           console.error('Response not OK, status:', response.status);
           // Fallback на мок данные если бэкенд недоступен

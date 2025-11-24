@@ -9,11 +9,53 @@ import { API_ENDPOINTS } from '../config/api';
 const NetworkList = () => {
   const navigate = useNavigate();
   const { matchedProfiles: localMatches } = useMatches();
-  const { userInfo } = useWebApp();
+  const { userInfo, isReady } = useWebApp();
   const [matchedProfiles, setMatchedProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [checkingProfile, setCheckingProfile] = useState(true);
+
+  // Проверка наличия профиля пользователя
+  useEffect(() => {
+    if (!isReady || !userInfo?.id) {
+      return;
+    }
+
+    const checkUserProfile = async () => {
+      setCheckingProfile(true);
+      try {
+        // Проверяем наличие профиля через специальный эндпоинт
+        const url = API_ENDPOINTS.CHECK_PROFILE(userInfo.id);
+        const response = await fetch(url);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (!data.exists) {
+            // Профиля нет, перенаправляем на создание
+            alert('Сначала создайте свой профиль, чтобы начать искать знакомства');
+            navigate('/profile/edit');
+            return;
+          }
+        } else {
+          // При ошибке не блокируем, возможно бэкенд недоступен
+          console.warn('Could not check profile, continuing anyway');
+        }
+      } catch (error) {
+        console.error('Error checking profile:', error);
+        // При ошибке не блокируем, возможно бэкенд недоступен
+      } finally {
+        setCheckingProfile(false);
+      }
+    };
+
+    checkUserProfile();
+  }, [isReady, userInfo, navigate]);
 
   useEffect(() => {
+    // Не загружаем мэтчи, пока проверяем профиль
+    if (checkingProfile) {
+      return;
+    }
+
     const fetchMatches = async () => {
       if (!userInfo?.id) {
         setMatchedProfiles(localMatches);
@@ -106,19 +148,29 @@ const NetworkList = () => {
     };
     
     fetchMatches();
-  }, [userInfo, localMatches]);
+  }, [userInfo, localMatches, checkingProfile]);
 
+
+  if (checkingProfile || loading) {
+    return (
+      <div className="min-w-[320px] min-h-[600px] max-w-4xl w-full mx-auto p-4 md:p-6 pb-20 md:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+        <div className="space-y-4 mt-4">
+          <Card>
+            <p className="text-gray-800 text-center py-8 font-medium">
+              {checkingProfile ? 'Проверка профиля...' : 'Загрузка мэтчей...'}
+            </p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-w-[320px] min-h-[600px] max-w-4xl w-full mx-auto p-4 md:p-6 pb-20 md:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       <div className="space-y-4 mt-4">
         <Card>
           <h2 className="text-xl font-bold text-gray-800 mb-4">Нет-Лист</h2>
-          {loading ? (
-            <p className="text-gray-800 text-center py-8 font-medium">
-              Загрузка мэтчей...
-            </p>
-          ) : matchedProfiles.length === 0 ? (
+          {matchedProfiles.length === 0 ? (
             <p className="text-gray-800 text-center py-8 font-medium">
               Пока нет замэтченных профилей. Начните знакомиться!
             </p>
