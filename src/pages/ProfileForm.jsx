@@ -205,17 +205,43 @@ const ProfileForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    console.log('=== PROFILE SUBMIT START ===');
+    console.log('userInfo:', userInfo);
+    console.log('isReady:', isReady);
+    console.log('formData:', formData);
+    
     if (!userInfo) {
       alert('Ошибка: данные пользователя не загружены. Пожалуйста, обновите страницу.');
       console.error('userInfo is missing:', userInfo);
       return;
     }
     
-    if (!validateForm()) {
+    if (!userInfo.id) {
+      alert('Ошибка: ID пользователя не найден. Пожалуйста, обновите страницу.');
+      console.error('userInfo.id is missing:', userInfo);
+      return;
+    }
+    
+    const isValid = validateForm();
+    console.log('Form validation result:', isValid);
+    console.log('Form errors:', errors);
+    
+    if (!isValid) {
+      console.log('Form validation failed, not submitting');
       return;
     }
 
+      console.log('Starting form submission...');
     setLoading(true);
+    
+    // Проверяем доступность API перед отправкой
+    if (!API_ENDPOINTS.PROFILES) {
+      console.error('API_ENDPOINTS.PROFILES is not defined');
+      alert('Ошибка конфигурации: API endpoint не найден. Обратитесь к разработчику.');
+      setLoading(false);
+      return;
+    }
+    
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('user_id', userInfo.id.toString());
@@ -233,25 +259,80 @@ const ProfileForm = () => {
 
       // Отправляем фото только если оно новое (не существующее)
       if (formData.photos.length > 0 && formData.photos[0].file && !formData.photos[0].isExisting) {
+        console.log('Adding photo to form data, size:', formData.photos[0].file.size, 'bytes');
         formDataToSend.append('photo', formData.photos[0].file);
+      } else {
+        console.log('No photo to send or photo is existing');
       }
 
-      console.log('Sending profile data to:', API_ENDPOINTS.PROFILES);
+      // Логируем все данные, которые отправляем
+      console.log('=== FORM DATA TO SEND ===');
+      console.log('API Endpoint:', API_ENDPOINTS.PROFILES);
       console.log('User ID:', userInfo.id);
+      console.log('Username:', userInfo.username);
+      console.log('Name:', formData.name);
+      console.log('Gender:', formData.gender);
+      console.log('Age:', formData.age);
+      console.log('City:', formData.city);
+      console.log('University:', formData.university);
+      console.log('Interests:', formData.interests);
+      console.log('Goals:', formData.goals);
+      console.log('Bio length:', formData.bio?.length || 0);
+      
+      // Проверяем наличие всех обязательных полей
+      const requiredFields = {
+        user_id: userInfo.id,
+        name: formData.name,
+        gender: formData.gender,
+        age: formData.age,
+        city: formData.city,
+        university: formData.university,
+        interests: formData.interests.length,
+        goals: formData.goals.length,
+      };
+      console.log('Required fields check:', requiredFields);
 
-      const response = await fetch(API_ENDPOINTS.PROFILES, {
-        method: 'POST',
-        body: formDataToSend,
-      });
+      // Создаем AbortController для таймаута
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
 
+      let response;
+      try {
+        console.log('Sending fetch request...');
+        const startTime = Date.now();
+        response = await fetch(API_ENDPOINTS.PROFILES, {
+          method: 'POST',
+          body: formDataToSend,
+          signal: controller.signal,
+        });
+        const endTime = Date.now();
+        console.log(`Fetch completed in ${endTime - startTime}ms`);
+        clearTimeout(timeoutId);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        console.error('Fetch error details:', {
+          name: fetchError.name,
+          message: fetchError.message,
+          stack: fetchError.stack,
+        });
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Запрос превысил время ожидания. Проверьте подключение к интернету и попробуйте снова.');
+        }
+        throw fetchError;
+      }
+
+      console.log('=== RESPONSE RECEIVED ===');
       console.log('Response status:', response.status);
       console.log('Response ok:', response.ok);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (response.ok) {
         const data = await response.json();
         console.log('Profile saved successfully:', data);
+        setLoading(false); // Сбрасываем loading перед навигацией
         alert(isEditing ? 'Профиль успешно обновлён!' : 'Профиль успешно создан!');
         navigate('/');
+        return; // Выходим, чтобы не выполнять код дальше
       } else {
         const errorText = await response.text();
         console.error('Server error:', response.status, errorText);
@@ -260,18 +341,32 @@ const ProfileForm = () => {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.detail || errorMessage;
         } catch (e) {
-          errorMessage = `Ошибка ${response.status}: ${errorText}`;
+          errorMessage = `Ошибка ${response.status}: ${errorText.substring(0, 100)}`;
         }
         alert(errorMessage);
       }
     } catch (error) {
-      console.error('Network error creating profile:', error);
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        alert('Не удалось подключиться к серверу. Проверьте, что бэкенд запущен и доступен.');
-      } else {
-        alert(`Ошибка при сохранении профиля: ${error.message}`);
+      console.error('=== ERROR IN PROFILE SUBMISSION ===');
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      console.error('Full error object:', error);
+      
+      let errorMessage = 'Ошибка при сохранении профиля';
+      
+      if (error.name === 'AbortError' || error.message.includes('превысил время ожидания')) {
+        errorMessage = 'Запрос превысил время ожидания. Проверьте подключение к интернету и попробуйте снова.';
+      } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage = 'Не удалось подключиться к серверу. Проверьте, что бэкенд запущен и доступен.';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+      
+      console.error('Showing error to user:', errorMessage);
+      alert(errorMessage);
     } finally {
+      // Всегда сбрасываем loading, даже если произошла ошибка
+      console.log('=== PROFILE SUBMIT END ===');
       setLoading(false);
     }
   };

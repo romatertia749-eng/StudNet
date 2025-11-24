@@ -131,7 +131,15 @@ const Profiles = () => {
       try {
         // Проверяем наличие профиля через специальный эндпоинт
         const url = API_ENDPOINTS.CHECK_PROFILE(userInfo.id);
-        const response = await fetchWithAuth(url);
+        let response;
+        try {
+          response = await fetchWithAuth(url);
+        } catch (fetchError) {
+          console.error('Error in fetchWithAuth for profile check:', fetchError);
+          // Продолжаем работу, возможно бэкенд недоступен
+          setCheckingProfile(false);
+          return;
+        }
         
         if (response.ok) {
           const data = await response.json();
@@ -200,12 +208,29 @@ const Profiles = () => {
         
         const url = `${API_ENDPOINTS.PROFILES}?${params}`;
         console.log('Fetching from:', url);
-        const response = await fetchWithAuth(url);
+        let response;
+        try {
+          response = await fetchWithAuth(url);
+        } catch (fetchError) {
+          console.error('Error in fetchWithAuth for profiles:', fetchError);
+          // Fallback на мок данные при ошибке сети
+          setAllProfiles(getMockProfiles());
+          setLoading(false);
+          return;
+        }
         console.log('Response status:', response.status);
         if (response.ok) {
-          const data = await response.json();
+          let data;
+          try {
+            data = await response.json();
+          } catch (parseError) {
+            console.error('Error parsing response JSON:', parseError);
+            setAllProfiles(getMockProfiles());
+            setLoading(false);
+            return;
+          }
           console.log('Received data:', data);
-          const profiles = data.content || [];
+          const profiles = Array.isArray(data.content) ? data.content : (Array.isArray(data) ? data : []);
           
           // Если список пустой, возможно профиля пользователя нет
           // Но это может быть и потому, что нет других профилей
@@ -222,10 +247,55 @@ const Profiles = () => {
           } else {
             console.log('Using backend data, profiles count:', profiles.length);
             // Преобразуем photo_url в массив photos с правильным URL
-            const processedProfiles = profiles.map(profile => ({
-              ...profile,
-              photos: profile.photo_url ? [getPhotoUrl(profile.photo_url)] : []
-            }));
+            const processedProfiles = profiles.map(profile => {
+              try {
+                // Безопасная обработка interests
+                let interestsArray = [];
+                if (profile.interests) {
+                  if (Array.isArray(profile.interests)) {
+                    interestsArray = profile.interests;
+                  } else if (typeof profile.interests === 'string') {
+                    try {
+                      interestsArray = JSON.parse(profile.interests);
+                    } catch (e) {
+                      console.warn('Failed to parse interests:', e);
+                      interestsArray = [];
+                    }
+                  }
+                }
+                
+                // Безопасная обработка goals
+                let goalsArray = [];
+                if (profile.goals) {
+                  if (Array.isArray(profile.goals)) {
+                    goalsArray = profile.goals;
+                  } else if (typeof profile.goals === 'string') {
+                    try {
+                      goalsArray = JSON.parse(profile.goals);
+                    } catch (e) {
+                      console.warn('Failed to parse goals:', e);
+                      goalsArray = [];
+                    }
+                  }
+                }
+                
+                return {
+                  ...profile,
+                  interests: interestsArray,
+                  goals: goalsArray,
+                  photos: profile.photo_url ? [getPhotoUrl(profile.photo_url)] : []
+                };
+              } catch (error) {
+                console.error('Error processing profile:', profile, error);
+                // Возвращаем профиль с безопасными значениями по умолчанию
+                return {
+                  ...profile,
+                  interests: [],
+                  goals: [],
+                  photos: profile.photo_url ? [getPhotoUrl(profile.photo_url)] : []
+                };
+              }
+            });
             setAllProfiles(processedProfiles);
           }
         } else {
@@ -247,15 +317,21 @@ const Profiles = () => {
 
   // Фильтрация на фронтенде (для мок данных или дополнительная фильтрация)
   const filteredProfiles = allProfiles.filter(profile => {
-    if (selectedCity && profile.city !== selectedCity) return false;
-    if (selectedUniversity && profile.university !== selectedUniversity) return false;
-    if (selectedInterests.length > 0) {
-      const hasInterest = selectedInterests.some(interest =>
-        profile.interests && profile.interests.includes(interest)
-      );
-      if (!hasInterest) return false;
+    try {
+      if (selectedCity && profile.city !== selectedCity) return false;
+      if (selectedUniversity && profile.university !== selectedUniversity) return false;
+      if (selectedInterests.length > 0) {
+        const interests = Array.isArray(profile.interests) ? profile.interests : [];
+        const hasInterest = selectedInterests.some(interest =>
+          interests.includes(interest)
+        );
+        if (!hasInterest) return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Error filtering profile:', profile, error);
+      return false;
     }
-    return true;
   });
 
   const availableProfiles = filteredProfiles.filter(profile => 
@@ -625,71 +701,95 @@ const Profiles = () => {
           >
             <Card className="relative">
               {/* Фото профиля */}
-              {currentProfile.photo_url || (currentProfile.photos && currentProfile.photos.length > 0) ? (
-                <div className="grid grid-cols-3 gap-1.5 mb-3">
-                  {(currentProfile.photos && currentProfile.photos.length > 0 ? currentProfile.photos : [getPhotoUrl(currentProfile.photo_url)]).map((photo, index) => (
-                    <img
-                      key={index}
-                      src={photo}
-                      alt={`${index + 1}`}
-                      className="w-full h-20 md:h-32 object-cover rounded-lg"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="w-full h-40 md:h-64 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center mb-3 border border-white/40">
-                  <span className="text-4xl md:text-6xl">👤</span>
-                </div>
-              )}
+              {(() => {
+                try {
+                  const photos = Array.isArray(currentProfile.photos) && currentProfile.photos.length > 0
+                    ? currentProfile.photos
+                    : (currentProfile.photo_url ? [getPhotoUrl(currentProfile.photo_url)] : []);
+                  
+                  if (photos.length > 0) {
+                    return (
+                      <div className="grid grid-cols-3 gap-1.5 mb-3">
+                        {photos.map((photo, index) => (
+                          <img
+                            key={index}
+                            src={photo}
+                            alt={`${index + 1}`}
+                            className="w-full h-20 md:h-32 object-cover rounded-lg"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        ))}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="w-full h-40 md:h-64 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center mb-3 border border-white/40">
+                      <span className="text-4xl md:text-6xl">👤</span>
+                    </div>
+                  );
+                } catch (error) {
+                  console.error('Error rendering photos:', error);
+                  return (
+                    <div className="w-full h-40 md:h-64 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center mb-3 border border-white/40">
+                      <span className="text-4xl md:text-6xl">👤</span>
+                    </div>
+                  );
+                }
+              })()}
 
               <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
-                {currentProfile.name}, {currentProfile.age}
+                {currentProfile.name || 'Без имени'}, {currentProfile.age || '?'}
               </h2>
 
               <div className="space-y-2 text-xs md:text-sm mb-3">
                 <div>
                   <span className="font-semibold text-gray-800">Город:</span>{' '}
-                  <span className="text-gray-800 font-medium">{currentProfile.city}</span>
+                  <span className="text-gray-800 font-medium">{currentProfile.city || 'Не указан'}</span>
                 </div>
                 <div>
                   <span className="font-semibold text-gray-800">Вуз:</span>{' '}
-                  <span className="text-gray-600 text-xs md:text-sm">{currentProfile.university}</span>
+                  <span className="text-gray-600 text-xs md:text-sm">{currentProfile.university || 'Не указан'}</span>
                 </div>
 
                 <div>
                   <span className="font-semibold text-gray-800">Интересы:</span>
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {currentProfile.interests.map((interest, index) => (
-                      <span
-                        key={index}
-                        className="px-1.5 py-0.5 bg-white/20 backdrop-blur-md text-teal-700 rounded text-xs border border-white/40"
-                      >
-                        {interest}
-                      </span>
-                    ))}
+                    {Array.isArray(currentProfile.interests) && currentProfile.interests.length > 0
+                      ? currentProfile.interests.map((interest, index) => (
+                          <span
+                            key={index}
+                            className="px-1.5 py-0.5 bg-white/20 backdrop-blur-md text-teal-700 rounded text-xs border border-white/40"
+                          >
+                            {interest}
+                          </span>
+                        ))
+                      : <span className="text-gray-500 text-xs">Не указано</span>
+                    }
                   </div>
                 </div>
 
                 <div>
                   <span className="font-semibold text-gray-800">Цели:</span>
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {currentProfile.goals.map((goal, index) => (
-                      <span
-                        key={index}
-                        className="px-1.5 py-0.5 bg-white/20 backdrop-blur-md text-emerald-700 rounded text-xs border border-white/40"
-                      >
-                        {goal}
-                      </span>
-                    ))}
+                    {Array.isArray(currentProfile.goals) && currentProfile.goals.length > 0
+                      ? currentProfile.goals.map((goal, index) => (
+                          <span
+                            key={index}
+                            className="px-1.5 py-0.5 bg-white/20 backdrop-blur-md text-emerald-700 rounded text-xs border border-white/40"
+                          >
+                            {goal}
+                          </span>
+                        ))
+                      : <span className="text-gray-500 text-xs">Не указано</span>
+                    }
                   </div>
                 </div>
 
                 <div>
                   <span className="font-semibold text-gray-800">О себе:</span>
-                  <p className="text-gray-800 mt-1 leading-relaxed text-xs md:text-sm line-clamp-3">{currentProfile.bio}</p>
+                  <p className="text-gray-800 mt-1 leading-relaxed text-xs md:text-sm line-clamp-3">{currentProfile.bio || 'Не указано'}</p>
                 </div>
               </div>
             </Card>
