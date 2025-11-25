@@ -620,16 +620,7 @@ const Profiles = () => {
               <h2 className="text-xl font-bold text-gray-800">Анкеты</h2>
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="px-3 py-1 text-sm rounded-lg transition-colors"
-                style={{
-                  color: 'rgba(0, 255, 255, 0.8)',
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                }}
+                className="px-3 py-1 text-sm text-gray-900 rounded-lg transition-colors"
               >
                 {showFilters ? 'Скрыть' : 'Фильтры'}
               </button>
@@ -719,16 +710,7 @@ const Profiles = () => {
             <h2 className="text-xl font-bold text-gray-800">Анкеты</h2>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="px-3 py-1 text-sm rounded-lg transition-all bg-white/20 backdrop-blur-md border border-white/40"
-              style={{
-                color: 'rgba(0, 255, 255, 0.8)',
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-              }}
+              className="px-3 py-1 text-sm text-gray-900 rounded-lg transition-all bg-white/20 backdrop-blur-md border border-white/40"
             >
               {showFilters ? 'Скрыть' : 'Фильтры'}
             </button>
@@ -849,6 +831,7 @@ const Profiles = () => {
                  * - Цвета: яркий голубой (#00FFFF), электрический синий (#36CFFF), белый
                  * - Glow появляется только когда карточка на месте (swipeOffset === 0) и эффект завершен
                  * - Многослойное свечение создает эффект неоновой подсветки
+                 * - Уменьшенные радиус и яркость для более мягкого эффекта
                  * 
                  * СИНХРОНИЗАЦИЯ:
                  * - Glow появляется после завершения неонового хвоста (isEffectActive === false)
@@ -857,10 +840,9 @@ const Profiles = () => {
                  */
                 boxShadow: swipeOffset === 0 && !isEffectActive
                   ? [
-                      '0 0 25px rgba(0, 255, 255, 0.7)',
-                      '0 0 50px rgba(54, 207, 255, 0.5)',
-                      '0 0 75px rgba(0, 255, 255, 0.3)',
-                      '0 0 100px rgba(255, 255, 255, 0.2)',
+                      '0 0 15px rgba(0, 255, 255, 0.4)',
+                      '0 0 30px rgba(54, 207, 255, 0.3)',
+                      '0 0 45px rgba(0, 255, 255, 0.2)',
                     ].join(', ')
                   : '0 0 0px rgba(0, 255, 255, 0)',
               }}
@@ -999,17 +981,17 @@ const Profiles = () => {
             disabled={isEffectActive || !currentProfile}
             className="w-14 h-14 md:w-20 md:h-20 rounded-full text-white flex items-center justify-center text-2xl md:text-4xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
-              background: `linear-gradient(to right, rgba(0, 255, 255, 0.26), rgba(54, 207, 255, 0.32))`,
-              boxShadow: '0 10px 25px rgba(0, 255, 255, 0.3), 0 0 20px rgba(54, 207, 255, 0.2)',
+              background: `linear-gradient(to right, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.9))`,
+              boxShadow: '0 10px 25px rgba(34, 197, 94, 0.4), 0 0 20px rgba(22, 163, 74, 0.3)',
             }}
             onMouseEnter={(e) => {
               if (!isEffectActive && currentProfile) {
-                e.target.style.boxShadow = '0 15px 35px rgba(0, 255, 255, 0.4), 0 0 30px rgba(54, 207, 255, 0.3)';
+                e.target.style.boxShadow = '0 15px 35px rgba(34, 197, 94, 0.5), 0 0 30px rgba(22, 163, 74, 0.4)';
               }
             }}
             onMouseLeave={(e) => {
               if (!isEffectActive && currentProfile) {
-                e.target.style.boxShadow = '0 10px 25px rgba(0, 255, 255, 0.3), 0 0 20px rgba(54, 207, 255, 0.2)';
+                e.target.style.boxShadow = '0 10px 25px rgba(34, 197, 94, 0.4), 0 0 20px rgba(22, 163, 74, 0.3)';
               }
             }}
             aria-label="Лайк"
