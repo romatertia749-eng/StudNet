@@ -702,7 +702,7 @@ const Profiles = () => {
   }
 
   return (
-    <div className="min-w-[320px] min-h-[600px] max-w-md w-full mx-auto p-3 md:p-4 pb-24 md:pb-32" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+    <div className="min-w-[320px] max-w-md w-full mx-auto p-3 md:p-4 pb-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
       <div className="space-y-3 md:space-y-4 mt-2 md:mt-4">
         {/* Фильтры */}
         <Card>
