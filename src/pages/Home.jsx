@@ -29,7 +29,7 @@ const Home = () => {
           </Button>
 
           <Button
-            variant="secondary"
+            variant="primary"
             onClick={() => navigate('/profiles')}
             className="transform transition-all hover:scale-105 hover:shadow-xl"
           >
@@ -37,7 +37,7 @@ const Home = () => {
           </Button>
 
           <Button
-            variant="outline"
+            variant="primary"
             onClick={() => navigate('/network')}
             className="transform transition-all hover:scale-105 hover:shadow-xl"
           >

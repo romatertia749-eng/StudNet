@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
 
 /**
@@ -10,58 +9,36 @@ import { motion } from 'framer-motion';
  * @param {Function} props.onComplete - коллбэк, вызываемый после завершения эффекта
  * 
  * Архитектура:
- * - Для "right" (лайк): конфетти-салют через canvas-confetti
- * - Для "left" (пасс): fade/disperse эффект нейтральных частиц через SVG и Framer Motion
+ * - Для "right" (лайк): неоновый светящийся хвост (glow trail) через SVG path с градиентом
+ * - Для "left" (пасс): fade/disperse эффект нейтральных частиц через Framer Motion
  * - Эффект отображается поверх карточки (z-index: 50)
  * - После завершения вызывается onComplete для показа следующей карточки
+ * 
+ * БЛОКИРОВКА СВАЙПА:
+ * - Во время проигрывания эффекта (400-700ms) свайпы заблокированы через isEffectActive
+ * - onComplete разблокирует свайп и инициирует появление новой карточки с glow-анимацией
  */
 const EffectOverlay = ({ direction, onComplete }) => {
   // Используем state для particles, чтобы компоненты перерендерились
   const [particles, setParticles] = useState([]);
+  const [trailVisible, setTrailVisible] = useState(false);
 
   useEffect(() => {
     // Длительность эффекта в миллисекундах
-    const EFFECT_DURATION = direction === 'right' ? 2000 : 1500;
+    // Неоновый хвост: 500ms (400-500ms fade out + небольшая задержка)
+    // Fade/disperse: 600ms
+    const EFFECT_DURATION = direction === 'right' ? 500 : 600;
 
     if (direction === 'right') {
-      // КОНФЕТТИ-САЛЮТ для свайпа вправо (лайк)
-      // Используем canvas-confetti для создания праздничного эффекта
+      // НЕОНОВЫЙ СВЕТЯЩИЙСЯ ХВОСТ для свайпа вправо (лайк)
+      // Реализация через SVG path с градиентом и blur эффектом
+      // Хвост следует за траекторией уходящей карточки (вправо)
       
-      const count = 200; // Количество конфетти
-      const defaults = {
-        origin: { y: 0.7 }, // Позиция запуска (70% от верха экрана)
-        colors: ['#4FBB6E', '#3D9DEB', '#F7E001', '#CE6AE8', '#FFB6C1', '#FFD700', '#87CEEB'],
-        shapes: ['circle', 'square'],
-        ticks: 200,
-        gravity: 0.8,
-        decay: 0.94,
-        startVelocity: 30,
-      };
-
-      // Запускаем несколько залпов конфетти для более насыщенного эффекта
-      const interval = setInterval(() => {
-        confetti({
-          ...defaults,
-          particleCount: count,
-          angle: 60,
-          spread: 55,
-          startVelocity: 25,
-        });
-        
-        confetti({
-          ...defaults,
-          particleCount: count,
-          angle: 120,
-          spread: 55,
-          startVelocity: 25,
-        });
-      }, 250);
-
-      // Останавливаем через 1.5 секунды
-      setTimeout(() => {
-        clearInterval(interval);
-      }, 1500);
-
+      setTrailVisible(true);
+      
+      // Хвост затухает за 400-500ms
+      // После этого вызываем onComplete для показа новой карточки
+      
     } else {
       // FADE/DISPERSE ЭФФЕКТ для свайпа влево (пасс)
       // Создаем нейтральные частицы, которые разлетаются и исчезают
@@ -93,21 +70,141 @@ const EffectOverlay = ({ direction, onComplete }) => {
 
     return () => {
       clearTimeout(timer);
-      // Очищаем конфетти при размонтировании
-      if (direction === 'right') {
-        confetti.reset();
-      }
+      setTrailVisible(false);
     };
   }, [direction, onComplete]);
 
   if (direction === 'right') {
-    // Для конфетти используем canvas-confetti (он сам создает canvas)
-    // Просто возвращаем пустой div для позиционирования
+    /**
+     * НЕОНОВЫЙ СВЕТЯЩИЙСЯ ХВОСТ для свайпа вправо (лайк)
+     * 
+     * РЕАЛИЗАЦИЯ:
+     * - SVG path с градиентом от яркого неона (#00FFFF, #36CFFF) к прозрачному
+     * - Траектория: из центра экрана вправо с плавной кривой
+     * - Blur эффект (feGaussianBlur) создает свечение (glow)
+     * - Многослойная структура: основной хвост + яркий слой + белый центр
+     * - Анимация: pathLength от 0 до 1 (появление хвоста) + fade out (затухание)
+     * 
+     * СИНХРОНИЗАЦИЯ:
+     * - Хвост появляется сразу при свайпе (trailVisible = true)
+     * - Затухает за 400-500ms
+     * - После завершения вызывается onComplete для показа новой карточки с glow
+     */
+    
+    // Вычисляем размеры экрана для правильного позиционирования
+    // Используем относительные единицы для адаптивности
+    const viewBoxWidth = 400;
+    const viewBoxHeight = 600;
+    const startX = viewBoxWidth * 0.5; // Начало в центре по X
+    const startY = viewBoxHeight * 0.5; // Начало в центре по Y
+    const endX = viewBoxWidth * 1.3; // Конец справа за экраном
+    const endY = startY; // Горизонтальная траектория
+    
+    // Создаем плавную кривую (bezier) для более естественного хвоста
+    // Небольшой изгиб делает хвост более динамичным
+    const controlX1 = startX + (endX - startX) * 0.25;
+    const controlY1 = startY - 20; // Небольшой изгиб вверх
+    const controlX2 = startX + (endX - startX) * 0.75;
+    const controlY2 = startY + 20; // Небольшой изгиб вниз
+    
+    // SVG path для хвоста (кубическая кривая Безье)
+    const trailPath = `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
+    
     return (
       <div 
-        className="fixed inset-0 pointer-events-none z-50"
+        className="fixed inset-0 pointer-events-none z-50 overflow-hidden"
         style={{ zIndex: 50 }}
-      />
+      >
+        {trailVisible && (
+          <motion.svg
+            width="100%"
+            height="100%"
+            viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+            preserveAspectRatio="xMidYMid meet"
+            className="absolute inset-0"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+          >
+            {/* Определение градиента и фильтров для неонового хвоста */}
+            <defs>
+              {/* Линейный градиент от яркого неона к прозрачному */}
+              <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#00FFFF" stopOpacity="1" />
+                <stop offset="25%" stopColor="#36CFFF" stopOpacity="0.95" />
+                <stop offset="50%" stopColor="#00FFFF" stopOpacity="0.7" />
+                <stop offset="75%" stopColor="#36CFFF" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#00FFFF" stopOpacity="0" />
+              </linearGradient>
+              
+              {/* Фильтр blur для создания glow эффекта (основной слой) */}
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+              
+              {/* Дополнительный фильтр для более яркого свечения (внешний слой) */}
+              <filter id="strongGlow">
+                <feGaussianBlur stdDeviation="10" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            
+            {/* Внешний слой хвоста - самое яркое свечение */}
+            <motion.path
+              d={trailPath}
+              stroke="url(#neonGradient)"
+              strokeWidth="16"
+              fill="none"
+              strokeLinecap="round"
+              filter="url(#strongGlow)"
+              initial={{ pathLength: 0, opacity: 0.6 }}
+              animate={{ pathLength: 1, opacity: 0 }}
+              transition={{ 
+                pathLength: { duration: 0.25, ease: 'easeOut' },
+                opacity: { duration: 0.5, delay: 0.15, ease: 'easeOut' }
+              }}
+            />
+            
+            {/* Основной хвост - толстая линия с градиентом */}
+            <motion.path
+              d={trailPath}
+              stroke="url(#neonGradient)"
+              strokeWidth="10"
+              fill="none"
+              strokeLinecap="round"
+              filter="url(#glow)"
+              initial={{ pathLength: 0, opacity: 1 }}
+              animate={{ pathLength: 1, opacity: 0 }}
+              transition={{ 
+                pathLength: { duration: 0.3, ease: 'easeOut' },
+                opacity: { duration: 0.5, delay: 0.2, ease: 'easeOut' }
+              }}
+            />
+            
+            {/* Белый центр для максимальной яркости и четкости */}
+            <motion.path
+              d={trailPath}
+              stroke="#FFFFFF"
+              strokeWidth="3"
+              fill="none"
+              strokeLinecap="round"
+              initial={{ pathLength: 0, opacity: 1 }}
+              animate={{ pathLength: 1, opacity: 0 }}
+              transition={{ 
+                pathLength: { duration: 0.3, ease: 'easeOut' },
+                opacity: { duration: 0.4, delay: 0.1, ease: 'easeOut' }
+              }}
+            />
+          </motion.svg>
+        )}
+      </div>
     );
   }
 

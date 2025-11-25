@@ -508,12 +508,22 @@ const Profiles = () => {
   };
 
 
-  // Обработка свайпов
-  // БЛОКИРОВКА СВАЙПА: если isEffectActive === true, свайп заблокирован
-  // Это предотвращает множественные свайпы во время проигрывания эффекта
+  /**
+   * ОБРАБОТКА СВАЙПОВ
+   * 
+   * БЛОКИРОВКА СВАЙПА:
+   * - Во время проигрывания эффекта (400-700ms) свайпы полностью заблокированы
+   * - Проверка isEffectActive блокирует начало, движение и завершение свайпа
+   * - isProcessingSwipe предотвращает повторные вызовы handleLike/handlePass
+   * - После завершения эффекта (onComplete) блокировка снимается
+   * 
+   * СИНХРОНИЗАЦИЯ:
+   * - Свайп → эффект (неоновый хвост/fade) → блокировка → onComplete → новая карточка с glow
+   * - Пользователь не может свайпнуть во время эффекта, что предотвращает баги
+   */
   const handleTouchStart = (e) => {
-    // Блокируем начало свайпа, если эффект активен
-    if (isEffectActive) {
+    // БЛОКИРОВКА: предотвращаем начало свайпа во время эффекта
+    if (isEffectActive || isProcessingSwipe.current) {
       e.preventDefault();
       return;
     }
@@ -524,7 +534,7 @@ const Profiles = () => {
   };
 
   const handleTouchMove = (e) => {
-    // Блокируем движение свайпа, если эффект активен
+    // БЛОКИРОВКА: предотвращаем движение свайпа во время эффекта
     if (isEffectActive || !touchStartX.current || isProcessingSwipe.current) return;
     
     touchEndX.current = e.touches[0].clientX;
@@ -543,7 +553,7 @@ const Profiles = () => {
   };
 
   const handleTouchEnd = () => {
-    // Блокируем завершение свайпа, если эффект активен или уже обрабатывается
+    // БЛОКИРОВКА: предотвращаем завершение свайпа во время эффекта
     if (isEffectActive || isProcessingSwipe.current) {
       setSwipeOffset(0);
       touchStartX.current = 0;
@@ -606,7 +616,16 @@ const Profiles = () => {
               <h2 className="text-xl font-bold text-gray-800">Анкеты</h2>
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="px-3 py-1 text-sm text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                className="px-3 py-1 text-sm rounded-lg transition-colors"
+                style={{
+                  color: 'rgba(0, 255, 255, 0.8)',
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                }}
               >
                 {showFilters ? 'Скрыть' : 'Фильтры'}
               </button>
@@ -696,7 +715,16 @@ const Profiles = () => {
             <h2 className="text-xl font-bold text-gray-800">Анкеты</h2>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="px-3 py-1 text-sm text-teal-600 hover:bg-white/30 rounded-lg transition-all bg-white/20 backdrop-blur-md border border-white/40"
+              className="px-3 py-1 text-sm rounded-lg transition-all bg-white/20 backdrop-blur-md border border-white/40"
+              style={{
+                color: 'rgba(0, 255, 255, 0.8)',
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+              }}
             >
               {showFilters ? 'Скрыть' : 'Фильтры'}
             </button>
@@ -754,9 +782,13 @@ const Profiles = () => {
                       }}
                       className={`px-3 py-1 rounded-lg text-xs transition-all ${
                         selectedInterests.includes(interest)
-                          ? 'bg-gradient-to-r from-teal-400 to-emerald-500 text-white shadow-md'
+                          ? 'text-white shadow-md'
                           : 'bg-white/20 backdrop-blur-md text-gray-700 border border-white/40 hover:bg-white/30'
                       }`}
+                      style={selectedInterests.includes(interest) ? {
+                        background: `linear-gradient(to right, rgba(0, 255, 255, 0.26), rgba(54, 207, 255, 0.32))`,
+                        boxShadow: '0 4px 12px rgba(0, 255, 255, 0.3), 0 0 8px rgba(54, 207, 255, 0.2)',
+                      } : {}}
                     >
                       {interest}
                     </button>
@@ -776,6 +808,7 @@ const Profiles = () => {
         )}
 
         {/* Карточка профиля с плавной анимацией появления через Framer Motion */}
+        {/* GLOW-АНИМАЦИЯ: после завершения эффекта карточка появляется с неоновой подсветкой */}
         <AnimatePresence mode="wait">
           {currentProfile && (
             <motion.div
@@ -789,19 +822,59 @@ const Profiles = () => {
                 // Используем motion для плавного появления, но inline для свайпа
                 // Motion не будет перезаписывать transform во время активного свайпа
               }}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              initial={{ 
+                opacity: 0, 
+                y: 20, 
+                scale: 0.95,
+                // Начальное состояние без glow
+                boxShadow: '0 0 0px rgba(0, 255, 255, 0)',
+              }}
               animate={{ 
                 opacity: swipeOffset === 0 ? 1 : 1 - Math.abs(swipeOffset) / 300,
                 y: 0,
-                scale: 1,
+                scale: swipeOffset === 0 ? 1 : 1,
                 x: swipeOffset, // Используем motion для плавного следования за пальцем
                 rotate: swipeOffset * 0.1, // Небольшой поворот при свайпе
+                /**
+                 * GLOW-ЭФФЕКТ: неоновая подсветка при появлении новой карточки
+                 * 
+                 * РЕАЛИЗАЦИЯ:
+                 * - Используем box-shadow с несколькими слоями для создания свечения
+                 * - Цвета: яркий голубой (#00FFFF), электрический синий (#36CFFF), белый
+                 * - Glow появляется только когда карточка на месте (swipeOffset === 0) и эффект завершен
+                 * - Многослойное свечение создает эффект неоновой подсветки
+                 * 
+                 * СИНХРОНИЗАЦИЯ:
+                 * - Glow появляется после завершения неонового хвоста (isEffectActive === false)
+                 * - Анимация длится 400-500ms с небольшой задержкой для плавности
+                 * - Синхронизировано с появлением новой карточки через onComplete
+                 */
+                boxShadow: swipeOffset === 0 && !isEffectActive
+                  ? [
+                      '0 0 25px rgba(0, 255, 255, 0.7)',
+                      '0 0 50px rgba(54, 207, 255, 0.5)',
+                      '0 0 75px rgba(0, 255, 255, 0.3)',
+                      '0 0 100px rgba(255, 255, 255, 0.2)',
+                    ].join(', ')
+                  : '0 0 0px rgba(0, 255, 255, 0)',
               }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              exit={{ 
+                opacity: 0, 
+                y: -20, 
+                scale: 0.95,
+                boxShadow: '0 0 0px rgba(0, 255, 255, 0)',
+              }}
               transition={{ 
                 x: { type: "spring", stiffness: 300, damping: 30 }, // Пружинная анимация для лучшей отзывчивости
                 opacity: { duration: 0.2 },
                 rotate: { type: "spring", stiffness: 300, damping: 30 },
+                scale: { duration: 0.3, ease: 'easeOut' },
+                // GLOW-АНИМАЦИЯ: плавное появление свечения за 400-500ms
+                boxShadow: { 
+                  duration: 0.5, 
+                  delay: 0.1, // Небольшая задержка для синхронизации с появлением карточки
+                  ease: 'easeOut' 
+                },
               }}
             >
             <Card className="relative">
@@ -918,7 +991,21 @@ const Profiles = () => {
           <button
             onClick={handleLike}
             disabled={isEffectActive || !currentProfile}
-            className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white flex items-center justify-center text-2xl md:text-4xl shadow-lg shadow-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-14 h-14 md:w-20 md:h-20 rounded-full text-white flex items-center justify-center text-2xl md:text-4xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: `linear-gradient(to right, rgba(0, 255, 255, 0.26), rgba(54, 207, 255, 0.32))`,
+              boxShadow: '0 10px 25px rgba(0, 255, 255, 0.3), 0 0 20px rgba(54, 207, 255, 0.2)',
+            }}
+            onMouseEnter={(e) => {
+              if (!isEffectActive && currentProfile) {
+                e.target.style.boxShadow = '0 15px 35px rgba(0, 255, 255, 0.4), 0 0 30px rgba(54, 207, 255, 0.3)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isEffectActive && currentProfile) {
+                e.target.style.boxShadow = '0 10px 25px rgba(0, 255, 255, 0.3), 0 0 20px rgba(54, 207, 255, 0.2)';
+              }
+            }}
             aria-label="Лайк"
           >
             ❤️
