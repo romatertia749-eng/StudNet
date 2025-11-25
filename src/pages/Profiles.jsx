@@ -41,6 +41,8 @@ const Profiles = () => {
   const [isEffectActive, setIsEffectActive] = useState(false);
   const [effectDirection, setEffectDirection] = useState(null);
   const [pendingIndexChange, setPendingIndexChange] = useState(null);
+  // Направление последнего свайпа для правильной exit-анимации
+  const [lastSwipeDirection, setLastSwipeDirection] = useState(null);
   const cardRef = useRef(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -462,9 +464,10 @@ const Profiles = () => {
         ? prevIndex + 1 
         : 0;
       
-      // Активируем эффект конфетти (направление "right")
+      // Активируем эффект неонового хвоста (направление "right")
       setIsEffectActive(true);
       setEffectDirection('right');
+      setLastSwipeDirection('right');
       setPendingIndexChange(nextIndex);
       
       return prevIndex; // Не меняем индекс сразу, ждем завершения эффекта
@@ -502,9 +505,10 @@ const Profiles = () => {
         ? prevIndex + 1 
         : 0;
       
-      // Активируем эффект fade/disperse (направление "left")
+      // Активируем эффект распада на частицы (направление "left")
       setIsEffectActive(true);
       setEffectDirection('left');
+      setLastSwipeDirection('left');
       setPendingIndexChange(nextIndex);
       
       return prevIndex; // Не меняем индекс сразу, ждем завершения эффекта
@@ -846,23 +850,60 @@ const Profiles = () => {
                     ].join(', ')
                   : '0 0 0px rgba(0, 255, 255, 0)',
               }}
-              exit={{ 
-                opacity: 0, 
-                y: -20, 
+              exit={lastSwipeDirection === 'left' ? {
+                // ЭФФЕКТ РАСПАДА: карточка уходит влево и распадается на частицы
+                opacity: 0,
+                x: -400, // Уходит влево за экран
+                y: 50, // Небольшое смещение вниз
+                scale: 0.3, // Уменьшается при распаде
+                rotate: -30, // Поворачивается при уходе
+                boxShadow: '0 0 0px rgba(0, 255, 255, 0)',
+              } : {
+                // ЭФФЕКТ УХОДА ВПРАВО: карточка уходит вправо с неоновым хвостом
+                opacity: 0,
+                x: 400, // Уходит вправо за экран
+                y: -20,
                 scale: 0.95,
+                rotate: 20, // Небольшой поворот вправо
                 boxShadow: '0 0 0px rgba(0, 255, 255, 0)',
               }}
-              transition={{ 
-                x: { type: "spring", stiffness: 300, damping: 30 }, // Пружинная анимация для лучшей отзывчивости
-                opacity: { duration: 0.2 },
-                rotate: { type: "spring", stiffness: 300, damping: 30 },
-                scale: { duration: 0.3, ease: 'easeOut' },
-                // GLOW-АНИМАЦИЯ: плавное появление свечения за 400-500ms
-                boxShadow: { 
-                  duration: 0.5, 
-                  delay: 0.1, // Небольшая задержка для синхронизации с появлением карточки
-                  ease: 'easeOut' 
-                },
+              transition={(_, transitionInfo) => {
+                // Разные transition в зависимости от типа анимации
+                if (transitionInfo && transitionInfo.exit) {
+                  // Exit анимация
+                  if (lastSwipeDirection === 'left') {
+                    // ЭФФЕКТ РАСПАДА: быстрая анимация ухода влево
+                    return {
+                      x: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
+                      y: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
+                      opacity: { duration: 0.5, ease: 'easeOut' },
+                      scale: { duration: 0.6, ease: 'easeIn' },
+                      rotate: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
+                    };
+                  } else {
+                    // ЭФФЕКТ УХОДА ВПРАВО: плавная анимация
+                    return {
+                      x: { duration: 0.5, ease: 'easeInOut' },
+                      y: { duration: 0.5, ease: 'easeInOut' },
+                      opacity: { duration: 0.4, ease: 'easeOut' },
+                      scale: { duration: 0.5, ease: 'easeOut' },
+                      rotate: { duration: 0.5, ease: 'easeInOut' },
+                    };
+                  }
+                } else {
+                  // Обычные transition для появления и следования за пальцем
+                  return {
+                    x: { type: "spring", stiffness: 300, damping: 30 },
+                    opacity: { duration: 0.2 },
+                    rotate: { type: "spring", stiffness: 300, damping: 30 },
+                    scale: { duration: 0.3, ease: 'easeOut' },
+                    boxShadow: { 
+                      duration: 0.5, 
+                      delay: 0.1,
+                      ease: 'easeOut' 
+                    },
+                  };
+                }
               }}
             >
             <Card className="relative">

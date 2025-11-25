@@ -40,23 +40,90 @@ const EffectOverlay = ({ direction, onComplete }) => {
       // После этого вызываем onComplete для показа новой карточки
       
     } else {
-      // FADE/DISPERSE ЭФФЕКТ для свайпа влево (пасс)
-      // Создаем нейтральные частицы, которые разлетаются и исчезают
+      /**
+       * ЭФФЕКТ РАСПАДА КАРТОЧКИ НА ЧАСТИЦЫ для свайпа влево (пасс)
+       * 
+       * РЕАЛИЗАЦИЯ:
+       * - Создаем множество частиц, которые визуально "вылетают" из карточки
+       * - Частицы появляются из разных точек карточки (центр, края, углы)
+       * - Разлетаются в разные стороны с разной скоростью и задержкой
+       * - Создается эффект, будто карточка распадается на части
+       * 
+       * ВИЗУАЛЬНЫЙ ЭФФЕКТ:
+       * - Больше частиц (60-80) для более насыщенного эффекта
+       * - Разные размеры частиц (от 3 до 15px) для реалистичности
+       * - Частицы разлетаются преимущественно влево и вниз (направление свайпа)
+       * - Разные цвета для глубины эффекта
+       */
       
-      const particleCount = 30;
-      const colors = ['#A3B8CC', '#E2E6EA', '#CCD8E8'];
+      const particleCount = 70; // Больше частиц для более живописного эффекта
+      const colors = ['#A3B8CC', '#E2E6EA', '#CCD8E8', '#B8C8D8', '#D4E0ED'];
       
-      // Генерируем частицы со случайными параметрами
-      const generatedParticles = Array.from({ length: particleCount }, (_, i) => ({
-        id: i,
-        x: Math.random() * 100, // Процент от ширины
-        y: Math.random() * 100, // Процент от высоты
-        size: Math.random() * 8 + 4, // Размер от 4 до 12px
-        color: colors[Math.floor(Math.random() * colors.length)],
-        angle: Math.random() * Math.PI * 2, // Направление разлета
-        distance: Math.random() * 150 + 100, // Дистанция разлета
-        delay: Math.random() * 200, // Задержка начала анимации
-      }));
+      // Генерируем частицы, которые появляются из разных точек карточки
+      const generatedParticles = Array.from({ length: particleCount }, (_, i) => {
+        // Позиция частицы относительно карточки (центр экрана)
+        // Частицы появляются из разных зон карточки
+        const zone = Math.random();
+        let startX, startY;
+        
+        if (zone < 0.3) {
+          // Центр карточки
+          startX = 50 + (Math.random() - 0.5) * 20;
+          startY = 50 + (Math.random() - 0.5) * 20;
+        } else if (zone < 0.6) {
+          // Края карточки
+          const edge = Math.random();
+          if (edge < 0.25) {
+            startX = 30 + Math.random() * 40; // Верхний край
+            startY = 30;
+          } else if (edge < 0.5) {
+            startX = 30 + Math.random() * 40; // Нижний край
+            startY = 70;
+          } else if (edge < 0.75) {
+            startX = 30; // Левый край
+            startY = 30 + Math.random() * 40;
+          } else {
+            startX = 70; // Правый край
+            startY = 30 + Math.random() * 40;
+          }
+        } else {
+          // Углы карточки
+          const corner = Math.floor(Math.random() * 4);
+          if (corner === 0) {
+            startX = 30; startY = 30; // Верхний левый
+          } else if (corner === 1) {
+            startX = 70; startY = 30; // Верхний правый
+          } else if (corner === 2) {
+            startX = 30; startY = 70; // Нижний левый
+          } else {
+            startX = 70; startY = 70; // Нижний правый
+          }
+        }
+        
+        // Направление разлета - преимущественно влево и вниз (направление свайпа)
+        // Угол от 180° до 270° (влево-вниз) с небольшим разбросом
+        const baseAngle = Math.PI + Math.PI / 4; // 225° (влево-вниз)
+        const angleVariation = (Math.random() - 0.5) * Math.PI / 2; // ±45°
+        const angle = baseAngle + angleVariation;
+        
+        // Дистанция разлета - разные частицы летят на разное расстояние
+        const distance = Math.random() * 200 + 150; // От 150 до 350px
+        
+        // Размер частицы - разные размеры для реалистичности
+        const size = Math.random() * 12 + 3; // От 3 до 15px
+        
+        return {
+          id: i,
+          x: startX,
+          y: startY,
+          size: size,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          angle: angle,
+          distance: distance,
+          delay: Math.random() * 150, // Задержка от 0 до 150ms для каскадного эффекта
+          rotation: Math.random() * 360, // Вращение частицы при разлете
+        };
+      });
       
       // Устанавливаем частицы в state для рендера
       setParticles(generatedParticles);
@@ -208,7 +275,16 @@ const EffectOverlay = ({ direction, onComplete }) => {
     );
   }
 
-  // FADE/DISPERSE эффект для левого свайпа
+  /**
+   * ЭФФЕКТ РАСПАДА КАРТОЧКИ НА ЧАСТИЦЫ для левого свайпа
+   * 
+   * ВИЗУАЛЬНАЯ РЕАЛИЗАЦИЯ:
+   * - Частицы появляются из разных точек карточки (центр, края, углы)
+   * - Разлетаются влево и вниз с разной скоростью
+   * - Вращаются при полете для более живого эффекта
+   * - Разные размеры и цвета создают глубину
+   * - Каскадный эффект - частицы появляются с небольшой задержкой
+   */
   return (
     <div 
       className="fixed inset-0 pointer-events-none z-50 overflow-hidden"
@@ -224,23 +300,27 @@ const EffectOverlay = ({ direction, onComplete }) => {
             width: `${particle.size}px`,
             height: `${particle.size}px`,
             backgroundColor: particle.color,
+            // Добавляем тень для глубины
+            boxShadow: `0 2px 4px rgba(0, 0, 0, 0.2)`,
           }}
           initial={{
-            opacity: 0.8,
+            opacity: 1,
             scale: 1,
             x: 0,
             y: 0,
+            rotate: 0,
           }}
           animate={{
             opacity: 0,
-            scale: 0,
+            scale: 0.3, // Частицы уменьшаются при разлете
             x: Math.cos(particle.angle) * particle.distance,
             y: Math.sin(particle.angle) * particle.distance,
+            rotate: particle.rotation + 360, // Вращение при полете
           }}
           transition={{
-            duration: 1.2,
-            delay: particle.delay / 1000,
-            ease: 'easeOut',
+            duration: 0.8 + Math.random() * 0.4, // Длительность от 0.8 до 1.2 секунды
+            delay: particle.delay / 1000, // Каскадный эффект
+            ease: [0.25, 0.46, 0.45, 0.94], // Плавное ускорение и замедление
           }}
         />
       ))}
