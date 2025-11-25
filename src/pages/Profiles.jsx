@@ -46,6 +46,8 @@ const Profiles = () => {
   const touchStartY = useRef(0);
   const touchEndX = useRef(0);
   const touchEndY = useRef(0);
+  // Защита от повторных вызовов handleLike/handlePass
+  const isProcessingSwipe = useRef(false);
 
   // Моковые данные для fallback
   const getMockProfiles = () => [
@@ -402,13 +404,19 @@ const Profiles = () => {
       setPendingIndexChange(null);
     }
     
+    // Разблокируем обработку свайпов
+    isProcessingSwipe.current = false;
+    
     // Прокручиваем наверх страницы
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleLike = async () => {
-    // Блокируем свайп во время эффекта
-    if (isEffectActive || !currentProfile) return;
+    // Защита от повторных вызовов - предотвращает двойное пролистывание
+    if (isProcessingSwipe.current || isEffectActive || !currentProfile) return;
+    
+    // Блокируем повторные вызовы
+    isProcessingSwipe.current = true;
     
     let isMatched = false;
     
@@ -442,22 +450,29 @@ const Profiles = () => {
     }
     
     // Добавляем в свайпы
-    setSwipedProfiles([...swipedProfiles, currentProfile.id]);
+    setSwipedProfiles(prev => [...prev, currentProfile.id]);
     
-    // Вычисляем следующий индекс, но не применяем сразу
-    const nextIndex = currentIndex < availableProfiles.length - 1 
-      ? currentIndex + 1 
-      : 0;
-    
-    // Активируем эффект конфетти (направление "right")
-    setIsEffectActive(true);
-    setEffectDirection('right');
-    setPendingIndexChange(nextIndex);
+    // Вычисляем следующий индекс на основе текущего состояния
+    setCurrentIndex(prevIndex => {
+      const nextIndex = prevIndex < availableProfiles.length - 1 
+        ? prevIndex + 1 
+        : 0;
+      
+      // Активируем эффект конфетти (направление "right")
+      setIsEffectActive(true);
+      setEffectDirection('right');
+      setPendingIndexChange(nextIndex);
+      
+      return prevIndex; // Не меняем индекс сразу, ждем завершения эффекта
+    });
   };
 
   const handlePass = async () => {
-    // Блокируем свайп во время эффекта
-    if (isEffectActive || !currentProfile) return;
+    // Защита от повторных вызовов - предотвращает двойное пролистывание
+    if (isProcessingSwipe.current || isEffectActive || !currentProfile) return;
+    
+    // Блокируем повторные вызовы
+    isProcessingSwipe.current = true;
     
     // Отправляем запрос на бэкенд только если есть userInfo
     if (userInfo?.id) {
@@ -475,17 +490,21 @@ const Profiles = () => {
       }
     }
     
-    setSwipedProfiles([...swipedProfiles, currentProfile.id]);
+    setSwipedProfiles(prev => [...prev, currentProfile.id]);
     
-    // Вычисляем следующий индекс, но не применяем сразу
-    const nextIndex = currentIndex < availableProfiles.length - 1 
-      ? currentIndex + 1 
-      : 0;
-    
-    // Активируем эффект fade/disperse (направление "left")
-    setIsEffectActive(true);
-    setEffectDirection('left');
-    setPendingIndexChange(nextIndex);
+    // Вычисляем следующий индекс на основе текущего состояния
+    setCurrentIndex(prevIndex => {
+      const nextIndex = prevIndex < availableProfiles.length - 1 
+        ? prevIndex + 1 
+        : 0;
+      
+      // Активируем эффект fade/disperse (направление "left")
+      setIsEffectActive(true);
+      setEffectDirection('left');
+      setPendingIndexChange(nextIndex);
+      
+      return prevIndex; // Не меняем индекс сразу, ждем завершения эффекта
+    });
   };
 
 
@@ -506,7 +525,7 @@ const Profiles = () => {
 
   const handleTouchMove = (e) => {
     // Блокируем движение свайпа, если эффект активен
-    if (isEffectActive || !touchStartX.current) return;
+    if (isEffectActive || !touchStartX.current || isProcessingSwipe.current) return;
     
     touchEndX.current = e.touches[0].clientX;
     touchEndY.current = e.touches[0].clientY;
@@ -517,13 +536,15 @@ const Profiles = () => {
     // Если горизонтальное движение больше вертикального - это свайп
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
       e.preventDefault(); // Предотвращаем прокрутку
+      // Улучшенная отзывчивость: карточка следует за пальцем напрямую
+      // Motion.div будет обрабатывать это через animate prop
       setSwipeOffset(deltaX);
     }
   };
 
   const handleTouchEnd = () => {
-    // Блокируем завершение свайпа, если эффект активен
-    if (isEffectActive) {
+    // Блокируем завершение свайпа, если эффект активен или уже обрабатывается
+    if (isEffectActive || isProcessingSwipe.current) {
       setSwipeOffset(0);
       touchStartX.current = 0;
       touchStartY.current = 0;
@@ -550,9 +571,12 @@ const Profiles = () => {
         // Свайп вправо - лайк
         handleLike();
       }
+    } else {
+      // Если свайп недостаточно большой, возвращаем карточку на место
+      // Motion.div автоматически вернет её через animate prop
+      setSwipeOffset(0);
     }
     
-    setSwipeOffset(0);
     touchStartX.current = 0;
     touchStartY.current = 0;
     touchEndX.current = 0;
@@ -762,14 +786,23 @@ const Profiles = () => {
               onTouchEnd={handleTouchEnd}
               className="touch-manipulation select-none max-w-2xl mx-auto"
               style={{
-                transform: `translateX(${swipeOffset}px)`,
-                transition: swipeOffset === 0 ? 'transform 0.3s ease-out' : 'none',
-                opacity: swipeOffset !== 0 ? 1 - Math.abs(swipeOffset) / 300 : 1,
+                // Используем motion для плавного появления, но inline для свайпа
+                // Motion не будет перезаписывать transform во время активного свайпа
               }}
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
+              animate={{ 
+                opacity: swipeOffset === 0 ? 1 : 1 - Math.abs(swipeOffset) / 300,
+                y: 0,
+                scale: 1,
+                x: swipeOffset, // Используем motion для плавного следования за пальцем
+                rotate: swipeOffset * 0.1, // Небольшой поворот при свайпе
+              }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
+              transition={{ 
+                x: { type: "spring", stiffness: 300, damping: 30 }, // Пружинная анимация для лучшей отзывчивости
+                opacity: { duration: 0.2 },
+                rotate: { type: "spring", stiffness: 300, damping: 30 },
+              }}
             >
             <Card className="relative">
               {/* Фото профиля */}
