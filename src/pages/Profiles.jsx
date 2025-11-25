@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import Card from '../components/Card';
 import Autocomplete from '../components/Autocomplete';
+import EffectOverlay from '../components/EffectOverlay';
 import { russianCities, universities, interests } from '../data/formData';
 import { useMatches } from '../contexts/MatchContext';
 import { useWebApp } from '../contexts/WebAppContext';
@@ -22,6 +24,23 @@ const Profiles = () => {
   const [allProfiles, setAllProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [checkingProfile, setCheckingProfile] = useState(true);
+  
+  /**
+   * АРХИТЕКТУРА УПРАВЛЕНИЯ ЭФФЕКТАМИ:
+   * 
+   * isEffectActive - флаг активности эффекта, блокирует свайп и кнопки
+   * effectDirection - направление эффекта ("left" | "right")
+   * pendingIndexChange - отложенное изменение индекса карточки
+   * 
+   * СИНХРОНИЗАЦИЯ:
+   * 1. При свайпе устанавливаем isEffectActive=true и effectDirection
+   * 2. EffectOverlay проигрывает анимацию и вызывает onComplete через таймаут
+   * 3. handleEffectComplete разблокирует свайп и применяет pendingIndexChange
+   * 4. Новая карточка появляется с плавной анимацией через Framer Motion
+   */
+  const [isEffectActive, setIsEffectActive] = useState(false);
+  const [effectDirection, setEffectDirection] = useState(null);
+  const [pendingIndexChange, setPendingIndexChange] = useState(null);
   const cardRef = useRef(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -368,8 +387,28 @@ const Profiles = () => {
     setCurrentIndex(0);
   };
 
+  /**
+   * Обработчик завершения эффекта
+   * Вызывается EffectOverlay после завершения анимации
+   * Разблокирует свайп и применяет отложенное изменение индекса
+   */
+  const handleEffectComplete = () => {
+    setIsEffectActive(false);
+    setEffectDirection(null);
+    
+    // Применяем отложенное изменение индекса для показа следующей карточки
+    if (pendingIndexChange !== null) {
+      setCurrentIndex(pendingIndexChange);
+      setPendingIndexChange(null);
+    }
+    
+    // Прокручиваем наверх страницы
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleLike = async () => {
-    if (!currentProfile) return;
+    // Блокируем свайп во время эффекта
+    if (isEffectActive || !currentProfile) return;
     
     let isMatched = false;
     
@@ -402,21 +441,23 @@ const Profiles = () => {
     addMatch(currentProfile);
     }
     
-    // Добавляем в свайпы и переходим к следующей карточке
+    // Добавляем в свайпы
     setSwipedProfiles([...swipedProfiles, currentProfile.id]);
     
-    if (currentIndex < availableProfiles.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      setCurrentIndex(0);
-    }
+    // Вычисляем следующий индекс, но не применяем сразу
+    const nextIndex = currentIndex < availableProfiles.length - 1 
+      ? currentIndex + 1 
+      : 0;
     
-    // Прокручиваем наверх страницы
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Активируем эффект конфетти (направление "right")
+    setIsEffectActive(true);
+    setEffectDirection('right');
+    setPendingIndexChange(nextIndex);
   };
 
   const handlePass = async () => {
-    if (!currentProfile) return;
+    // Блокируем свайп во время эффекта
+    if (isEffectActive || !currentProfile) return;
     
     // Отправляем запрос на бэкенд только если есть userInfo
     if (userInfo?.id) {
@@ -436,27 +477,36 @@ const Profiles = () => {
     
     setSwipedProfiles([...swipedProfiles, currentProfile.id]);
     
-    // Переход к следующей карточке
-    if (currentIndex < availableProfiles.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      setCurrentIndex(0);
-    }
+    // Вычисляем следующий индекс, но не применяем сразу
+    const nextIndex = currentIndex < availableProfiles.length - 1 
+      ? currentIndex + 1 
+      : 0;
     
-    // Прокручиваем наверх страницы
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Активируем эффект fade/disperse (направление "left")
+    setIsEffectActive(true);
+    setEffectDirection('left');
+    setPendingIndexChange(nextIndex);
   };
 
 
   // Обработка свайпов
+  // БЛОКИРОВКА СВАЙПА: если isEffectActive === true, свайп заблокирован
+  // Это предотвращает множественные свайпы во время проигрывания эффекта
   const handleTouchStart = (e) => {
+    // Блокируем начало свайпа, если эффект активен
+    if (isEffectActive) {
+      e.preventDefault();
+      return;
+    }
+    
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     setSwipeOffset(0);
   };
 
   const handleTouchMove = (e) => {
-    if (!touchStartX.current) return;
+    // Блокируем движение свайпа, если эффект активен
+    if (isEffectActive || !touchStartX.current) return;
     
     touchEndX.current = e.touches[0].clientX;
     touchEndY.current = e.touches[0].clientY;
@@ -472,6 +522,16 @@ const Profiles = () => {
   };
 
   const handleTouchEnd = () => {
+    // Блокируем завершение свайпа, если эффект активен
+    if (isEffectActive) {
+      setSwipeOffset(0);
+      touchStartX.current = 0;
+      touchStartY.current = 0;
+      touchEndX.current = 0;
+      touchEndY.current = 0;
+      return;
+    }
+    
     if (!touchStartX.current || !touchEndX.current) {
       setSwipeOffset(0);
       return;
@@ -490,8 +550,6 @@ const Profiles = () => {
         // Свайп вправо - лайк
         handleLike();
       }
-      // Прокручиваем наверх страницы после свайпа
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     
     setSwipeOffset(0);
@@ -685,20 +743,34 @@ const Profiles = () => {
           )}
         </Card>
 
-        {/* Карточка профиля */}
-        {currentProfile && (
-          <div
-            ref={cardRef}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            className="touch-manipulation select-none max-w-2xl mx-auto"
-            style={{
-              transform: `translateX(${swipeOffset}px)`,
-              transition: swipeOffset === 0 ? 'transform 0.3s ease-out' : 'none',
-              opacity: swipeOffset !== 0 ? 1 - Math.abs(swipeOffset) / 300 : 1,
-            }}
-          >
+        {/* Эффект-оверлей: отображается поверх карточки во время анимации */}
+        {isEffectActive && effectDirection && (
+          <EffectOverlay 
+            direction={effectDirection} 
+            onComplete={handleEffectComplete}
+          />
+        )}
+
+        {/* Карточка профиля с плавной анимацией появления через Framer Motion */}
+        <AnimatePresence mode="wait">
+          {currentProfile && (
+            <motion.div
+              key={currentProfile.id}
+              ref={cardRef}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              className="touch-manipulation select-none max-w-2xl mx-auto"
+              style={{
+                transform: `translateX(${swipeOffset}px)`,
+                transition: swipeOffset === 0 ? 'transform 0.3s ease-out' : 'none',
+                opacity: swipeOffset !== 0 ? 1 - Math.abs(swipeOffset) / 300 : 1,
+              }}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+            >
             <Card className="relative">
               {/* Фото профиля */}
               {(() => {
@@ -793,14 +865,17 @@ const Profiles = () => {
                 </div>
               </div>
             </Card>
-          </div>
-        )}
+          </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Кнопки действий */}
+        {/* БЛОКИРОВКА КНОПОК: disabled={isEffectActive || !currentProfile} 
+            Блокирует клики по кнопкам во время проигрывания эффекта */}
         <div className="flex items-center justify-center gap-4 md:gap-6 pt-2 md:pt-4 max-w-2xl mx-auto">
           <button
             onClick={handlePass}
-            disabled={!currentProfile}
+            disabled={isEffectActive || !currentProfile}
             className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white flex items-center justify-center text-2xl md:text-4xl shadow-lg shadow-red-500/50 hover:shadow-xl hover:shadow-red-500/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Пропустить"
           >
@@ -809,7 +884,7 @@ const Profiles = () => {
 
           <button
             onClick={handleLike}
-            disabled={!currentProfile}
+            disabled={isEffectActive || !currentProfile}
             className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white flex items-center justify-center text-2xl md:text-4xl shadow-lg shadow-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Лайк"
           >
