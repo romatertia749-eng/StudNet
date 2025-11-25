@@ -398,6 +398,10 @@ const Profiles = () => {
     setIsEffectActive(false);
     setEffectDirection(null);
     
+    // СБРОС ПОЗИЦИИ: сбрасываем swipeOffset и rotation перед появлением новой карточки
+    // Это гарантирует, что новая карточка появится в ровном положении
+    setSwipeOffset(0);
+    
     // Применяем отложенное изменение индекса для показа следующей карточки
     if (pendingIndexChange !== null) {
       setCurrentIndex(pendingIndexChange);
@@ -826,6 +830,8 @@ const Profiles = () => {
                 opacity: 0, 
                 y: 20, 
                 scale: 0.95,
+                x: 0, // Новая карточка всегда начинается с x: 0
+                rotate: 0, // Новая карточка всегда начинается без наклона
                 // Начальное состояние без glow
                 boxShadow: '0 0 0px rgba(0, 255, 255, 0)',
               }}
