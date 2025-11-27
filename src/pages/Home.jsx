@@ -39,9 +39,19 @@ const Home = () => {
           <Button
             variant="primary"
             onClick={() => navigate('/network')}
-            className="transform transition-all hover:scale-105 hover:shadow-xl"
+            className="transform transition-all hover:scale-105 hover:shadow-xl relative"
           >
-            Нет-Лист
+            {/* Декоративная иконка сети из людей в правом верхнем углу */}
+            <img
+              src="/assets/stuff/сеть_из_людей_для_кнопки.png"
+              alt="Сеть связей"
+              className="absolute top-2 right-2 w-6 h-6 pointer-events-none z-10 opacity-80"
+              style={{
+                maxWidth: '28px',
+                maxHeight: '28px',
+              }}
+            />
+            Net-Лист
           </Button>
         </div>
       </div>
