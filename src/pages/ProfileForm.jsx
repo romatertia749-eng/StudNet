@@ -9,12 +9,14 @@ import { russianCities, universities, interests, goals } from '../data/formData'
 import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
 
 const ProfileForm = () => {
-  const { userInfo, isReady } = useWebApp();
+  const { userInfo, isReady, setHasCompletedProfile } = useWebApp();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isGenderDropdownOpen, setIsGenderDropdownOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const genderDropdownRef = useRef(null);
   const [formData, setFormData] = useState({
     name: '',
     gender: '',
@@ -108,6 +110,25 @@ const ProfileForm = () => {
 
     loadProfile();
   }, [isReady, userInfo]);
+
+  // Закрытие dropdown при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (genderDropdownRef.current && !genderDropdownRef.current.contains(event.target)) {
+        setIsGenderDropdownOpen(false);
+      }
+    };
+
+    if (isGenderDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isGenderDropdownOpen]);
 
   const handleInputChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
@@ -330,8 +351,20 @@ const ProfileForm = () => {
         const data = await response.json();
         console.log('Profile saved successfully:', data);
         setLoading(false); // Сбрасываем loading перед навигацией
+        
+        // Если это создание нового профиля (не редактирование), устанавливаем флаг
+        if (!isEditing) {
+          setHasCompletedProfile(true);
+        }
+        
         alert(isEditing ? 'Профиль успешно обновлён!' : 'Профиль успешно создан!');
-        navigate('/');
+        
+        // Если это создание нового профиля, переходим на выбор цели
+        if (!isEditing) {
+          navigate('/onboarding-main-goal');
+        } else {
+          navigate('/');
+        }
         return; // Выходим, чтобы не выполнять код дальше
       } else {
         const errorText = await response.text();
@@ -408,22 +441,56 @@ const ProfileForm = () => {
 
               {/* Пол */}
               <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Пол <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={formData.gender}
-              onChange={(e) => handleInputChange('gender', e.target.value)}
-              className={`w-full px-4 py-3 rounded-xl border ${
-                errors.gender ? 'border-red-300' : 'border-gray-200'
-              } focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm`}
-            >
-              <option value="">Выберите пол</option>
-              <option value="male">Мужской</option>
-              <option value="female">Женский</option>
-            </select>
-            {errors.gender && <p className="text-red-500 text-xs mt-1">{errors.gender}</p>}
-          </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Пол <span className="text-red-500">*</span>
+                </label>
+                <div className="relative" ref={genderDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsGenderDropdownOpen(!isGenderDropdownOpen)}
+                    className={`w-full px-4 py-3 rounded-xl border text-left ${
+                      errors.gender ? 'border-red-300' : 'border-gray-200'
+                    } focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm bg-white flex items-center justify-between`}
+                  >
+                    <span className={formData.gender ? 'text-gray-800' : 'text-gray-400'}>
+                      {formData.gender === 'male' ? 'Мужской' : formData.gender === 'female' ? 'Женский' : 'Выберите пол'}
+                    </span>
+                    <svg
+                      className={`w-5 h-5 text-gray-400 transition-transform ${isGenderDropdownOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {isGenderDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleInputChange('gender', 'male');
+                          setIsGenderDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-teal-50 transition-colors text-sm"
+                      >
+                        Мужской
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleInputChange('gender', 'female');
+                          setIsGenderDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-teal-50 transition-colors text-sm border-t border-gray-200"
+                      >
+                        Женский
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {errors.gender && <p className="text-red-500 text-xs mt-1">{errors.gender}</p>}
+              </div>
 
           {/* Возраст */}
           <div>
@@ -516,7 +583,7 @@ const ProfileForm = () => {
                 errors.bio ? 'border-red-300' : 'border-gray-200'
               } focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none text-sm`}
               rows="5"
-              placeholder="Расскажите о себе (до 200 символов)..."
+              placeholder="Расскажите о себе: о своих увлечениях, навыках, интересах и т.д (до 200 символов)..."
               value={formData.bio}
               onChange={(e) => handleInputChange('bio', e.target.value)}
               maxLength={200}

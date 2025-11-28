@@ -1,8 +1,11 @@
 import { useNavigate } from 'react-router-dom';
+import { useWebApp } from '../contexts/WebAppContext';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import OnboardingMainGoal from '../components/OnboardingMainGoal';
+import WelcomeCreateProfileScreen from '../components/WelcomeCreateProfileScreen';
 
-const Home = () => {
+const ExistingHomeContent = () => {
   const navigate = useNavigate();
 
   return (
@@ -57,6 +60,23 @@ const Home = () => {
       </div>
     </div>
   );
+};
+
+const Home = () => {
+  const { hasCompletedProfile, hasCompletedOnboarding, mainGoal } = useWebApp();
+
+  // Если профиль не создан, показываем экран приветствия
+  if (!hasCompletedProfile) {
+    return <WelcomeCreateProfileScreen />;
+  }
+
+  // Если профиль создан, но цель не выбрана, показываем выбор цели
+  if (hasCompletedProfile && (!hasCompletedOnboarding || !mainGoal)) {
+    return <OnboardingMainGoal />;
+  }
+
+  // Если всё готово, показываем основной контент
+  return <ExistingHomeContent />;
 };
 
 export default Home;

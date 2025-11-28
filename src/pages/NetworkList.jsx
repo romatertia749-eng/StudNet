@@ -180,7 +180,7 @@ const NetworkList = () => {
     <div className="min-w-[320px] min-h-[600px] max-w-4xl w-full mx-auto p-4 md:p-6 pb-20 md:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       <div className="space-y-4 mt-4">
         <Card>
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Нет-Лист</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Net-Лист</h2>
           {matchedProfiles.length === 0 ? (
             <p className="text-gray-800 text-center py-8 font-medium">
               У вас пока нет контактов.

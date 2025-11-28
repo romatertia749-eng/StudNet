@@ -7,7 +7,7 @@ const BottomNav = () => {
   const navItems = [
     { path: '/profile/edit', icon: 'icon_profile', label: 'Профиль' },
     { path: '/profiles', icon: 'icon_ankets', label: 'Анкеты' },
-    { path: '/network', icon: 'icon_handshake', label: 'Нет-Лист' },
+    { path: '/network', icon: 'icon_handshake', label: 'Net-Лист' },
   ];
 
   const isActive = (path) => {

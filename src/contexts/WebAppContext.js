@@ -16,6 +16,41 @@ export const WebAppProvider = ({ children }) => {
   const [userInfo, setUserInfo] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [token, setToken] = useState(null);
+  const [mainGoal, setMainGoalState] = useState(null);
+  const [hasCompletedOnboarding, setHasCompletedOnboardingState] = useState(false);
+  const [hasCompletedProfile, setHasCompletedProfileState] = useState(false);
+
+  // Загрузка онбординга из localStorage при инициализации
+  useEffect(() => {
+    const savedMainGoal = localStorage.getItem('maxnet_main_goal');
+    const savedOnboarding = localStorage.getItem('maxnet_onboarding_completed');
+    const savedProfile = localStorage.getItem('mn_hasCompletedProfile');
+    
+    if (savedMainGoal) {
+      setMainGoalState(savedMainGoal);
+    }
+    if (savedOnboarding === 'true') {
+      setHasCompletedOnboardingState(true);
+    }
+    if (savedProfile === 'true') {
+      setHasCompletedProfileState(true);
+    }
+  }, []);
+
+  const setMainGoal = (goal) => {
+    setMainGoalState(goal);
+    localStorage.setItem('maxnet_main_goal', goal);
+  };
+
+  const setHasCompletedOnboarding = (value) => {
+    setHasCompletedOnboardingState(value);
+    localStorage.setItem('maxnet_onboarding_completed', value.toString());
+  };
+
+  const setHasCompletedProfile = (value) => {
+    setHasCompletedProfileState(value);
+    localStorage.setItem('mn_hasCompletedProfile', value.toString());
+  };
 
   useEffect(() => {
     const initTelegram = async () => {
@@ -103,6 +138,12 @@ export const WebAppProvider = ({ children }) => {
     userInfo,
     isReady,
     token,
+    mainGoal,
+    hasCompletedOnboarding,
+    hasCompletedProfile,
+    setMainGoal,
+    setHasCompletedOnboarding,
+    setHasCompletedProfile,
     requestContact,
     closeApp,
   };
