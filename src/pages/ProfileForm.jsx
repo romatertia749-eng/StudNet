@@ -528,7 +528,10 @@ const ProfileForm = () => {
 
           <Button
             variant="primary"
-            onClick={() => setViewMode(false)}
+            onClick={() => {
+              setViewMode(false);
+              window.scrollTo(0, 0);
+            }}
             className="transform transition-all hover:scale-105 hover:shadow-xl"
           >
             Редактировать профиль
@@ -774,6 +777,7 @@ const ProfileForm = () => {
               type="button"
               variant="outline"
               onClick={() => {
+                window.scrollTo(0, 0);
                 if (isEditing) {
                   // Если редактируем существующий профиль, возвращаемся к карточке
                   setViewMode(true);
