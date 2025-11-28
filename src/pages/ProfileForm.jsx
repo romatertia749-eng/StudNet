@@ -14,6 +14,8 @@ const ProfileForm = () => {
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [viewMode, setViewMode] = useState(true);
+  const [profileData, setProfileData] = useState(null);
   const [isGenderDropdownOpen, setIsGenderDropdownOpen] = useState(false);
   const fileInputRef = useRef(null);
   const genderDropdownRef = useRef(null);
@@ -48,6 +50,7 @@ const ProfileForm = () => {
         if (response.ok) {
           const data = await response.json();
           setIsEditing(true);
+          setViewMode(true);
           
           // Парсим interests и goals
           let parsedInterests = [];
@@ -68,6 +71,19 @@ const ProfileForm = () => {
           } catch (e) {
             console.warn('Error parsing goals:', e);
           }
+
+          // Сохраняем данные профиля для отображения
+          setProfileData({
+            name: data.name || '',
+            gender: data.gender === 'male' ? 'Мужской' : data.gender === 'female' ? 'Женский' : 'Другой',
+            age: data.age,
+            city: data.city || '',
+            university: data.university || '',
+            interests: parsedInterests,
+            goals: parsedGoals,
+            bio: data.bio || '',
+            photo_url: data.photo_url,
+          });
 
           // Заполняем форму существующими данными
           setFormData({
@@ -361,9 +377,23 @@ const ProfileForm = () => {
         
         // Если это создание нового профиля, переходим на выбор цели
         if (!isEditing) {
+          setHasCompletedProfile(true);
           navigate('/onboarding-main-goal');
         } else {
-          navigate('/');
+          // Обновляем данные профиля для отображения
+          const updatedProfileData = {
+            name: formData.name,
+            gender: formData.gender === 'male' ? 'Мужской' : formData.gender === 'female' ? 'Женский' : 'Другой',
+            age: parseInt(formData.age),
+            city: formData.city,
+            university: formData.university,
+            interests: formData.interests,
+            goals: formData.goals,
+            bio: formData.bio,
+            photo_url: formData.photos.length > 0 && formData.photos[0].isExisting ? profileData?.photo_url : null,
+          };
+          setProfileData(updatedProfileData);
+          setViewMode(true);
         }
         return; // Выходим, чтобы не выполнять код дальше
       } else {
@@ -411,6 +441,99 @@ const ProfileForm = () => {
         <Card className="mt-4">
           <p className="text-center text-gray-800 font-medium py-8">Загрузка профиля...</p>
         </Card>
+      </div>
+    );
+  }
+
+  // Если профиль существует и мы в режиме просмотра, показываем карточку
+  if (viewMode && profileData && isEditing) {
+    return (
+      <div className="min-w-[320px] min-h-[600px] max-w-2xl w-full mx-auto p-4 md:p-6 pb-20 md:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+        <div className="space-y-4 mt-4">
+          {/* Фото профиля */}
+          {profileData.photo_url ? (
+            <div className="w-full">
+              <img
+                src={getPhotoUrl(profileData.photo_url)}
+                alt={profileData.name}
+                className="w-full h-64 object-cover rounded-xl"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
+              />
+            </div>
+          ) : (
+            <div className="w-full h-48 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/40">
+              <span className="text-gray-400 text-lg">📷</span>
+            </div>
+          )}
+
+          <Card>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">{profileData.name}</h2>
+
+            <div className="space-y-3 text-sm">
+              <div>
+                <span className="font-semibold text-gray-800">Пол:</span>{' '}
+                <span className="text-gray-800 font-medium">{profileData.gender}</span>
+              </div>
+              <div>
+                <span className="font-semibold text-gray-800">Возраст:</span>{' '}
+                <span className="text-gray-600">{profileData.age} лет</span>
+              </div>
+              <div>
+                <span className="font-semibold text-gray-800">Город:</span>{' '}
+                <span className="text-gray-600">{profileData.city}</span>
+              </div>
+              <div>
+                <span className="font-semibold text-gray-800">Вуз:</span>{' '}
+                <span className="text-gray-600">{profileData.university}</span>
+              </div>
+
+              <div>
+                <span className="font-semibold text-gray-800">Интересы:</span>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {profileData.interests.map((interest, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-white/20 backdrop-blur-md text-teal-700 rounded-lg text-xs border border-white/40"
+                    >
+                      {interest}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <span className="font-semibold text-gray-800">Цели:</span>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {profileData.goals.map((goal, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-white/40 backdrop-blur-sm text-emerald-700 rounded-lg text-xs border border-white/30"
+                    >
+                      {goal}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {profileData.bio && (
+                <div>
+                  <span className="font-semibold text-gray-800">О себе:</span>
+                  <p className="text-gray-800 mt-1 leading-relaxed">{profileData.bio}</p>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Button
+            variant="primary"
+            onClick={() => setViewMode(false)}
+            className="transform transition-all hover:scale-105 hover:shadow-xl"
+          >
+            Редактировать профиль
+          </Button>
+        </div>
       </div>
     );
   }
@@ -650,7 +773,15 @@ const ProfileForm = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate(isEditing ? '/onboarding-main-goal' : '/')}
+              onClick={() => {
+                if (isEditing) {
+                  // Если редактируем существующий профиль, возвращаемся к карточке
+                  setViewMode(true);
+                } else {
+                  // Если создаем новый профиль, возвращаемся на welcome
+                  navigate('/');
+                }
+              }}
               className="flex-1"
             >
               Отмена
