@@ -650,7 +650,7 @@ const ProfileForm = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate('/')}
+              onClick={() => navigate(isEditing ? '/onboarding-main-goal' : '/')}
               className="flex-1"
             >
               Отмена

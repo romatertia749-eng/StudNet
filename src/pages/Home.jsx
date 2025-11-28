@@ -70,13 +70,8 @@ const Home = () => {
     return <WelcomeCreateProfileScreen />;
   }
 
-  // Если профиль создан, но цель не выбрана, показываем выбор цели
-  if (hasCompletedProfile && (!hasCompletedOnboarding || !mainGoal)) {
-    return <OnboardingMainGoal />;
-  }
-
-  // Если всё готово, показываем основной контент
-  return <ExistingHomeContent />;
+  // Если профиль создан, показываем онбординг (онбординг стал home страницей)
+  return <OnboardingMainGoal />;
 };
 
 export default Home;

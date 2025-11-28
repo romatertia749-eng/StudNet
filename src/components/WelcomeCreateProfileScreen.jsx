@@ -21,7 +21,7 @@ const WelcomeCreateProfileScreen = () => {
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800 text-center leading-tight relative z-10 mb-4" style={{ fontFamily: "'La Bamba', cursive" }}>
               Ты в начале большого пути!
             </h1>
-            <p className="text-base md:text-lg text-gray-700 text-center relative z-10">
+            <p className="text-lg md:text-xl font-semibold text-gray-800 text-center relative z-10">
               Заполни свой профиль и возвращайся за новыми знакомствами
             </p>
           </div>

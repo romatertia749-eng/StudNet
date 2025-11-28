@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWebApp } from '../contexts/WebAppContext';
 import { MainGoal, MAIN_GOAL_LABELS, MAIN_GOAL_DESCRIPTIONS, REDIRECT_AFTER_GOAL } from '../types/onboarding';
@@ -7,6 +8,10 @@ import Card from './Card';
 const OnboardingMainGoal = () => {
   const navigate = useNavigate();
   const { setMainGoal, setHasCompletedOnboarding } = useWebApp();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const goals = [
     MainGoal.SOCIAL_CIRCLE,
