@@ -18,7 +18,14 @@ const Header = () => {
   }, [isReady, userInfo, updateConnectsCount]);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/20 backdrop-blur-xl shadow-xl border-b border-white/40">
+    <header 
+      className="sticky top-0 z-50 bg-white/20 backdrop-blur-xl shadow-xl border-b border-white/40"
+      style={{
+        // Оптимизация: включаем GPU ускорение для sticky header
+        willChange: 'transform',
+        transform: 'translateZ(0)',
+      }}
+    >
       <div className="px-4 md:px-6 py-1 max-w-7xl mx-auto flex items-center justify-between gap-2" style={{ paddingTop: 'calc(0.25rem + env(safe-area-inset-top))', paddingBottom: 'calc(0.25rem + env(safe-area-inset-bottom))' }}>
         <button
           onClick={() => navigate('/')}

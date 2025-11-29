@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from '../components/Card';
@@ -51,6 +51,8 @@ const Profiles = () => {
   const touchEndY = useRef(0);
   // Защита от повторных вызовов handleLike/handlePass
   const isProcessingSwipe = useRef(false);
+  // Оптимизация: RAF для плавности touch-событий (предотвращает блокировку скролла)
+  const rafId = useRef(null);
 
   // Моковые данные для fallback
   const getMockProfiles = () => [
@@ -376,7 +378,8 @@ const Profiles = () => {
   }, [isReady, userInfo, selectedCity, selectedUniversity, selectedInterests, checkingProfile, navigate]);
 
   // Фильтрация на фронтенде (для мок данных или дополнительная фильтрация)
-  const filteredProfiles = allProfiles.filter(profile => {
+  // Оптимизация: мемоизация фильтрации профилей для предотвращения лишних вычислений
+  const filteredProfiles = useMemo(() => allProfiles.filter(profile => {
     try {
       if (selectedCity && profile.city !== selectedCity) return false;
       if (selectedUniversity && profile.university !== selectedUniversity) return false;
@@ -392,10 +395,12 @@ const Profiles = () => {
       console.error('Error filtering profile:', profile, error);
       return false;
     }
-  });
+  }), [allProfiles, selectedCity, selectedUniversity, selectedInterests]);
 
-  const availableProfiles = filteredProfiles.filter(profile => 
-    !swipedProfiles.includes(profile.id)
+  // Оптимизация: мемоизация списка доступных профилей для предотвращения лишних ре-рендеров
+  const availableProfiles = useMemo(() => 
+    filteredProfiles.filter(profile => !swipedProfiles.includes(profile.id)),
+    [filteredProfiles, swipedProfiles]
   );
 
   const currentProfile = availableProfiles[currentIndex];
@@ -451,7 +456,10 @@ const Profiles = () => {
     isProcessingSwipe.current = false;
     
     // Прокручиваем наверх страницы
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Оптимизация: используем instant вместо smooth для лучшей производительности
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    });
   };
 
   const handleLike = async () => {
@@ -582,18 +590,32 @@ const Profiles = () => {
     // БЛОКИРОВКА: предотвращаем движение свайпа во время эффекта
     if (isEffectActive || !touchStartX.current || isProcessingSwipe.current) return;
     
-    touchEndX.current = e.touches[0].clientX;
-    touchEndY.current = e.touches[0].clientY;
+    // Оптимизация: отменяем предыдущий RAF если он еще не выполнился
+    if (rafId.current) {
+      cancelAnimationFrame(rafId.current);
+    }
     
-    const deltaX = touchEndX.current - touchStartX.current;
-    const deltaY = touchEndY.current - touchStartY.current;
+    // Оптимизация: используем RAF для обновления состояния, чтобы не блокировать скролл
+    rafId.current = requestAnimationFrame(() => {
+      touchEndX.current = e.touches[0].clientX;
+      touchEndY.current = e.touches[0].clientY;
+      
+      const deltaX = touchEndX.current - touchStartX.current;
+      const deltaY = touchEndY.current - touchStartY.current;
+      
+      // Если горизонтальное движение больше вертикального - это свайп
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Улучшенная отзывчивость: карточка следует за пальцем напрямую
+        // Motion.div будет обрабатывать это через animate prop
+        setSwipeOffset(deltaX);
+      }
+    });
     
-    // Если горизонтальное движение больше вертикального - это свайп
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      e.preventDefault(); // Предотвращаем прокрутку
-      // Улучшенная отзывчивость: карточка следует за пальцем напрямую
-      // Motion.div будет обрабатывать это через animate prop
-      setSwipeOffset(deltaX);
+    // Предотвращаем прокрутку только если это точно горизонтальный свайп
+    const deltaX = e.touches[0].clientX - touchStartX.current;
+    const deltaY = e.touches[0].clientY - touchStartY.current;
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+      e.preventDefault(); // Предотвращаем прокрутку только для горизонтальных свайпов
     }
   };
 
@@ -848,6 +870,10 @@ const Profiles = () => {
               style={{
                 // Используем motion для плавного появления, но inline для свайпа
                 // Motion не будет перезаписывать transform во время активного свайпа
+                // Оптимизация: включаем GPU ускорение для карточки со свайпом
+                willChange: 'transform',
+                // Оптимизация: используем transform для лучшей производительности
+                transform: 'translateZ(0)',
               }}
               initial={{ 
                 opacity: 0, 
@@ -960,6 +986,9 @@ const Profiles = () => {
                             src={photo}
                             alt={`${index + 1}`}
                             className="w-full h-20 md:h-32 object-cover rounded-lg"
+                            loading="lazy"
+                            decoding="async"
+                            style={{ willChange: 'auto' }}
                             onError={(e) => {
                               e.target.style.display = 'none';
                             }}
@@ -969,14 +998,28 @@ const Profiles = () => {
                     );
                   }
                   return (
-                    <div className="w-full h-40 md:h-64 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center mb-3 border border-white/40">
+                    <div 
+                      className="w-full h-40 md:h-64 bg-white/15 rounded-xl flex items-center justify-center mb-3 border border-white/40"
+                      style={{
+                        // Оптимизация: убираем backdrop-blur для статичных элементов при скролле
+                        // backdrop-blur может вызывать фризы, используем только для интерактивных элементов
+                        willChange: 'auto',
+                      }}
+                    >
                       <span className="text-4xl md:text-6xl">👤</span>
                     </div>
                   );
                 } catch (error) {
                   console.error('Error rendering photos:', error);
                   return (
-                    <div className="w-full h-40 md:h-64 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center mb-3 border border-white/40">
+                    <div 
+                      className="w-full h-40 md:h-64 bg-white/15 rounded-xl flex items-center justify-center mb-3 border border-white/40"
+                      style={{
+                        // Оптимизация: убираем backdrop-blur для статичных элементов при скролле
+                        // backdrop-blur может вызывать фризы, используем только для интерактивных элементов
+                        willChange: 'auto',
+                      }}
+                    >
                       <span className="text-4xl md:text-6xl">👤</span>
                     </div>
                   );
@@ -1004,7 +1047,7 @@ const Profiles = () => {
                       ? currentProfile.interests.map((interest, index) => (
                           <span
                             key={index}
-                            className="px-1.5 py-0.5 bg-white/20 backdrop-blur-md text-teal-700 rounded text-xs border border-white/40"
+                            className="px-1.5 py-0.5 bg-white/20 text-teal-700 rounded text-xs border border-white/40"
                           >
                             {interest}
                           </span>
@@ -1021,7 +1064,7 @@ const Profiles = () => {
                       ? currentProfile.goals.map((goal, index) => (
                           <span
                             key={index}
-                            className="px-1.5 py-0.5 bg-white/20 backdrop-blur-md text-emerald-700 rounded text-xs border border-white/40"
+                            className="px-1.5 py-0.5 bg-white/20 text-emerald-700 rounded text-xs border border-white/40"
                           >
                             {goal}
                           </span>
