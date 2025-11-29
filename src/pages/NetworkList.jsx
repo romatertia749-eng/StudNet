@@ -8,7 +8,7 @@ import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
 
 const NetworkList = () => {
   const navigate = useNavigate();
-  const { matchedProfiles: localMatches } = useMatches();
+  const { matchedProfiles: localMatches, setMatchedProfiles: setContextMatchedProfiles, updateConnectsCount } = useMatches();
   const { userInfo, isReady } = useWebApp();
   const [matchedProfiles, setMatchedProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,6 +91,10 @@ const NetworkList = () => {
             username: match.matchedProfile.username || null,
           }));
           setMatchedProfiles(formattedMatches);
+          // Обновляем контекст с мэтчами для синхронизации connectsCount
+          setContextMatchedProfiles(formattedMatches);
+          // Также обновляем connectsCount напрямую
+          updateConnectsCount(userInfo.id);
         } else {
           // Fallback на мок данные если бэкенд недоступен
           if (localMatches.length === 0) {
