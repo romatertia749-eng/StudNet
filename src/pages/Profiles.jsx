@@ -208,6 +208,32 @@ const Profiles = () => {
     }
   }, [isReady, checkingProfile, loading]);
 
+  // Скрываем шапку и нижнее меню когда открыта модалка
+  useEffect(() => {
+    if (showSwipeTutorial) {
+      document.body.style.overflow = 'hidden';
+      // Добавляем класс для скрытия шапки и меню
+      const header = document.querySelector('header');
+      const bottomNav = document.querySelector('nav');
+      if (header) header.style.display = 'none';
+      if (bottomNav) bottomNav.style.display = 'none';
+    } else {
+      document.body.style.overflow = '';
+      const header = document.querySelector('header');
+      const bottomNav = document.querySelector('nav');
+      if (header) header.style.display = '';
+      if (bottomNav) bottomNav.style.display = '';
+    }
+    
+    return () => {
+      document.body.style.overflow = '';
+      const header = document.querySelector('header');
+      const bottomNav = document.querySelector('nav');
+      if (header) header.style.display = '';
+      if (bottomNav) bottomNav.style.display = '';
+    };
+  }, [showSwipeTutorial]);
+
   // Загрузка профилей с бэкенда
   useEffect(() => {
     // Не загружаем профили, пока WebApp не готов или проверяем профиль
@@ -1057,7 +1083,7 @@ const Profiles = () => {
                     <p className="font-semibold text-gray-800 text-lg">Свайп влево — «Пропустить»</p>
                   </div>
                   <p className="text-sm text-gray-700 leading-relaxed pl-11">
-                    не всё должно быть в вашем списке, и это нормально. Если этот профиль не совпадает с вашими целями или интересами, просто проведите пальцем влево — мы не будем его показывать вам снова. Это помогает вам сосредоточиться на действительно важных для вас связях.
+                    Не всё должно быть в вашем списке, и это нормально. Если этот профиль не совпадает с вашими целями или интересами, просто проведите пальцем влево — мы не будем его показывать вам снова. Это помогает вам сосредоточиться на действительно важных для вас связях.
                   </p>
                 </div>
                 
@@ -1067,7 +1093,7 @@ const Profiles = () => {
                     <p className="font-semibold text-gray-800 text-lg">Свайп вправо — «Лайк»</p>
                   </div>
                   <p className="text-sm text-gray-700 leading-relaxed pl-11">
-                    нашли интересного человека? Значит стоит познакомиться! Проведите пальцем вправо, чтобы показать свой интерес и начать диалог. Чем больше лайков, тем больше шансов найти идеальных партнёров для учёбы, работы, проектов или просто общения.
+                    Нашли интересного человека? Значит стоит познакомиться! Проведите пальцем вправо, чтобы показать свой интерес и начать диалог. Чем больше лайков, тем больше шансов найти идеальных партнёров для учёбы, работы, проектов или просто общения.
                   </p>
                 </div>
               </div>
