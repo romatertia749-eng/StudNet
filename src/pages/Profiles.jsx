@@ -872,35 +872,35 @@ const Profiles = () => {
                 if (transitionInfo && transitionInfo.exit) {
                   // Exit анимация
                   if (lastSwipeDirection === 'left') {
-                    // ЭФФЕКТ РАСПАДА: быстрая анимация ухода влево
+                    // ЭФФЕКТ РАСПАДА: плавная анимация ухода влево
                     return {
-                      x: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
-                      y: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
-                      opacity: { duration: 0.5, ease: 'easeOut' },
-                      scale: { duration: 0.6, ease: 'easeIn' },
-                      rotate: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
+                      x: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] },
+                      y: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] },
+                      opacity: { duration: 0.7, ease: [0.25, 0.1, 0.25, 1] },
+                      scale: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] },
+                      rotate: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] },
                     };
                   } else {
                     // ЭФФЕКТ УХОДА ВПРАВО: плавная анимация
                     return {
-                      x: { duration: 0.5, ease: 'easeInOut' },
-                      y: { duration: 0.5, ease: 'easeInOut' },
-                      opacity: { duration: 0.4, ease: 'easeOut' },
-                      scale: { duration: 0.5, ease: 'easeOut' },
-                      rotate: { duration: 0.5, ease: 'easeInOut' },
+                      x: { duration: 0.7, ease: [0.25, 0.1, 0.25, 1] },
+                      y: { duration: 0.7, ease: [0.25, 0.1, 0.25, 1] },
+                      opacity: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] },
+                      scale: { duration: 0.7, ease: [0.25, 0.1, 0.25, 1] },
+                      rotate: { duration: 0.7, ease: [0.25, 0.1, 0.25, 1] },
                     };
                   }
                 } else {
                   // Обычные transition для появления и следования за пальцем
                   return {
-                    x: { type: "spring", stiffness: 300, damping: 30 },
-                    opacity: { duration: 0.2 },
-                    rotate: { type: "spring", stiffness: 300, damping: 30 },
-                    scale: { duration: 0.3, ease: 'easeOut' },
+                    x: { type: "spring", stiffness: 200, damping: 25 },
+                    opacity: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
+                    rotate: { type: "spring", stiffness: 200, damping: 25 },
+                    scale: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] },
                     boxShadow: { 
-                      duration: 0.5, 
+                      duration: 0.6, 
                       delay: 0.1,
-                      ease: 'easeOut' 
+                      ease: [0.25, 0.1, 0.25, 1] 
                     },
                   };
                 }
@@ -1007,44 +1007,6 @@ const Profiles = () => {
         {/* Кнопки действий */}
         {/* БЛОКИРОВКА КНОПОК: disabled={isEffectActive || !currentProfile} 
             Блокирует клики по кнопкам во время проигрывания эффекта */}
-        <div className="flex items-center justify-center gap-4 md:gap-6 pt-2 md:pt-4 max-w-2xl mx-auto">
-          <button
-            onClick={handlePass}
-            disabled={isEffectActive || !currentProfile}
-            className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white flex items-center justify-center text-2xl md:text-4xl shadow-lg shadow-red-500/50 hover:shadow-xl hover:shadow-red-500/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Пропустить"
-          >
-            ✕
-          </button>
-
-          <button
-            onClick={handleLike}
-            disabled={isEffectActive || !currentProfile}
-            className="w-14 h-14 md:w-20 md:h-20 rounded-full text-white flex items-center justify-center text-2xl md:text-4xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              background: `linear-gradient(to right, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.9))`,
-              boxShadow: '0 10px 25px rgba(34, 197, 94, 0.4), 0 0 20px rgba(22, 163, 74, 0.3)',
-            }}
-            onMouseEnter={(e) => {
-              if (!isEffectActive && currentProfile) {
-                e.target.style.boxShadow = '0 15px 35px rgba(34, 197, 94, 0.5), 0 0 30px rgba(22, 163, 74, 0.4)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isEffectActive && currentProfile) {
-                e.target.style.boxShadow = '0 10px 25px rgba(34, 197, 94, 0.4), 0 0 20px rgba(22, 163, 74, 0.3)';
-              }
-            }}
-            aria-label="Лайк"
-          >
-            ❤️
-          </button>
-        </div>
-
-        {/* Подсказка для свайпов */}
-        <p className="text-xs text-gray-500 text-center mt-1 md:mt-2">
-          Свайп влево = пропустить, вправо = лайк
-        </p>
       </div>
     </div>
   );
