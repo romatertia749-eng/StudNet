@@ -24,6 +24,7 @@ const Profiles = () => {
   const [allProfiles, setAllProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [checkingProfile, setCheckingProfile] = useState(true);
+  const [showSwipeTutorial, setShowSwipeTutorial] = useState(false);
   
   /**
    * АРХИТЕКТУРА УПРАВЛЕНИЯ ЭФФЕКТАМИ:
@@ -196,6 +197,16 @@ const Profiles = () => {
 
     checkUserProfile();
   }, [isReady, userInfo, navigate]);
+
+  // Проверка, нужно ли показать модалку с объяснением свайпов
+  useEffect(() => {
+    if (!isReady || checkingProfile || loading) return;
+    
+    const hasSeenTutorial = localStorage.getItem('maxnet_swipe_tutorial_seen');
+    if (!hasSeenTutorial) {
+      setShowSwipeTutorial(true);
+    }
+  }, [isReady, checkingProfile, loading]);
 
   // Загрузка профилей с бэкенда
   useEffect(() => {
@@ -853,10 +864,10 @@ const Profiles = () => {
               exit={lastSwipeDirection === 'left' ? {
                 // ЭФФЕКТ РАСПАДА: карточка уходит влево и распадается на частицы
                 opacity: 0,
-                x: -400, // Уходит влево за экран
-                y: 50, // Небольшое смещение вниз
-                scale: 0.3, // Уменьшается при распаде
-                rotate: -30, // Поворачивается при уходе
+                x: -600, // Уходит дальше влево за экран
+                y: 150, // Большее смещение вниз для большей площади рассыпления
+                scale: 0.1, // Сильнее уменьшается при распаде
+                rotate: -45, // Больший поворот при уходе
                 boxShadow: '0 0 0px rgba(0, 255, 255, 0)',
               } : {
                 // ЭФФЕКТ УХОДА ВПРАВО: карточка уходит вправо с неоновым хвостом
@@ -1008,6 +1019,77 @@ const Profiles = () => {
         {/* БЛОКИРОВКА КНОПОК: disabled={isEffectActive || !currentProfile} 
             Блокирует клики по кнопкам во время проигрывания эффекта */}
       </div>
+
+      {/* Модалка с объяснением свайпов */}
+      {showSwipeTutorial && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => {
+            setShowSwipeTutorial(false);
+            localStorage.setItem('maxnet_swipe_tutorial_seen', 'true');
+          }}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 md:p-8 max-w-lg w-full border-2 border-cyan-400/50 shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="space-y-6">
+              <div className="text-center">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2" style={{ fontFamily: "'La Bamba', cursive" }}>
+                  Добро пожаловать в ваш персональный нетворкинг-компас!
+                </h2>
+                <p className="text-base text-gray-700">
+                  Здесь каждый свайп – это шаг к новым возможностям. Вот как это работает:
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="p-4 bg-red-50/50 rounded-xl border border-red-200/50">
+                  <div className="flex items-start gap-3 mb-2">
+                    <div className="text-3xl">👈</div>
+                    <p className="font-semibold text-gray-800 text-lg">Свайп влево — «Пропустить»</p>
+                  </div>
+                  <p className="text-sm text-gray-700 leading-relaxed pl-11">
+                    не всё должно быть в вашем списке, и это нормально. Если этот профиль не совпадает с вашими целями или интересами, просто проведите пальцем влево — мы не будем его показывать вам снова. Это помогает вам сосредоточиться на действительно важных для вас связях.
+                  </p>
+                </div>
+                
+                <div className="p-4 bg-green-50/50 rounded-xl border border-green-200/50">
+                  <div className="flex items-start gap-3 mb-2">
+                    <div className="text-3xl">👉</div>
+                    <p className="font-semibold text-gray-800 text-lg">Свайп вправо — «Лайк»</p>
+                  </div>
+                  <p className="text-sm text-gray-700 leading-relaxed pl-11">
+                    нашли интересного человека? Значит стоит познакомиться! Проведите пальцем вправо, чтобы показать свой интерес и начать диалог. Чем больше лайков, тем больше шансов найти идеальных партнёров для учёбы, работы, проектов или просто общения.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowSwipeTutorial(false);
+                  localStorage.setItem('maxnet_swipe_tutorial_seen', 'true');
+                }}
+                className="w-full px-6 py-3 rounded-xl font-semibold text-white transition-all"
+                style={{
+                  background: `linear-gradient(to right, rgba(0, 255, 255, 0.26), rgba(54, 207, 255, 0.32))`,
+                  borderColor: 'rgba(0, 255, 255, 0.5)',
+                  boxShadow: '0 10px 25px rgba(0, 255, 255, 0.3), 0 0 20px rgba(54, 207, 255, 0.2)',
+                }}
+              >
+                Понятно!
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 };
