@@ -60,6 +60,8 @@ export const WebAppProvider = ({ children }) => {
       // Проверяем наличие Telegram Web App API
       if (window.Telegram?.WebApp?.initDataUnsafe) {
         tg = window.Telegram.WebApp;
+        
+        // Инициализация Telegram WebApp
         tg.ready();
         
         // Full-screen mode: Telegram Web App API v6.0+
@@ -76,75 +78,46 @@ export const WebAppProvider = ({ children }) => {
         
         setWebApp(tg);
         
-        // Initialize CSS custom properties for viewport and safe areas
-        // These will be updated dynamically via viewportChanged event
-        const updateViewportStyles = (event) => {
+        // Обновление CSS custom properties для viewport и safe areas
+        // Читаем значения напрямую из объекта tg (API 6.0+)
+        const updateViewportStyles = () => {
           const root = document.documentElement;
           
-          // Set viewport height (use stable height for consistent layouts)
-          const viewportHeight = event?.viewportStableHeight || event?.height || window.innerHeight;
-          root.style.setProperty('--tg-viewport-height', `${viewportHeight}px`);
+          // Читаем viewport height и stable height напрямую из tg
+          const viewportHeight = tg.viewportHeight || window.innerHeight;
+          const viewportStableHeight = tg.viewportStableHeight || tg.viewportHeight || window.innerHeight;
           
-          // Set safe area insets (top/bottom) to avoid overlaps from status bar, notches, navigation gestures
-          const safeAreaTop = event?.stableTopInset || event?.topInset || 0;
-          const safeAreaBottom = event?.stableBottomInset || event?.bottomInset || 0;
+          // Читаем безопасные отступы из contentSafeAreaInset (API 6.0+)
+          const safeArea = tg.contentSafeAreaInset || { top: 0, bottom: 0 };
+          const safeAreaTop = safeArea.top || 0;
+          const safeAreaBottom = safeArea.bottom || 0;
+          
+          // Устанавливаем CSS custom properties на document.documentElement
+          root.style.setProperty('--tg-viewport-height', `${viewportHeight}px`);
+          root.style.setProperty('--tg-viewport-stable-height', `${viewportStableHeight}px`);
           root.style.setProperty('--tg-safe-area-top', `${safeAreaTop}px`);
           root.style.setProperty('--tg-safe-area-bottom', `${safeAreaBottom}px`);
-          
-          // Handle unstable states during system UI transitions (e.g., when status bar appears/disappears)
-          // Apply padding to body/main wrapper when state is unstable to prevent content jumps
-          const isStateStable = event?.isStateStable !== false;
-          const body = document.body;
-          
-          if (!isStateStable) {
-            // During transitions, use current insets (may be changing)
-            const currentTop = event?.topInset || 0;
-            const currentBottom = event?.bottomInset || 0;
-            body.style.paddingTop = `${currentTop}px`;
-            body.style.paddingBottom = `${currentBottom}px`;
-          } else {
-            // Stable state: use stable insets and let CSS handle it
-            body.style.paddingTop = `${safeAreaTop}px`;
-            body.style.paddingBottom = `${safeAreaBottom}px`;
-          }
         };
         
-        // Initial viewport setup
-        // Check if viewportChanged event is available (API v6.0+)
+        // Подписка на событие viewportChanged (API 6.0+)
         if (typeof tg.onEvent === 'function') {
-          // Listen to viewportChanged event for dynamic adjustments
-          viewportChangedHandler = (event) => {
-            updateViewportStyles(event);
+          // Обработчик события viewportChanged
+          // Событие не передает параметры, нужно читать свойства напрямую из tg
+          viewportChangedHandler = () => {
+            updateViewportStyles();
           };
+          
           tg.onEvent('viewportChanged', viewportChangedHandler);
           
-          // Get initial viewport state if available from direct properties
-          // Telegram Web App API v6.0+ exposes these properties directly
-          const initialViewport = {
-            height: tg.viewportHeight || window.innerHeight,
-            viewportStableHeight: tg.viewportStableHeight || tg.viewportHeight || window.innerHeight,
-            topInset: tg.safeAreaInsets?.top || 0,
-            bottomInset: tg.safeAreaInsets?.bottom || 0,
-            stableTopInset: tg.safeAreaInsets?.top || 0,
-            stableBottomInset: tg.safeAreaInsets?.bottom || 0,
-            isStateStable: true,
-          };
-          updateViewportStyles(initialViewport);
+          // Устанавливаем начальные значения сразу после подписки
+          updateViewportStyles();
         } else {
-          // Fallback for older APIs: check if expanded and use basic safe areas
-          if (tg.isExpanded) {
-            // Partially expand if full-screen isn't supported
-            const root = document.documentElement;
-            root.style.setProperty('--tg-viewport-height', `${window.innerHeight}px`);
-            root.style.setProperty('--tg-safe-area-top', '0px');
-            root.style.setProperty('--tg-safe-area-bottom', 'env(safe-area-inset-bottom, 0px)');
-          } else {
-            // Not expanded: use standard viewport
-            const root = document.documentElement;
-            root.style.setProperty('--tg-viewport-height', `${window.innerHeight}px`);
-            root.style.setProperty('--tg-safe-area-top', '0px');
-            root.style.setProperty('--tg-safe-area-bottom', 'env(safe-area-inset-bottom, 0px)');
-          }
+          // Fallback для старых версий API
+          const root = document.documentElement;
+          root.style.setProperty('--tg-viewport-height', `${window.innerHeight}px`);
+          root.style.setProperty('--tg-viewport-stable-height', `${window.innerHeight}px`);
+          root.style.setProperty('--tg-safe-area-top', '0px');
+          root.style.setProperty('--tg-safe-area-bottom', 'env(safe-area-inset-bottom, 0px)');
         }
         
         // Get initData for backend validation
@@ -204,6 +177,7 @@ export const WebAppProvider = ({ children }) => {
         // Set fallback CSS variables for development
         const root = document.documentElement;
         root.style.setProperty('--tg-viewport-height', '100vh');
+        root.style.setProperty('--tg-viewport-stable-height', '100vh');
         root.style.setProperty('--tg-safe-area-top', '0px');
         root.style.setProperty('--tg-safe-area-bottom', '0px');
         

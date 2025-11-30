@@ -23,9 +23,11 @@ function App() {
       <div 
         className="flex flex-col relative overflow-hidden"
         style={{
-          /* Use Telegram viewport height with safe area adjustments for full-screen mode */
-          height: 'calc(var(--tg-viewport-height, 100vh) - var(--tg-safe-area-top, 0px) - var(--tg-safe-area-bottom, 0px))',
-          minHeight: 'calc(var(--tg-viewport-height, 100vh) - var(--tg-safe-area-top, 0px) - var(--tg-safe-area-bottom, 0px))',
+          /* Use Telegram viewport stable height with safe area adjustments for full-screen mode */
+          height: 'var(--tg-viewport-stable-height, 100vh)',
+          minHeight: 'var(--tg-viewport-stable-height, 100vh)',
+          paddingTop: 'var(--tg-safe-area-top, 0px)',
+          paddingBottom: 'var(--tg-safe-area-bottom, 0px)',
           backgroundImage: 'url(/assets/stuff/background.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
