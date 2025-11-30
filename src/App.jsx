@@ -1,4 +1,4 @@
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useWebApp } from './contexts/WebAppContext';
 import Loader from './components/Loader';
 import Header from './components/Header';
@@ -19,15 +19,12 @@ function App() {
   }
 
   return (
-    <Router>
+    <Router basename={process.env.PUBLIC_URL || ""}>
       <div 
         className="flex flex-col relative overflow-hidden"
         style={{
-          /* Use Telegram viewport stable height with safe area adjustments for full-screen mode */
-          height: 'var(--tg-viewport-stable-height, 100vh)',
-          minHeight: 'var(--tg-viewport-stable-height, 100vh)',
-          paddingTop: 'var(--tg-safe-area-top, 0px)',
-          paddingBottom: 'var(--tg-safe-area-bottom, 0px)',
+          height: '100vh',
+          minHeight: '100vh',
           backgroundImage: 'url(/assets/stuff/background.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -55,10 +52,8 @@ function App() {
             transform: 'translateZ(0)',
             // Предотвращаем лишние рефлоу
             contain: 'layout style paint',
-            // Отступ снизу для fixed bottom nav + Telegram safe area
-            paddingBottom: 'calc(5rem + var(--tg-safe-area-bottom, env(safe-area-inset-bottom, 0px)))',
-            // Отступ сверху для Telegram safe area (status bar, notch)
-            paddingTop: 'var(--tg-safe-area-top, 0px)',
+            // Отступ снизу для fixed bottom nav
+            paddingBottom: '5rem',
           }}
         >
           <Routes>
@@ -70,7 +65,7 @@ function App() {
             <Route path="/profiles" element={<Profiles />} />
             <Route path="/profiles/:id" element={<UserCard />} />
             <Route path="/network" element={<NetworkList />} />
-            <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
         <BottomNav />

@@ -44,12 +44,12 @@
   }
 
   #root {
-    /* Use Telegram viewport stable height with safe area adjustments */
-    height: var(--tg-viewport-stable-height, 100vh);
-    min-height: var(--tg-viewport-stable-height, 100vh);
+    min-height: 100vh;
     min-height: -webkit-fill-available;
     /* Оптимизация: включаем GPU ускорение для корневого элемента */
     transform: translateZ(0);
     will-change: scroll-position;
+    /* Ensure root takes full available height */
+    height: 100%;
   }
 }
