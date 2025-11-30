@@ -26,7 +26,14 @@ const Header = () => {
         transform: 'translateZ(0)',
       }}
     >
-      <div className="px-4 md:px-6 py-1 max-w-7xl mx-auto flex items-center justify-between gap-2" style={{ paddingTop: 'calc(0.25rem + env(safe-area-inset-top))', paddingBottom: 'calc(0.25rem + env(safe-area-inset-bottom))' }}>
+      <div 
+        className="px-4 md:px-6 py-1 max-w-7xl mx-auto flex items-center justify-between gap-2" 
+        style={{ 
+          // Use Telegram safe area top inset to avoid status bar/notch overlap
+          paddingTop: 'calc(0.25rem + var(--tg-safe-area-top, env(safe-area-inset-top, 0px)))', 
+          paddingBottom: 'calc(0.25rem + var(--tg-safe-area-bottom, env(safe-area-inset-bottom, 0px)))' 
+        }}
+      >
         <button
           onClick={() => navigate('/')}
           className="flex items-center hover:opacity-80 transition-opacity flex-shrink-0"

@@ -53,10 +53,13 @@ export const WebAppProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    let viewportChangedHandler = null;
+    let tg = null;
+    
     const initTelegram = async () => {
       // Проверяем наличие Telegram Web App API
       if (window.Telegram?.WebApp?.initDataUnsafe) {
-        const tg = window.Telegram.WebApp;
+        tg = window.Telegram.WebApp;
         tg.ready();
         
         // Full-screen mode: Telegram Web App API v6.0+
@@ -110,26 +113,33 @@ export const WebAppProvider = ({ children }) => {
         // Check if viewportChanged event is available (API v6.0+)
         if (typeof tg.onEvent === 'function') {
           // Listen to viewportChanged event for dynamic adjustments
-          tg.onEvent('viewportChanged', (event) => {
+          viewportChangedHandler = (event) => {
             updateViewportStyles(event);
-          });
+          };
+          tg.onEvent('viewportChanged', viewportChangedHandler);
           
-          // Get initial viewport state if available
-          if (tg.viewportHeight) {
-            updateViewportStyles({
-              height: tg.viewportHeight,
-              viewportStableHeight: tg.viewportStableHeight || tg.viewportHeight,
-              topInset: tg.safeAreaInsets?.top || 0,
-              bottomInset: tg.safeAreaInsets?.bottom || 0,
-              stableTopInset: tg.safeAreaInsets?.top || 0,
-              stableBottomInset: tg.safeAreaInsets?.bottom || 0,
-              isStateStable: true,
-            });
-          }
+          // Get initial viewport state if available from direct properties
+          // Telegram Web App API v6.0+ exposes these properties directly
+          const initialViewport = {
+            height: tg.viewportHeight || window.innerHeight,
+            viewportStableHeight: tg.viewportStableHeight || tg.viewportHeight || window.innerHeight,
+            topInset: tg.safeAreaInsets?.top || 0,
+            bottomInset: tg.safeAreaInsets?.bottom || 0,
+            stableTopInset: tg.safeAreaInsets?.top || 0,
+            stableBottomInset: tg.safeAreaInsets?.bottom || 0,
+            isStateStable: true,
+          };
+          updateViewportStyles(initialViewport);
         } else {
           // Fallback for older APIs: check if expanded and use basic safe areas
           if (tg.isExpanded) {
             // Partially expand if full-screen isn't supported
+            const root = document.documentElement;
+            root.style.setProperty('--tg-viewport-height', `${window.innerHeight}px`);
+            root.style.setProperty('--tg-safe-area-top', '0px');
+            root.style.setProperty('--tg-safe-area-bottom', 'env(safe-area-inset-bottom, 0px)');
+          } else {
+            // Not expanded: use standard viewport
             const root = document.documentElement;
             root.style.setProperty('--tg-viewport-height', `${window.innerHeight}px`);
             root.style.setProperty('--tg-safe-area-top', '0px');
@@ -202,6 +212,13 @@ export const WebAppProvider = ({ children }) => {
     };
 
     initTelegram();
+    
+    // Cleanup function to remove event listener on unmount
+    return () => {
+      if (viewportChangedHandler && tg && typeof tg.offEvent === 'function') {
+        tg.offEvent('viewportChanged', viewportChangedHandler);
+      }
+    };
   }, []);
 
   const requestContact = () => {
