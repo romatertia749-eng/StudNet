@@ -113,7 +113,12 @@ def get_incoming_likes(
             size=size
         )
         return result
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        print(f"Error in get_incoming_likes: {str(e)}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Ошибка при получении входящих лайков: {str(e)}")
 
 @router.get("/user/{user_id}", response_model=ProfileResponse)

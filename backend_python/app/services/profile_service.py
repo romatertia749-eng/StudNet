@@ -147,10 +147,11 @@ def get_incoming_likes(
         }
     
     # Получаем user_id тех, кто лайкнул текущего пользователя
+    # В Swipe: user_id - кто сделал свайп, target_profile_id - на кого свайпнули
     likers_query = db.query(Swipe.user_id).filter(
         Swipe.target_profile_id == current_profile.id,
         Swipe.action == 'like'
-    )
+    ).distinct()
     liker_user_ids = [row[0] for row in likers_query.all()]
     
     if not liker_user_ids:
@@ -163,10 +164,10 @@ def get_incoming_likes(
         }
     
     # Получаем ID профилей, на которые текущий пользователь уже ответил
-    responded_profile_ids = db.query(Swipe.target_profile_id).filter(
+    responded_swipes = db.query(Swipe.target_profile_id).filter(
         Swipe.user_id == user_id
     ).distinct().all()
-    responded_profile_ids = [row[0] for row in responded_profile_ids]
+    responded_profile_ids = [row[0] for row in responded_swipes] if responded_swipes else []
     
     # Получаем профили лайкеров, исключая тех, на кого уже ответили
     query = db.query(Profile).filter(

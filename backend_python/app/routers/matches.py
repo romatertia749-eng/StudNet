@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.database import get_db
 from app.schemas import LikeRequest, LikeResponse, PassResponse, MatchResponse, RespondToLikeRequest
 from app.services import match_service, profile_service
@@ -56,12 +56,10 @@ def pass_profile(
 @router.post("/likes/respond", response_model=LikeResponse)
 def respond_to_like(
     request: RespondToLikeRequest,
-    user_id: int = None,
+    user_id: Optional[int] = Query(None, description="ID текущего пользователя"),
     db: Session = Depends(get_db)
 ):
     """Ответить на входящий лайк: accept (мэтч) или decline (пропустить)"""
-    # user_id берём из query params или из заголовка авторизации
-    # Для простоты пока берём из query
     if user_id is None:
         raise HTTPException(status_code=400, detail="Параметр user_id обязателен")
     

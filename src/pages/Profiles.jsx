@@ -251,9 +251,14 @@ const Profiles = () => {
     setIncomingError(null);
     
     try {
-      const response = await fetchWithAuth(`${API_ENDPOINTS.INCOMING_LIKES}?user_id=${userInfo.id}`);
+      const url = `${API_ENDPOINTS.INCOMING_LIKES}?user_id=${userInfo.id}`;
+      console.log('Fetching incoming likes from:', url);
+      const response = await fetchWithAuth(url);
+      console.log('Incoming likes response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Incoming likes data:', data);
         const profiles = Array.isArray(data.content) ? data.content : (Array.isArray(data) ? data : []);
         
         const processedProfiles = profiles.map(profile => {
@@ -296,6 +301,8 @@ const Profiles = () => {
         setIncomingLikes([]);
         setIncomingError('not_implemented');
       } else {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.error('Incoming likes error:', response.status, errorText);
         setIncomingError('load_error');
       }
     } catch (error) {
