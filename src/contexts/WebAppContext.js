@@ -54,6 +54,7 @@ export const WebAppProvider = ({ children }) => {
 
   useEffect(() => {
     let viewportChangedHandler = null;
+    let readyHandler = null;
     let tg = null;
     
     const initTelegram = async () => {
@@ -65,15 +66,52 @@ export const WebAppProvider = ({ children }) => {
         tg.ready();
         
         // Full-screen mode: Telegram Web App API v6.0+
-        // Expand to remove the top Telegram header
-        if (typeof tg.expand === 'function') {
-          tg.expand();
-        }
+        // Скрываем шапку Telegram и переходим в полноэкранный режим
+        // Важно: вызывать expand() сразу после ready(), синхронно
+        
+        // Функция для принудительного скрытия шапки
+        const forceExpand = () => {
+          if (typeof tg.expand === 'function') {
+            tg.expand();
+            console.log('Telegram WebApp: expand() called, isExpanded:', tg.isExpanded);
+          }
+          // Устанавливаем прозрачный цвет шапки
+          if (typeof tg.setHeaderColor === 'function') {
+            tg.setHeaderColor('#00000000'); // Прозрачный цвет
+            console.log('Telegram WebApp: setHeaderColor(transparent) called');
+          }
+          // Скрываем кнопку "Назад" если она есть
+          if (tg.BackButton && typeof tg.BackButton.hide === 'function') {
+            tg.BackButton.hide();
+          }
+          // Используем setBackgroundColor для полного контроля
+          if (typeof tg.setBackgroundColor === 'function') {
+            tg.setBackgroundColor('#000000');
+          }
+          // Проверяем версию API
+          console.log('Telegram WebApp version:', tg.version);
+          console.log('Telegram WebApp platform:', tg.platform);
+        };
+        
+        // Вызываем сразу
+        forceExpand();
         
         // Request full viewport for proper full-screen handling
         // This enables viewportChanged events and safe area insets
         if (typeof tg.requestViewport === 'function') {
           tg.requestViewport();
+        }
+        
+        // Повторные попытки скрыть шапку с задержками
+        // Иногда нужно вызвать несколько раз для полного скрытия
+        setTimeout(forceExpand, 50);
+        setTimeout(forceExpand, 150);
+        setTimeout(forceExpand, 300);
+        
+        // Подписываемся на событие ready для повторного вызова expand()
+        if (typeof tg.onEvent === 'function') {
+          readyHandler = forceExpand;
+          tg.onEvent('ready', readyHandler);
         }
         
         setWebApp(tg);
@@ -189,8 +227,13 @@ export const WebAppProvider = ({ children }) => {
     
     // Cleanup function to remove event listener on unmount
     return () => {
-      if (viewportChangedHandler && tg && typeof tg.offEvent === 'function') {
-        tg.offEvent('viewportChanged', viewportChangedHandler);
+      if (tg && typeof tg.offEvent === 'function') {
+        if (viewportChangedHandler) {
+          tg.offEvent('viewportChanged', viewportChangedHandler);
+        }
+        if (readyHandler) {
+          tg.offEvent('ready', readyHandler);
+        }
       }
     };
   }, []);
