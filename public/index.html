@@ -5,6 +5,8 @@
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
+    <!-- КРИТИЧЕСКИ ВАЖНО: Preload фона САМЫМ ПЕРВЫМ для максимальной скорости -->
+    <link rel="preload" href="%PUBLIC_URL%/assets/stuff/background.jpg" as="image" fetchpriority="high" crossorigin="anonymous" />
     <!-- DNS prefetch для быстрой загрузки внешних ресурсов -->
     <link rel="dns-prefetch" href="https://telegram.org" />
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
@@ -19,8 +21,7 @@
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
     -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!-- Preload критически важные ресурсы для быстрой загрузки -->
-    <link rel="preload" href="%PUBLIC_URL%/assets/stuff/background.jpg" as="image" fetchpriority="high" />
+    <!-- Preload других критически важных ресурсов -->
     <link rel="preload" href="%PUBLIC_URL%/assets/stuff/logo.png" as="image" />
     <!-- Оптимизация шрифтов: используем font-display=swap для быстрой загрузки -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,7 +41,7 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <div id="root" style="min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </body>

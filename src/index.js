@@ -6,6 +6,25 @@ import reportWebVitals from './reportWebVitals';
 import { WebAppProvider } from './contexts/WebAppContext';
 import { MatchProvider } from './contexts/MatchContext';
 
+// КРИТИЧЕСКИ ВАЖНО: Предзагрузка фона ДО рендера React для максимальной скорости
+// Это позволяет браузеру начать загрузку фона еще до того, как React загрузится
+if (typeof window !== 'undefined') {
+  const preloadLink = document.createElement('link');
+  preloadLink.rel = 'preload';
+  preloadLink.href = '/assets/stuff/background.jpg';
+  preloadLink.as = 'image';
+  preloadLink.setAttribute('fetchpriority', 'high');
+  preloadLink.crossOrigin = 'anonymous';
+  document.head.appendChild(preloadLink);
+  
+  // Дополнительно: создаем Image объект для еще более ранней загрузки
+  const img = new Image();
+  img.src = '/assets/stuff/background.jpg';
+  if (img.fetchPriority !== undefined) {
+    img.fetchPriority = 'high';
+  }
+}
+
 // Глобальная обработка ошибок - скрываем 404 ошибки от пользователя
 window.addEventListener('error', (event) => {
   // Игнорируем ошибки загрузки ресурсов (изображения, скрипты и т.д.)

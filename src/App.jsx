@@ -16,17 +16,50 @@ function App() {
   const { isReady } = useWebApp();
   const [backgroundLoaded, setBackgroundLoaded] = useState(false);
 
-  // Предзагрузка фонового изображения
+  // Агрессивная предзагрузка фонового изображения
   useEffect(() => {
+    let isMounted = true;
+    
+    // Создаем изображение с максимальным приоритетом
     const img = new Image();
     img.src = '/assets/stuff/background.jpg';
-    img.fetchPriority = 'high';
+    if (img.fetchPriority !== undefined) {
+      img.fetchPriority = 'high';
+    }
+    
+    // Пытаемся загрузить сразу
     img.onload = () => {
-      setBackgroundLoaded(true);
+      if (isMounted) {
+        setBackgroundLoaded(true);
+      }
     };
     img.onerror = () => {
       // Если не загрузилось, все равно показываем приложение
-      setBackgroundLoaded(true);
+      if (isMounted) {
+        setBackgroundLoaded(true);
+      }
+    };
+    
+    // Дополнительная попытка через небольшую задержку
+    const timeoutId = setTimeout(() => {
+      if (isMounted && !img.complete) {
+        const img2 = new Image();
+        img2.src = '/assets/stuff/background.jpg';
+        if (img2.fetchPriority !== undefined) {
+          img2.fetchPriority = 'high';
+        }
+        img2.onload = () => {
+          if (isMounted) setBackgroundLoaded(true);
+        };
+        img2.onerror = () => {
+          if (isMounted) setBackgroundLoaded(true);
+        };
+      }
+    }, 50);
+    
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
     };
   }, []);
 
@@ -55,20 +88,27 @@ function App() {
           />
         )}
         
-        {/* Фоновое изображение с оптимизацией загрузки */}
+        {/* Фоновое изображение с максимальной оптимизацией загрузки */}
         <img
           src="/assets/stuff/background.jpg"
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
           style={{
             opacity: backgroundLoaded ? 1 : 0,
-            transition: 'opacity 0.3s ease-in-out',
+            transition: backgroundLoaded ? 'opacity 0.1s ease-in' : 'none',
             zIndex: 0,
             willChange: 'opacity',
+            // Оптимизация рендеринга
+            imageRendering: 'auto',
+            // Принудительное использование GPU для плавности
+            transform: 'translateZ(0)',
+            // Отключаем сглаживание для более быстрого рендеринга
+            backfaceVisibility: 'hidden',
           }}
           loading="eager"
           fetchPriority="high"
           decoding="async"
+          crossOrigin="anonymous"
         />
         
         {/* Затемнение для лучшей читаемости контента */}

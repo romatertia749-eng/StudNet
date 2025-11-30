@@ -41,7 +41,7 @@ const OnboardingMainGoal = () => {
               Зачем ты здесь?
             </h1>
             <p className="text-sm md:text-base text-gray-700 text-center relative z-10">
-              Выбери главную цель — подберём самые релевантные знакомства.
+              Выбери главную цель — подберём самые релевантные знакомства
             </p>
           </div>
         </Card>
