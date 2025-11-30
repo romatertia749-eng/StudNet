@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWebApp } from '../contexts/WebAppContext';
 import { useMatches } from '../contexts/MatchContext';
@@ -9,6 +9,7 @@ const Header = () => {
   const navigate = useNavigate();
   const { userInfo, isReady } = useWebApp();
   const { updateConnectsCount } = useMatches();
+  const [logoHeight, setLogoHeight] = useState('76.8px');
 
   useEffect(() => {
     if (!isReady || !userInfo?.id) return;
@@ -16,6 +17,16 @@ const Header = () => {
     // Обновляем connectsCount при загрузке
     updateConnectsCount(userInfo.id);
   }, [isReady, userInfo, updateConnectsCount]);
+
+  useEffect(() => {
+    const updateLogoSize = () => {
+      setLogoHeight(window.innerWidth >= 768 ? '89.6px' : '76.8px');
+    };
+    
+    updateLogoSize();
+    window.addEventListener('resize', updateLogoSize);
+    return () => window.removeEventListener('resize', updateLogoSize);
+  }, []);
 
   return (
     <header 
@@ -27,11 +38,11 @@ const Header = () => {
       }}
     >
       <div 
-        className="px-4 md:px-6 py-1 max-w-7xl mx-auto flex items-center justify-between gap-2" 
+        className="px-4 md:px-6 max-w-7xl mx-auto flex items-center justify-between gap-2" 
         style={{ 
           // Use Telegram safe area top inset to avoid status bar/notch overlap
-          paddingTop: 'calc(0.25rem + var(--tg-safe-area-top, env(safe-area-inset-top, 0px)))', 
-          paddingBottom: 'calc(0.25rem + var(--tg-safe-area-bottom, env(safe-area-inset-bottom, 0px)))' 
+          paddingTop: 'calc(0.2rem + var(--tg-safe-area-top, env(safe-area-inset-top, 0px)))', 
+          paddingBottom: 'calc(0.2rem + var(--tg-safe-area-bottom, env(safe-area-inset-bottom, 0px)))' 
         }}
       >
         <button
@@ -42,7 +53,10 @@ const Header = () => {
           <img
             src="/assets/stuff/logo.png"
             alt="Logo"
-            className="h-24 md:h-28 w-auto object-contain"
+            className="w-auto object-contain"
+            style={{ 
+              height: logoHeight
+            }}
             loading="eager"
             fetchPriority="high"
             decoding="async"

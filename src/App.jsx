@@ -130,8 +130,8 @@ function App() {
             transform: 'translateZ(0)',
             // Предотвращаем лишние рефлоу
             contain: 'layout style paint',
-            // Отступ снизу для fixed bottom nav
-            paddingBottom: '5rem',
+            // Отступ снизу для fixed bottom nav (уменьшен на 20%)
+            paddingBottom: '4rem',
           }}
         >
           <Routes>
