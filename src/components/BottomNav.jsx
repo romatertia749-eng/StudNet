@@ -19,13 +19,16 @@ const BottomNav = () => {
 
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 bg-white/20 backdrop-blur-xl shadow-t border-t border-white/40 md:relative md:bg-transparent md:shadow-none md:border-none" 
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white/20 backdrop-blur-xl shadow-t border-t border-white/40" 
       style={{ 
-        paddingBottom: 'env(safe-area-inset-bottom)', 
+        // Use Telegram safe area bottom inset to avoid navigation gestures overlap
+        paddingBottom: 'calc(0.5rem + var(--tg-safe-area-bottom, env(safe-area-inset-bottom, 0px)))', 
         minHeight: '50px',
         // Оптимизация: включаем GPU ускорение для fixed bottom nav
         willChange: 'transform',
         transform: 'translateZ(0)',
+        // Всегда видно при прокрутке
+        position: 'fixed',
       }}
     >
       <div className="flex items-center justify-around px-2 py-2 max-w-7xl mx-auto">

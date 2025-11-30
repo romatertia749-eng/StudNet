@@ -21,8 +21,11 @@ function App() {
   return (
     <Router>
       <div 
-        className="min-h-screen min-h-[100dvh] flex flex-col relative overflow-hidden"
+        className="flex flex-col relative overflow-hidden"
         style={{
+          /* Use Telegram viewport height with safe area adjustments for full-screen mode */
+          height: 'calc(var(--tg-viewport-height, 100vh) - var(--tg-safe-area-top, 0px) - var(--tg-safe-area-bottom, 0px))',
+          minHeight: 'calc(var(--tg-viewport-height, 100vh) - var(--tg-safe-area-top, 0px) - var(--tg-safe-area-bottom, 0px))',
           backgroundImage: 'url(/assets/stuff/background.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -42,7 +45,7 @@ function App() {
         ></div>
         <Header />
         <main 
-          className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto -webkit-overflow-scrolling-touch pb-20 md:pb-4 relative z-10"
+          className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto -webkit-overflow-scrolling-touch pb-20 md:pb-20 relative z-10"
           style={{
             // Оптимизация для плавного скролла
             willChange: 'scroll-position',
@@ -50,6 +53,10 @@ function App() {
             transform: 'translateZ(0)',
             // Предотвращаем лишние рефлоу
             contain: 'layout style paint',
+            // Отступ снизу для fixed bottom nav + Telegram safe area
+            paddingBottom: 'calc(5rem + var(--tg-safe-area-bottom, env(safe-area-inset-bottom, 0px)))',
+            // Отступ сверху для Telegram safe area (status bar, notch)
+            paddingTop: 'var(--tg-safe-area-top, 0px)',
           }}
         >
           <Routes>

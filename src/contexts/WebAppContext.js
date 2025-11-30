@@ -55,17 +55,93 @@ export const WebAppProvider = ({ children }) => {
   useEffect(() => {
     const initTelegram = async () => {
       // Проверяем наличие Telegram Web App API
-      if (window.Telegram?.WebApp) {
+      if (window.Telegram?.WebApp?.initDataUnsafe) {
         const tg = window.Telegram.WebApp;
         tg.ready();
-        tg.expand(); // Развернуть на весь экран
+        
+        // Full-screen mode: Telegram Web App API v6.0+
+        // Expand to remove the top Telegram header
+        if (typeof tg.expand === 'function') {
+          tg.expand();
+        }
+        
+        // Request full viewport for proper full-screen handling
+        // This enables viewportChanged events and safe area insets
+        if (typeof tg.requestViewport === 'function') {
+          tg.requestViewport();
+        }
+        
         setWebApp(tg);
         
-        // Получаем initData для валидации на бэкенде
+        // Initialize CSS custom properties for viewport and safe areas
+        // These will be updated dynamically via viewportChanged event
+        const updateViewportStyles = (event) => {
+          const root = document.documentElement;
+          
+          // Set viewport height (use stable height for consistent layouts)
+          const viewportHeight = event?.viewportStableHeight || event?.height || window.innerHeight;
+          root.style.setProperty('--tg-viewport-height', `${viewportHeight}px`);
+          
+          // Set safe area insets (top/bottom) to avoid overlaps from status bar, notches, navigation gestures
+          const safeAreaTop = event?.stableTopInset || event?.topInset || 0;
+          const safeAreaBottom = event?.stableBottomInset || event?.bottomInset || 0;
+          root.style.setProperty('--tg-safe-area-top', `${safeAreaTop}px`);
+          root.style.setProperty('--tg-safe-area-bottom', `${safeAreaBottom}px`);
+          
+          // Handle unstable states during system UI transitions (e.g., when status bar appears/disappears)
+          // Apply padding to body/main wrapper when state is unstable to prevent content jumps
+          const isStateStable = event?.isStateStable !== false;
+          const body = document.body;
+          
+          if (!isStateStable) {
+            // During transitions, use current insets (may be changing)
+            const currentTop = event?.topInset || 0;
+            const currentBottom = event?.bottomInset || 0;
+            body.style.paddingTop = `${currentTop}px`;
+            body.style.paddingBottom = `${currentBottom}px`;
+          } else {
+            // Stable state: use stable insets and let CSS handle it
+            body.style.paddingTop = `${safeAreaTop}px`;
+            body.style.paddingBottom = `${safeAreaBottom}px`;
+          }
+        };
+        
+        // Initial viewport setup
+        // Check if viewportChanged event is available (API v6.0+)
+        if (typeof tg.onEvent === 'function') {
+          // Listen to viewportChanged event for dynamic adjustments
+          tg.onEvent('viewportChanged', (event) => {
+            updateViewportStyles(event);
+          });
+          
+          // Get initial viewport state if available
+          if (tg.viewportHeight) {
+            updateViewportStyles({
+              height: tg.viewportHeight,
+              viewportStableHeight: tg.viewportStableHeight || tg.viewportHeight,
+              topInset: tg.safeAreaInsets?.top || 0,
+              bottomInset: tg.safeAreaInsets?.bottom || 0,
+              stableTopInset: tg.safeAreaInsets?.top || 0,
+              stableBottomInset: tg.safeAreaInsets?.bottom || 0,
+              isStateStable: true,
+            });
+          }
+        } else {
+          // Fallback for older APIs: check if expanded and use basic safe areas
+          if (tg.isExpanded) {
+            // Partially expand if full-screen isn't supported
+            const root = document.documentElement;
+            root.style.setProperty('--tg-viewport-height', `${window.innerHeight}px`);
+            root.style.setProperty('--tg-safe-area-top', '0px');
+            root.style.setProperty('--tg-safe-area-bottom', 'env(safe-area-inset-bottom, 0px)');
+          }
+        }
+        
+        // Get initData for backend validation
         const initData = tg.initData;
         const initDataUnsafe = tg.initDataUnsafe;
         
-        console.log('Telegram WebApp initialized');
+        console.log('Telegram WebApp initialized with full-screen mode');
         console.log('initDataUnsafe:', initDataUnsafe);
         console.log('initDataUnsafe.user:', initDataUnsafe?.user);
         
@@ -76,7 +152,7 @@ export const WebAppProvider = ({ children }) => {
           console.warn('initDataUnsafe.user is missing, userInfo will be null');
         }
         
-        // Отправляем initData на бэкенд для валидации и получения JWT токена
+        // Send initData to backend for validation and JWT token
         if (initData) {
           try {
             const response = await fetch(`${API_ENDPOINTS.AUTH || 'http://localhost:8080/api/auth'}`, {
@@ -103,7 +179,7 @@ export const WebAppProvider = ({ children }) => {
         
         setIsReady(true);
       } else {
-        // Для разработки без Telegram - используем моковые данные
+        // For development without Telegram - use mock data
         console.warn('Telegram Web App не обнаружен. Используются моковые данные.');
         const mockUserInfo = {
           id: 123456789,
@@ -114,6 +190,13 @@ export const WebAppProvider = ({ children }) => {
         };
         console.log('Setting mock userInfo:', mockUserInfo);
         setUserInfo(mockUserInfo);
+        
+        // Set fallback CSS variables for development
+        const root = document.documentElement;
+        root.style.setProperty('--tg-viewport-height', '100vh');
+        root.style.setProperty('--tg-safe-area-top', '0px');
+        root.style.setProperty('--tg-safe-area-bottom', '0px');
+        
         setIsReady(true);
       }
     };
