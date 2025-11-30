@@ -290,12 +290,17 @@ const Profiles = () => {
         if (!hasSeenIncomingTip && processedProfiles.length > 0) {
           setShowIncomingTip(true);
         }
+      } else if (response.status === 404) {
+        // 404 — эндпоинт не реализован, показываем пустой список
+        console.warn('Incoming likes endpoint not implemented yet');
+        setIncomingLikes([]);
+        setIncomingError('not_implemented');
       } else {
-        setIncomingError('Не удалось загрузить');
+        setIncomingError('load_error');
       }
     } catch (error) {
       console.error('Error fetching incoming likes:', error);
-      setIncomingError('Ошибка загрузки');
+      setIncomingError('network_error');
     } finally {
       setLoadingIncoming(false);
     }
@@ -806,7 +811,7 @@ const Profiles = () => {
               boxShadow: '0 0 12px rgba(0, 255, 255, 0.4), inset 0 -2px 0 rgba(0, 255, 255, 0.6)',
             } : {}}
           >
-            Лайкнули тебя
+            Входящие коннекты
             {incomingLikes.length > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-cyan-400 text-white text-xs font-bold rounded-full flex items-center justify-center px-1 shadow-lg"
                 style={{ boxShadow: '0 0 8px rgba(0, 255, 255, 0.6)' }}
