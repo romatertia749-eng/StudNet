@@ -771,96 +771,6 @@ const Profiles = () => {
     );
   }
 
-  if (!currentProfile && availableProfiles.length === 0) {
-    return (
-      <div className="min-w-[320px] min-h-[600px] max-w-4xl w-full mx-auto p-4 md:p-6 pb-32 md:pb-6" style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom))' }}>
-        <div className="space-y-4 mt-4">
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Анкеты</h2>
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="px-3 py-1 text-sm text-gray-900 rounded-lg transition-colors"
-              >
-                {showFilters ? 'Скрыть' : 'Фильтры'}
-              </button>
-            </div>
-
-            {showFilters && (
-              <div className="space-y-3 mb-4 pb-4 border-b border-gray-200">
-                {(selectedCity || selectedUniversity || selectedInterests.length > 0) && (
-                  <button
-                    onClick={handleResetFilters}
-                    className="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200 mb-2"
-                  >
-                    Сбросить фильтры
-                  </button>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Город
-                  </label>
-                  <Autocomplete
-                    options={russianCities}
-                    value={selectedCity}
-                    onChange={setSelectedCity}
-                    placeholder="Выберите город..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Вуз
-                  </label>
-                  <Autocomplete
-                    options={universities}
-                    value={selectedUniversity}
-                    onChange={setSelectedUniversity}
-                    placeholder="Выберите вуз..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Интересы
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {interests.slice(0, 8).map((interest) => (
-                      <button
-                        key={interest}
-                        type="button"
-                        onClick={() => {
-                          if (selectedInterests.includes(interest)) {
-                            setSelectedInterests(selectedInterests.filter(i => i !== interest));
-                          } else {
-                            setSelectedInterests([...selectedInterests, interest]);
-                          }
-                        }}
-                        className={`px-3 py-1 rounded-lg text-xs transition-colors ${
-                          selectedInterests.includes(interest)
-                            ? 'bg-teal-500 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {interest}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <p className="text-gray-800 text-center py-8 font-medium">
-              {selectedCity || selectedUniversity || selectedInterests.length > 0
-                ? 'По выбранным фильтрам ничего не найдено'
-                : 'Пока нет анкет'}
-            </p>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-w-[320px] max-w-md w-full mx-auto p-3 md:p-4 pb-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
       <div className="space-y-3 md:space-y-4 mt-2 md:mt-4">
@@ -1045,6 +955,17 @@ const Profiles = () => {
                 Вернуться к анкетам
               </button>
             </div>
+          </Card>
+        )}
+
+        {/* Пустой стейт для всех анкет */}
+        {activeTab === 'all' && availableProfiles.length === 0 && (
+          <Card>
+            <p className="text-gray-800 text-center py-8 font-medium">
+              {selectedCity || selectedUniversity || selectedInterests.length > 0
+                ? 'По выбранным фильтрам ничего не найдено'
+                : 'Пока нет анкет'}
+            </p>
           </Card>
         )}
 
