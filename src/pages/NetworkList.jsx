@@ -8,7 +8,7 @@ import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
 
 const NetworkList = () => {
   const navigate = useNavigate();
-  const { matchedProfiles: localMatches, setMatchedProfiles: setContextMatchedProfiles, updateConnectsCount } = useMatches();
+  const { setMatchedProfiles: setContextMatchedProfiles, updateConnectsCount } = useMatches();
   const { userInfo, isReady } = useWebApp();
   const [matchedProfiles, setMatchedProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +68,7 @@ const NetworkList = () => {
 
     const fetchMatches = async () => {
       if (!userInfo?.id) {
-        setMatchedProfiles(localMatches);
+        setMatchedProfiles([]);
         setLoading(false);
         return;
       }
@@ -96,74 +96,20 @@ const NetworkList = () => {
           // Также обновляем connectsCount напрямую
           updateConnectsCount(userInfo.id);
         } else {
-          // Fallback на мок данные если бэкенд недоступен
-          if (localMatches.length === 0) {
-            setMatchedProfiles([
-              {
-                id: 101,
-                userId: 101,
-                name: 'Екатерина',
-                age: 23,
-                city: 'Москва',
-                university: 'МГУ им. М.В. Ломоносова',
-                bio: 'Студентка, увлекаюсь дизайном и маркетингом. Ищу единомышленников для совместных проектов и обмена опытом.',
-                interests: ['Дизайн', 'Маркетинг', 'SMM'],
-                photos: [],
-              },
-              {
-                id: 102,
-                userId: 102,
-                name: 'Артём',
-                age: 21,
-                city: 'Санкт-Петербург',
-                university: 'СПбГУ',
-                bio: 'Разработчик, интересуюсь машинным обучением и AI. Ищу команду для интересных проектов и хакатонов.',
-                interests: ['IT', 'Программирование', 'Наука'],
-                photos: [],
-              },
-            ]);
-          } else {
-            setMatchedProfiles(localMatches);
-          }
+          // Бэкенд недоступен — показываем пустой список
+          setMatchedProfiles([]);
         }
       } catch (error) {
         console.error('Error fetching matches:', error);
-        // Fallback на мок данные при ошибке
-        if (localMatches.length === 0) {
-          setMatchedProfiles([
-            {
-              id: 101,
-              userId: 101,
-              name: 'Екатерина',
-              age: 23,
-              city: 'Москва',
-              university: 'МГУ им. М.В. Ломоносова',
-              bio: 'Студентка, увлекаюсь дизайном и маркетингом. Ищу единомышленников для совместных проектов и обмена опытом.',
-              interests: ['Дизайн', 'Маркетинг', 'SMM'],
-              photos: [],
-            },
-            {
-              id: 102,
-              userId: 102,
-              name: 'Артём',
-              age: 21,
-              city: 'Санкт-Петербург',
-              university: 'СПбГУ',
-              bio: 'Разработчик, интересуюсь машинным обучением и AI. Ищу команду для интересных проектов и хакатонов.',
-              interests: ['IT', 'Программирование', 'Наука'],
-              photos: [],
-            },
-          ]);
-        } else {
-          setMatchedProfiles(localMatches);
-        }
+        // При ошибке показываем пустой список
+        setMatchedProfiles([]);
       } finally {
         setLoading(false);
       }
     };
     
     fetchMatches();
-  }, [userInfo, localMatches, checkingProfile]);
+  }, [userInfo, checkingProfile, setContextMatchedProfiles, updateConnectsCount]);
 
 
   if (checkingProfile || loading) {
