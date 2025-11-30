@@ -13,7 +13,55 @@ import NotFound from './pages/NotFound';
 import OnboardingMainGoal from './components/OnboardingMainGoal';
 
 function App() {
-  const { isReady, backgroundLoaded } = useWebApp();
+  const { isReady } = useWebApp();
+  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
+
+  // Агрессивная предзагрузка фонового изображения
+  useEffect(() => {
+    let isMounted = true;
+    
+    // Создаем изображение с максимальным приоритетом
+    const img = new Image();
+    img.src = '/assets/stuff/background.jpg';
+    if (img.fetchPriority !== undefined) {
+      img.fetchPriority = 'high';
+    }
+    
+    // Пытаемся загрузить сразу
+    img.onload = () => {
+      if (isMounted) {
+        setBackgroundLoaded(true);
+      }
+    };
+    img.onerror = () => {
+      // Если не загрузилось, все равно показываем приложение
+      if (isMounted) {
+        setBackgroundLoaded(true);
+      }
+    };
+    
+    // Дополнительная попытка через небольшую задержку
+    const timeoutId = setTimeout(() => {
+      if (isMounted && !img.complete) {
+        const img2 = new Image();
+        img2.src = '/assets/stuff/background.jpg';
+        if (img2.fetchPriority !== undefined) {
+          img2.fetchPriority = 'high';
+        }
+        img2.onload = () => {
+          if (isMounted) setBackgroundLoaded(true);
+        };
+        img2.onerror = () => {
+          if (isMounted) setBackgroundLoaded(true);
+        };
+      }
+    }, 50);
+    
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, []);
 
   if (!isReady) {
     return <Loader />;

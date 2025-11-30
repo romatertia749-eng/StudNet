@@ -15,7 +15,6 @@ export const WebAppProvider = ({ children }) => {
   const [webApp, setWebApp] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
   const [isReady, setIsReady] = useState(false);
-  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
   const [token, setToken] = useState(null);
   const [mainGoal, setMainGoalState] = useState(null);
   const [hasCompletedOnboarding, setHasCompletedOnboardingState] = useState(false);
@@ -53,62 +52,6 @@ export const WebAppProvider = ({ children }) => {
     localStorage.setItem('mn_hasCompletedProfile', value.toString());
   };
 
-  // Загрузка фонового изображения
-  useEffect(() => {
-    let isMounted = true;
-    
-    // Создаем изображение с максимальным приоритетом
-    const img = new Image();
-    img.src = '/assets/stuff/background.jpg';
-    if (img.fetchPriority !== undefined) {
-      img.fetchPriority = 'high';
-    }
-    
-    // Пытаемся загрузить сразу
-    img.onload = () => {
-      if (isMounted) {
-        // Небольшая задержка для полного рендеринга
-        setTimeout(() => {
-          if (isMounted) {
-            setBackgroundLoaded(true);
-          }
-        }, 50);
-      }
-    };
-    img.onerror = () => {
-      // Если не загрузилось, все равно показываем приложение
-      if (isMounted) {
-        setBackgroundLoaded(true);
-      }
-    };
-    
-    // Дополнительная попытка через небольшую задержку
-    const timeoutId = setTimeout(() => {
-      if (isMounted && !img.complete) {
-        const img2 = new Image();
-        img2.src = '/assets/stuff/background.jpg';
-        if (img2.fetchPriority !== undefined) {
-          img2.fetchPriority = 'high';
-        }
-        img2.onload = () => {
-          if (isMounted) {
-            setTimeout(() => {
-              if (isMounted) setBackgroundLoaded(true);
-            }, 50);
-          }
-        };
-        img2.onerror = () => {
-          if (isMounted) setBackgroundLoaded(true);
-        };
-      }
-    }, 50);
-    
-    return () => {
-      isMounted = false;
-      clearTimeout(timeoutId);
-    };
-  }, []);
-
   useEffect(() => {
     const initTelegram = async () => {
       // Проверяем наличие Telegram Web App API
@@ -132,8 +75,7 @@ export const WebAppProvider = ({ children }) => {
           console.warn('initDataUnsafe.user is missing, userInfo will be null');
         }
         
-        // Показываем приложение только после загрузки фона
-        // Проверка будет в условии рендера
+        // Показываем приложение сразу, не дожидаясь авторизации
         
         // Авторизация выполняется асинхронно в фоне
         if (initData) {
@@ -173,10 +115,8 @@ export const WebAppProvider = ({ children }) => {
         };
         console.log('Setting mock userInfo:', mockUserInfo);
         setUserInfo(mockUserInfo);
+        setIsReady(true);
       }
-      
-      // Устанавливаем isReady после инициализации Telegram
-      setIsReady(true);
     };
 
     initTelegram();
@@ -194,14 +134,10 @@ export const WebAppProvider = ({ children }) => {
     }
   };
 
-  // Приложение готово только когда и Telegram инициализирован, И фон загружен
-  const isFullyReady = isReady && backgroundLoaded;
-
   const value = {
     webApp,
     userInfo,
-    isReady: isFullyReady,
-    backgroundLoaded,
+    isReady,
     token,
     mainGoal,
     hasCompletedOnboarding,
