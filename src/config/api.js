@@ -12,6 +12,8 @@ export const API_ENDPOINTS = {
   LIKE_PROFILE: (id) => `${API_BASE_URL}/api/profiles/${id}/like`,
   PASS_PROFILE: (id) => `${API_BASE_URL}/api/profiles/${id}/pass`,
   MATCHES: `${API_BASE_URL}/api/matches`,
+  INCOMING_LIKES: `${API_BASE_URL}/api/profiles/incoming-likes`,
+  RESPOND_TO_LIKE: `${API_BASE_URL}/api/likes/respond`,
 };
 
 // Функция для формирования полного URL фотографии

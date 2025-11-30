@@ -26,6 +26,13 @@ const Profiles = () => {
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [showSwipeTutorial, setShowSwipeTutorial] = useState(false);
   
+  // Состояние для вкладок
+  const [activeTab, setActiveTab] = useState('all');
+  const [incomingLikes, setIncomingLikes] = useState([]);
+  const [loadingIncoming, setLoadingIncoming] = useState(false);
+  const [incomingError, setIncomingError] = useState(null);
+  const [showIncomingTip, setShowIncomingTip] = useState(false);
+  
   /**
    * АРХИТЕКТУРА УПРАВЛЕНИЯ ЭФФЕКТАМИ:
    * 
@@ -236,6 +243,72 @@ const Profiles = () => {
     };
   }, [showSwipeTutorial]);
 
+  // Загрузка входящих лайков при переключении на вкладку
+  const fetchIncomingLikes = async () => {
+    if (!userInfo?.id) return;
+    
+    setLoadingIncoming(true);
+    setIncomingError(null);
+    
+    try {
+      const response = await fetchWithAuth(API_ENDPOINTS.INCOMING_LIKES);
+      if (response.ok) {
+        const data = await response.json();
+        const profiles = Array.isArray(data.content) ? data.content : (Array.isArray(data) ? data : []);
+        
+        const processedProfiles = profiles.map(profile => {
+          let interestsArray = [];
+          if (profile.interests) {
+            if (Array.isArray(profile.interests)) {
+              interestsArray = profile.interests;
+            } else if (typeof profile.interests === 'string') {
+              try { interestsArray = JSON.parse(profile.interests); } catch (e) { interestsArray = []; }
+            }
+          }
+          
+          let goalsArray = [];
+          if (profile.goals) {
+            if (Array.isArray(profile.goals)) {
+              goalsArray = profile.goals;
+            } else if (typeof profile.goals === 'string') {
+              try { goalsArray = JSON.parse(profile.goals); } catch (e) { goalsArray = []; }
+            }
+          }
+          
+          return {
+            ...profile,
+            interests: interestsArray,
+            goals: goalsArray,
+            photos: profile.photo_url ? [getPhotoUrl(profile.photo_url)] : []
+          };
+        });
+        
+        setIncomingLikes(processedProfiles);
+        
+        // Показываем подсказку только первый раз
+        const hasSeenIncomingTip = localStorage.getItem('maxnet_incoming_tip_seen');
+        if (!hasSeenIncomingTip && processedProfiles.length > 0) {
+          setShowIncomingTip(true);
+        }
+      } else {
+        setIncomingError('Не удалось загрузить');
+      }
+    } catch (error) {
+      console.error('Error fetching incoming likes:', error);
+      setIncomingError('Ошибка загрузки');
+    } finally {
+      setLoadingIncoming(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'incoming' && isReady && userInfo?.id) {
+      fetchIncomingLikes();
+      setCurrentIndex(0);
+      setSwipedProfiles([]);
+    }
+  }, [activeTab, isReady, userInfo?.id]);
+
   // Загрузка профилей с бэкенда
   useEffect(() => {
     // Не загружаем профили, пока WebApp не готов или проверяем профиль
@@ -403,7 +476,9 @@ const Profiles = () => {
     [filteredProfiles, swipedProfiles]
   );
 
-  const currentProfile = availableProfiles[currentIndex];
+  // Профили для текущей вкладки
+  const currentProfiles = activeTab === 'incoming' ? incomingLikes : availableProfiles;
+  const currentProfile = currentProfiles[currentIndex];
 
   // Сброс индекса и очистка свайпов при изменении фильтров
   useEffect(() => {
@@ -463,100 +538,122 @@ const Profiles = () => {
   };
 
   const handleLike = async () => {
-    // Защита от повторных вызовов - предотвращает двойное пролистывание
     if (isProcessingSwipe.current || isEffectActive || !currentProfile) return;
-    
-    // Блокируем повторные вызовы
     isProcessingSwipe.current = true;
     
     let isMatched = false;
     
-    // Отправляем запрос на бэкенд только если есть userInfo
     if (userInfo?.id) {
-    try {
-      const response = await fetch(API_ENDPOINTS.LIKE_PROFILE(currentProfile.id), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: userInfo.id }),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.matched) {
-            isMatched = true;
-          alert('Вы замэтчились!');
+      try {
+        if (activeTab === 'incoming') {
+          // Для входящих лайков используем respond endpoint
+          const response = await fetchWithAuth(API_ENDPOINTS.RESPOND_TO_LIKE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              targetUserId: currentProfile.user_id || currentProfile.id,
+              action: 'accept'
+            }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            isMatched = true; // При accept всегда мэтч
+            // Удаляем из входящих
+            setIncomingLikes(prev => prev.filter(p => p.id !== currentProfile.id));
+          }
+        } else {
+          // Обычный лайк
+          const response = await fetch(API_ENDPOINTS.LIKE_PROFILE(currentProfile.id), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userInfo.id }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.matched) isMatched = true;
+          }
         }
-      }
-    } catch (error) {
-      console.error('Error liking profile:', error);
-      // Продолжаем работу даже при ошибке
+      } catch (error) {
+        console.error('Error liking profile:', error);
       }
     }
     
-    // Добавляем в мэтчи только если был мэтч или если нет userInfo (для моковых данных)
-    if (isMatched || !userInfo?.id) {
-    addMatch(currentProfile);
+    if (isMatched) {
+      addMatch(currentProfile);
+      alert('Вы замэтчились! 🎉');
+    } else if (!userInfo?.id) {
+      addMatch(currentProfile);
     }
     
-    // Добавляем в свайпы
-    setSwipedProfiles(prev => [...prev, currentProfile.id]);
+    if (activeTab !== 'incoming') {
+      setSwipedProfiles(prev => [...prev, currentProfile.id]);
+    }
     
-    // Вычисляем следующий индекс на основе текущего состояния
+    const profilesLength = activeTab === 'incoming' 
+      ? incomingLikes.length - 1 
+      : availableProfiles.length;
+    
     setCurrentIndex(prevIndex => {
-      const nextIndex = prevIndex < availableProfiles.length - 1 
-        ? prevIndex + 1 
-        : 0;
+      const nextIndex = prevIndex < profilesLength - 1 ? prevIndex + 1 : 0;
       
-      // Активируем эффект неонового хвоста (направление "right")
       setIsEffectActive(true);
       setEffectDirection('right');
       setLastSwipeDirection('right');
-      setPendingIndexChange(nextIndex);
+      setPendingIndexChange(activeTab === 'incoming' ? Math.min(prevIndex, Math.max(0, profilesLength - 2)) : nextIndex);
       
-      return prevIndex; // Не меняем индекс сразу, ждем завершения эффекта
+      return prevIndex;
     });
   };
 
   const handlePass = async () => {
-    // Защита от повторных вызовов - предотвращает двойное пролистывание
     if (isProcessingSwipe.current || isEffectActive || !currentProfile) return;
-    
-    // Блокируем повторные вызовы
     isProcessingSwipe.current = true;
     
-    // Отправляем запрос на бэкенд только если есть userInfo
     if (userInfo?.id) {
-    try {
-      await fetch(API_ENDPOINTS.PASS_PROFILE(currentProfile.id), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: userInfo.id }),
-      });
-    } catch (error) {
-      console.error('Error passing profile:', error);
-      // Продолжаем работу даже при ошибке
+      try {
+        if (activeTab === 'incoming') {
+          // Для входящих лайков используем respond с decline
+          await fetchWithAuth(API_ENDPOINTS.RESPOND_TO_LIKE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              targetUserId: currentProfile.user_id || currentProfile.id,
+              action: 'decline'
+            }),
+          });
+          // Удаляем из входящих
+          setIncomingLikes(prev => prev.filter(p => p.id !== currentProfile.id));
+        } else {
+          await fetch(API_ENDPOINTS.PASS_PROFILE(currentProfile.id), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userInfo.id }),
+          });
+        }
+      } catch (error) {
+        console.error('Error passing profile:', error);
       }
     }
     
-    setSwipedProfiles(prev => [...prev, currentProfile.id]);
+    if (activeTab !== 'incoming') {
+      setSwipedProfiles(prev => [...prev, currentProfile.id]);
+    }
     
-    // Вычисляем следующий индекс на основе текущего состояния
+    const profilesLength = activeTab === 'incoming' 
+      ? incomingLikes.length - 1 
+      : availableProfiles.length;
+    
     setCurrentIndex(prevIndex => {
-      const nextIndex = prevIndex < availableProfiles.length - 1 
-        ? prevIndex + 1 
-        : 0;
+      const nextIndex = prevIndex < profilesLength - 1 ? prevIndex + 1 : 0;
       
-      // Активируем эффект распада на частицы (направление "left")
       setIsEffectActive(true);
       setEffectDirection('left');
       setLastSwipeDirection('left');
-      setPendingIndexChange(nextIndex);
+      setPendingIndexChange(activeTab === 'incoming' ? Math.min(prevIndex, Math.max(0, profilesLength - 2)) : nextIndex);
       
-      return prevIndex; // Не меняем индекс сразу, ждем завершения эффекта
+      return prevIndex;
     });
   };
 
@@ -767,7 +864,51 @@ const Profiles = () => {
   return (
     <div className="min-w-[320px] max-w-md w-full mx-auto p-3 md:p-4 pb-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
       <div className="space-y-3 md:space-y-4 mt-2 md:mt-4">
-        {/* Фильтры */}
+        {/* Таб-контрол */}
+        <div className="flex gap-2 p-1 bg-white/10 backdrop-blur-md rounded-xl border border-white/30">
+          <button
+            onClick={() => {
+              setActiveTab('all');
+              setCurrentIndex(0);
+            }}
+            className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+              activeTab === 'all'
+                ? 'bg-white/30 text-gray-900'
+                : 'text-gray-700 hover:bg-white/10'
+            }`}
+            style={activeTab === 'all' ? {
+              boxShadow: '0 0 12px rgba(0, 255, 255, 0.4), inset 0 -2px 0 rgba(0, 255, 255, 0.6)',
+            } : {}}
+          >
+            Все анкеты
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('incoming');
+              setCurrentIndex(0);
+            }}
+            className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all relative ${
+              activeTab === 'incoming'
+                ? 'bg-white/30 text-gray-900'
+                : 'text-gray-700 hover:bg-white/10'
+            }`}
+            style={activeTab === 'incoming' ? {
+              boxShadow: '0 0 12px rgba(0, 255, 255, 0.4), inset 0 -2px 0 rgba(0, 255, 255, 0.6)',
+            } : {}}
+          >
+            Лайкнули тебя
+            {incomingLikes.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-cyan-400 text-white text-xs font-bold rounded-full flex items-center justify-center px-1 shadow-lg"
+                style={{ boxShadow: '0 0 8px rgba(0, 255, 255, 0.6)' }}
+              >
+                {incomingLikes.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Фильтры (только для вкладки "Все анкеты") */}
+        {activeTab === 'all' && (
         <Card>
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-800">Анкеты</h2>
@@ -847,6 +988,65 @@ const Profiles = () => {
             </div>
           )}
         </Card>
+        )}
+
+        {/* Подсказка для вкладки входящих */}
+        {activeTab === 'incoming' && showIncomingTip && (
+          <div className="p-3 bg-cyan-400/20 backdrop-blur-md rounded-xl border border-cyan-400/40 text-sm text-gray-800">
+            <div className="flex justify-between items-start gap-2">
+              <p>💡 Эти люди уже лайкнули тебя! Свайп вправо — Connect, влево — пропустить.</p>
+              <button 
+                onClick={() => {
+                  setShowIncomingTip(false);
+                  localStorage.setItem('maxnet_incoming_tip_seen', 'true');
+                }}
+                className="text-gray-500 hover:text-gray-700 text-lg leading-none"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Загрузка входящих лайков */}
+        {activeTab === 'incoming' && loadingIncoming && (
+          <Card>
+            <p className="text-center text-gray-800 font-medium py-8">Загрузка...</p>
+          </Card>
+        )}
+
+        {/* Ошибка загрузки входящих */}
+        {activeTab === 'incoming' && incomingError && !loadingIncoming && (
+          <Card>
+            <div className="text-center py-8">
+              <p className="text-gray-800 font-medium mb-4">{incomingError}</p>
+              <button
+                onClick={fetchIncomingLikes}
+                className="px-4 py-2 bg-cyan-400/30 text-gray-900 rounded-lg border border-cyan-400/50"
+                style={{ boxShadow: '0 0 10px rgba(0, 255, 255, 0.3)' }}
+              >
+                Повторить
+              </button>
+            </div>
+          </Card>
+        )}
+
+        {/* Пустой стейт для входящих */}
+        {activeTab === 'incoming' && !loadingIncoming && !incomingError && incomingLikes.length === 0 && (
+          <Card>
+            <div className="text-center py-8">
+              <p className="text-4xl mb-3">✨</p>
+              <p className="text-gray-800 font-medium mb-4">Все входящие лайки разобраны!</p>
+              <button
+                onClick={() => setActiveTab('all')}
+                className="px-4 py-2 bg-cyan-400/30 text-gray-900 rounded-lg border border-cyan-400/50"
+                style={{ boxShadow: '0 0 10px rgba(0, 255, 255, 0.3)' }}
+              >
+                Вернуться к анкетам
+              </button>
+            </div>
+          </Card>
+        )}
 
         {/* Эффект-оверлей: отображается поверх карточки во время анимации */}
         {isEffectActive && effectDirection && (
@@ -859,7 +1059,7 @@ const Profiles = () => {
         {/* Карточка профиля с плавной анимацией появления через Framer Motion */}
         {/* GLOW-АНИМАЦИЯ: после завершения эффекта карточка появляется с неоновой подсветкой */}
         <AnimatePresence mode="wait">
-          {currentProfile && (
+          {currentProfile && (activeTab === 'all' || (activeTab === 'incoming' && !loadingIncoming && !incomingError)) && (
             <motion.div
               key={currentProfile.id}
               ref={cardRef}
