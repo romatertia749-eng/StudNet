@@ -43,6 +43,9 @@ const Header = () => {
             src="/assets/stuff/logo.png"
             alt="Logo"
             className="h-24 md:h-28 w-auto object-contain"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
           />
         </button>
 

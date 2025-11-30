@@ -5,6 +5,10 @@
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
+    <!-- DNS prefetch для быстрой загрузки внешних ресурсов -->
+    <link rel="dns-prefetch" href="https://telegram.org" />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <meta
       name="description"
       content="Telegram Networking App - мини-приложение для нетворкинга"
@@ -15,9 +19,14 @@
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
     -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <!-- Preload критически важные ресурсы для быстрой загрузки -->
+    <link rel="preload" href="%PUBLIC_URL%/assets/stuff/background.jpg" as="image" fetchpriority="high" />
+    <link rel="preload" href="%PUBLIC_URL%/assets/stuff/logo.png" as="image" />
+    <!-- Оптимизация шрифтов: используем font-display=swap для быстрой загрузки -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=La+Bamba&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=La+Bamba&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=La+Bamba&display=swap" rel="stylesheet"></noscript>
     <!--
       Notice the use of %PUBLIC_URL% in the tags above.
       It will be replaced with the URL of the `public` folder during the build.

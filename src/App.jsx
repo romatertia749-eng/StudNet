@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useWebApp } from './contexts/WebAppContext';
 import Loader from './components/Loader';
 import Header from './components/Header';
@@ -13,6 +14,21 @@ import OnboardingMainGoal from './components/OnboardingMainGoal';
 
 function App() {
   const { isReady } = useWebApp();
+  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
+
+  // Предзагрузка фонового изображения
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/assets/stuff/background.jpg';
+    img.fetchPriority = 'high';
+    img.onload = () => {
+      setBackgroundLoaded(true);
+    };
+    img.onerror = () => {
+      // Если не загрузилось, все равно показываем приложение
+      setBackgroundLoaded(true);
+    };
+  }, []);
 
   if (!isReady) {
     return <Loader />;
@@ -25,27 +41,49 @@ function App() {
         style={{
           height: '100vh',
           minHeight: '100vh',
-          backgroundImage: 'url(/assets/stuff/background.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          // Убрали backgroundAttachment: 'fixed' - это вызывает рефлоу при каждом скролле
-          // Вместо этого используем статичный фон для лучшей производительности
+          position: 'relative',
         }}
       >
-        {/* Затемнение для лучшей читаемости контента - оптимизировано для скролла */}
+        {/* Placeholder градиент пока грузится фон */}
+        {!backgroundLoaded && (
+          <div 
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              zIndex: 0,
+            }}
+          />
+        )}
+        
+        {/* Фоновое изображение с оптимизацией загрузки */}
+        <img
+          src="/assets/stuff/background.jpg"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{
+            opacity: backgroundLoaded ? 1 : 0,
+            transition: 'opacity 0.3s ease-in-out',
+            zIndex: 0,
+            willChange: 'opacity',
+          }}
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+        />
+        
+        {/* Затемнение для лучшей читаемости контента */}
         <div 
           className="absolute inset-0 bg-white/20 pointer-events-none"
           style={{
-            // Убрали backdrop-blur для лучшей производительности при скролле
-            // Используем только opacity для затемнения
-            willChange: 'auto', // Не нужно GPU ускорение для статичного элемента
+            zIndex: 1,
+            willChange: 'auto',
           }}
-        ></div>
+        />
         <Header />
         <main 
-          className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto -webkit-overflow-scrolling-touch pb-20 md:pb-20 relative z-10"
+          className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto -webkit-overflow-scrolling-touch pb-20 md:pb-20 relative"
           style={{
+            zIndex: 2,
             // Оптимизация для плавного скролла
             willChange: 'scroll-position',
             // Включаем аппаратное ускорение для прокручиваемого контента

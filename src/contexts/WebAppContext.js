@@ -75,32 +75,35 @@ export const WebAppProvider = ({ children }) => {
           console.warn('initDataUnsafe.user is missing, userInfo will be null');
         }
         
-        // Send initData to backend for validation and JWT token
-        if (initData) {
-          try {
-            const response = await fetch(`${API_ENDPOINTS.AUTH || 'http://localhost:8080/api/auth'}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `tma ${initData}`
-              }
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              setToken(data.token);
-              localStorage.setItem('token', data.token);
-              localStorage.setItem('user_id', data.user_id);
-              console.log('Authentication successful, token saved');
-            } else {
-              console.error('Authentication failed:', await response.text());
-            }
-          } catch (error) {
-            console.error('Error authenticating with backend:', error);
-          }
-        }
-        
+        // Показываем приложение сразу, не дожидаясь авторизации
         setIsReady(true);
+        
+        // Авторизация выполняется асинхронно в фоне
+        if (initData) {
+          fetch(`${API_ENDPOINTS.AUTH || 'http://localhost:8080/api/auth'}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `tma ${initData}`
+            }
+          })
+          .then(response => {
+            if (response.ok) {
+              return response.json();
+            } else {
+              throw new Error('Authentication failed');
+            }
+          })
+          .then(data => {
+            setToken(data.token);
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user_id', data.user_id);
+            console.log('Authentication successful, token saved');
+          })
+          .catch(error => {
+            console.error('Error authenticating with backend:', error);
+          });
+        }
       } else {
         // For development without Telegram - use mock data
         console.warn('Telegram Web App не обнаружен. Используются моковые данные.');
