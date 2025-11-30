@@ -1,10 +1,79 @@
-import { useState, useEffect, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { useMatches } from '../contexts/MatchContext';
 import { useWebApp } from '../contexts/WebAppContext';
 import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
+
+// Мемоизированная карточка профиля для предотвращения лишних ре-рендеров при скролле
+const MatchCard = memo(({ person, onViewProfile, onMessage }) => (
+  <div 
+    className="p-4 rounded-2xl bg-white/20 border border-white/30"
+    style={{ contain: 'layout style paint' }}
+  >
+    <div className="flex items-start gap-3 mb-3">
+      {person.photos && person.photos.length > 0 && person.photos[0] ? (
+        <img
+          src={person.photos[0]}
+          alt={person.name}
+          className="w-16 h-16 rounded-full object-cover flex-shrink-0"
+          loading="lazy"
+          decoding="async"
+          onError={(e) => {
+            e.target.style.display = 'none';
+          }}
+        />
+      ) : (
+        <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0 border border-white/40">
+          <span className="text-2xl">👤</span>
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <h3 className="font-semibold text-gray-800 mb-1">{person.name}, {person.age}</h3>
+        <p className="text-xs text-gray-500 mb-2">{person.city} • {person.university}</p>
+        <p className="text-sm text-gray-800 leading-relaxed line-clamp-2">{person.bio}</p>
+        {person.interests && person.interests.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {person.interests.slice(0, 3).map((interest, index) => (
+              <span
+                key={index}
+                className="px-2 py-0.5 bg-white/20 text-teal-700 rounded text-xs border border-white/40"
+              >
+                {interest}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+
+    <div className="flex flex-col gap-2">
+      <Button
+        variant="secondary"
+        onClick={() => onViewProfile(person.id)}
+        className="w-full text-sm py-2 min-h-[40px]"
+      >
+        Посмотреть профиль
+      </Button>
+      {person.username ? (
+        <Button
+          variant="primary"
+          onClick={() => onMessage(person.username)}
+          className="w-full text-sm py-2 min-h-[40px]"
+        >
+          💬 Написать
+        </Button>
+      ) : (
+        <p className="text-xs text-gray-500 text-center py-2">
+          Username не указан
+        </p>
+      )}
+    </div>
+  </div>
+));
+
+MatchCard.displayName = 'MatchCard';
 
 const NetworkList = () => {
   const navigate = useNavigate();
@@ -111,6 +180,32 @@ const NetworkList = () => {
     fetchMatches();
   }, [userInfo, checkingProfile, setContextMatchedProfiles, updateConnectsCount]);
 
+  // Мемоизированные обработчики для предотвращения пересоздания при каждом рендере
+  const handleViewProfile = useCallback((id) => {
+    navigate(`/profiles/${id}`);
+  }, [navigate]);
+
+  const handleMessage = useCallback((username) => {
+    const cleanUsername = username.replace('@', '').trim();
+    if (cleanUsername) {
+      window.open(`https://t.me/${cleanUsername}`, '_blank');
+    } else {
+      alert('Username не указан');
+    }
+  }, []);
+
+  // Мемоизированный список карточек
+  const renderedCards = useMemo(() => 
+    matchedProfiles.map((person) => (
+      <MatchCard 
+        key={person.id} 
+        person={person} 
+        onViewProfile={handleViewProfile}
+        onMessage={handleMessage}
+      />
+    )), 
+    [matchedProfiles, handleViewProfile, handleMessage]
+  );
 
   if (checkingProfile || loading) {
     return (
@@ -138,86 +233,11 @@ const NetworkList = () => {
               Начните знакомиться!
             </p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {matchedProfiles.map((person) => (
-                <Card key={person.id} className="bg-white/20 backdrop-blur-xl border-emerald-200/50" style={{ willChange: 'auto' }}>
-                  <div className="flex items-start gap-3 mb-3">
-                    {person.photos && person.photos.length > 0 && person.photos[0] ? (
-                      <img
-                        src={person.photos[0]}
-                        alt={person.name}
-                        className="w-16 h-16 rounded-full object-cover flex-shrink-0"
-                        loading="lazy"
-                        decoding="async"
-                        style={{ willChange: 'auto' }}
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div 
-                        className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0 border border-white/40" 
-                        style={{ 
-                          // Оптимизация: убираем backdrop-blur для элементов в списке при скролле
-                          willChange: 'auto',
-                        }}
-                      >
-                        <span className="text-2xl">👤</span>
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-800 mb-1">{person.name}, {person.age}</h3>
-                      <p className="text-xs text-gray-500 mb-2">{person.city} • {person.university}</p>
-                      <p className="text-sm text-gray-800 leading-relaxed">{person.bio}</p>
-                      {person.interests && person.interests.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {person.interests.slice(0, 3).map((interest, index) => (
-                            <span
-                              key={index}
-                              className="px-2 py-0.5 bg-white/20 text-teal-700 rounded text-xs border border-white/40"
-                            >
-                              {interest}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => navigate(`/profiles/${person.id}`)}
-                      className="w-full text-sm py-2 min-h-[40px]"
-                    >
-                      Посмотреть профиль
-                    </Button>
-                    {person.username ? (
-                      <Button
-                        variant="primary"
-                        onClick={() => {
-                          // Открываем Telegram по username
-                          // Убираем @ если есть, и формируем ссылку
-                          const cleanUsername = person.username.replace('@', '').trim();
-                          if (cleanUsername) {
-                            const telegramUrl = `https://t.me/${cleanUsername}`;
-                            window.open(telegramUrl, '_blank');
-                          } else {
-                            alert('Username не указан');
-                          }
-                        }}
-                        className="w-full text-sm py-2 min-h-[40px]"
-                      >
-                        💬 Написать
-                      </Button>
-                    ) : (
-                      <p className="text-xs text-gray-500 text-center py-2">
-                        Username не указан
-                      </p>
-                    )}
-                  </div>
-                </Card>
-              ))}
+            <div 
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+              style={{ contain: 'layout style' }}
+            >
+              {renderedCards}
             </div>
           )}
         </Card>
