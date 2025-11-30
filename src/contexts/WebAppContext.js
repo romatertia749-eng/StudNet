@@ -76,6 +76,7 @@ export const WebAppProvider = ({ children }) => {
         }
         
         // Показываем приложение сразу, не дожидаясь авторизации
+        setIsReady(true);
         
         // Авторизация выполняется асинхронно в фоне
         if (initData) {
