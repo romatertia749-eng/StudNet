@@ -94,6 +94,28 @@ def check_profile_exists(user_id: int, db: Session = Depends(get_db)):
     profile = profile_service.get_profile_by_user_id(db, user_id)
     return {"exists": profile is not None}
 
+@router.get("/incoming-likes", response_model=PageResponse)
+def get_incoming_likes(
+    user_id: Optional[int] = None,
+    page: int = 0,
+    size: int = 20,
+    db: Session = Depends(get_db)
+):
+    """Получает профили людей, которые лайкнули текущего пользователя"""
+    if user_id is None:
+        raise HTTPException(status_code=400, detail="Параметр user_id обязателен")
+    
+    try:
+        result = profile_service.get_incoming_likes(
+            db=db,
+            user_id=user_id,
+            page=page,
+            size=size
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении входящих лайков: {str(e)}")
+
 @router.get("/user/{user_id}", response_model=ProfileResponse)
 def get_profile_by_user_id(user_id: int, db: Session = Depends(get_db)):
     """Получает профиль пользователя по user_id"""

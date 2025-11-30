@@ -251,7 +251,7 @@ const Profiles = () => {
     setIncomingError(null);
     
     try {
-      const response = await fetchWithAuth(API_ENDPOINTS.INCOMING_LIKES);
+      const response = await fetchWithAuth(`${API_ENDPOINTS.INCOMING_LIKES}?user_id=${userInfo.id}`);
       if (response.ok) {
         const data = await response.json();
         const profiles = Array.isArray(data.content) ? data.content : (Array.isArray(data) ? data : []);
@@ -552,7 +552,7 @@ const Profiles = () => {
       try {
         if (activeTab === 'incoming') {
           // Для входящих лайков используем respond endpoint
-          const response = await fetchWithAuth(API_ENDPOINTS.RESPOND_TO_LIKE, {
+          const response = await fetchWithAuth(`${API_ENDPOINTS.RESPOND_TO_LIKE}?user_id=${userInfo.id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -620,7 +620,7 @@ const Profiles = () => {
       try {
         if (activeTab === 'incoming') {
           // Для входящих лайков используем respond с decline
-          await fetchWithAuth(API_ENDPOINTS.RESPOND_TO_LIKE, {
+          await fetchWithAuth(`${API_ENDPOINTS.RESPOND_TO_LIKE}?user_id=${userInfo.id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -930,11 +930,13 @@ const Profiles = () => {
           </Card>
         )}
 
-        {/* Ошибка загрузки входящих */}
-        {activeTab === 'incoming' && incomingError && !loadingIncoming && (
+        {/* Ошибка загрузки входящих (реальная ошибка, не 404) */}
+        {activeTab === 'incoming' && (incomingError === 'load_error' || incomingError === 'network_error') && !loadingIncoming && (
           <Card>
             <div className="text-center py-8">
-              <p className="text-gray-800 font-medium mb-4">{incomingError}</p>
+              <p className="text-gray-800 font-medium mb-4">
+                {incomingError === 'network_error' ? 'Ошибка сети' : 'Не удалось загрузить'}
+              </p>
               <button
                 onClick={fetchIncomingLikes}
                 className="px-4 py-2 bg-cyan-400/30 text-gray-900 rounded-lg border border-cyan-400/50"
@@ -947,11 +949,19 @@ const Profiles = () => {
         )}
 
         {/* Пустой стейт для входящих */}
-        {activeTab === 'incoming' && !loadingIncoming && !incomingError && incomingLikes.length === 0 && (
+        {activeTab === 'incoming' && !loadingIncoming && incomingLikes.length === 0 && 
+         (incomingError === null || incomingError === 'not_implemented') && (
           <Card>
             <div className="text-center py-8">
               <p className="text-4xl mb-3">✨</p>
-              <p className="text-gray-800 font-medium mb-4">Все входящие лайки разобраны!</p>
+              <p className="text-gray-800 font-medium mb-4">
+                {incomingError === 'not_implemented' 
+                  ? 'Функция скоро будет доступна!'
+                  : 'Пока никто не лайкнул тебя'}
+              </p>
+              {incomingError === 'not_implemented' && (
+                <p className="text-xs text-gray-500 mb-4">Эндпоинт ещё не реализован на бэкенде</p>
+              )}
               <button
                 onClick={() => setActiveTab('all')}
                 className="px-4 py-2 bg-cyan-400/30 text-gray-900 rounded-lg border border-cyan-400/50"

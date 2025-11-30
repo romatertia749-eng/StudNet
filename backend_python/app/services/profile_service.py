@@ -127,3 +127,64 @@ def get_profile_by_id(db: Session, profile_id: int) -> Optional[Profile]:
 def get_profile_by_user_id(db: Session, user_id: int) -> Optional[Profile]:
     return db.query(Profile).filter(Profile.user_id == user_id).first()
 
+def get_incoming_likes(
+    db: Session,
+    user_id: int,
+    page: int = 0,
+    size: int = 20
+) -> dict:
+    """Получает профили пользователей, которые лайкнули текущего, но он ещё не ответил"""
+    
+    # Находим профиль текущего пользователя
+    current_profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    if not current_profile:
+        return {
+            "content": [],
+            "total_elements": 0,
+            "total_pages": 0,
+            "size": size,
+            "number": page
+        }
+    
+    # Получаем user_id тех, кто лайкнул текущего пользователя
+    likers_query = db.query(Swipe.user_id).filter(
+        Swipe.target_profile_id == current_profile.id,
+        Swipe.action == 'like'
+    )
+    liker_user_ids = [row[0] for row in likers_query.all()]
+    
+    if not liker_user_ids:
+        return {
+            "content": [],
+            "total_elements": 0,
+            "total_pages": 0,
+            "size": size,
+            "number": page
+        }
+    
+    # Получаем ID профилей, на которые текущий пользователь уже ответил
+    responded_profile_ids = db.query(Swipe.target_profile_id).filter(
+        Swipe.user_id == user_id
+    ).distinct().all()
+    responded_profile_ids = [row[0] for row in responded_profile_ids]
+    
+    # Получаем профили лайкеров, исключая тех, на кого уже ответили
+    query = db.query(Profile).filter(
+        Profile.user_id.in_(liker_user_ids)
+    )
+    
+    if responded_profile_ids:
+        query = query.filter(~Profile.id.in_(responded_profile_ids))
+    
+    total = query.count()
+    profiles = query.offset(page * size).limit(size).all()
+    total_pages = math.ceil(total / size) if total > 0 else 0
+    
+    return {
+        "content": profiles,
+        "total_elements": total,
+        "total_pages": total_pages,
+        "size": size,
+        "number": page
+    }
+

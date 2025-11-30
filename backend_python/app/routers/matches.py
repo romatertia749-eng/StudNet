@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
-from app.schemas import LikeRequest, LikeResponse, PassResponse, MatchResponse
+from app.schemas import LikeRequest, LikeResponse, PassResponse, MatchResponse, RespondToLikeRequest
 from app.services import match_service, profile_service
 from app.models import Match
 
@@ -52,6 +52,52 @@ def pass_profile(
         return PassResponse()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при обработке пропуска: {str(e)}")
+
+@router.post("/likes/respond", response_model=LikeResponse)
+def respond_to_like(
+    request: RespondToLikeRequest,
+    user_id: int = None,
+    db: Session = Depends(get_db)
+):
+    """Ответить на входящий лайк: accept (мэтч) или decline (пропустить)"""
+    # user_id берём из query params или из заголовка авторизации
+    # Для простоты пока берём из query
+    if user_id is None:
+        raise HTTPException(status_code=400, detail="Параметр user_id обязателен")
+    
+    try:
+        # Находим профиль того, кто лайкнул
+        target_profile = profile_service.get_profile_by_user_id(db, request.targetUserId)
+        if not target_profile:
+            raise HTTPException(status_code=404, detail="Профиль не найден")
+        
+        if request.action == 'accept':
+            # Accept = лайк в ответ, что создаст мэтч
+            matched, match_id = match_service.like_profile(
+                db=db,
+                user_id=user_id,
+                target_profile_id=target_profile.id
+            )
+            return LikeResponse(
+                matched=matched,
+                match_id=match_id,
+                message="Вы замэтчились!" if matched else "Лайк отправлен"
+            )
+        else:
+            # Decline = pass
+            match_service.pass_profile(
+                db=db,
+                user_id=user_id,
+                target_profile_id=target_profile.id
+            )
+            return LikeResponse(
+                matched=False,
+                message="Пропущено"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при ответе на лайк: {str(e)}")
 
 @router.get("/matches", response_model=List[MatchResponse])
 def get_matches(user_id: int, db: Session = Depends(get_db)):

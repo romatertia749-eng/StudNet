@@ -39,6 +39,10 @@ class LikeResponse(BaseModel):
 class PassResponse(BaseModel):
     message: str = "Пропущено"
 
+class RespondToLikeRequest(BaseModel):
+    targetUserId: int
+    action: str = Field(..., pattern="^(accept|decline)$")
+
 class MatchResponse(BaseModel):
     id: int
     matched_profile: Optional[ProfileResponse] = None
