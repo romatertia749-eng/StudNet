@@ -13,12 +13,17 @@
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;
+    /* Оптимизация: touch-action для лучшей производительности жестов */
     touch-action: manipulation;
+    /* Предотвращаем лишние рефлоу при скролле */
+    box-sizing: border-box;
   }
 
   html {
     height: 100%;
     overflow-x: hidden;
+    /* Оптимизация: предотвращаем горизонтальный скролл */
+    overscroll-behavior-x: none;
   }
 
   body {
@@ -30,12 +35,19 @@
       sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Оптимизация: включаем нативный скролл на iOS */
     -webkit-overflow-scrolling: touch;
+    /* Оптимизация: предотвращаем bounce-эффект при достижении границ */
     overscroll-behavior-y: contain;
+    /* Оптимизация: убрали position: fixed - это ломало скролл в Telegram WebApp */
+    /* Скролл происходит внутри main контейнера, что обеспечивает лучшую производительность */
   }
 
   #root {
     min-height: 100vh;
     min-height: -webkit-fill-available;
+    /* Оптимизация: включаем GPU ускорение для корневого элемента */
+    transform: translateZ(0);
+    will-change: scroll-position;
   }
 }

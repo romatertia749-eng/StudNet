@@ -27,13 +27,31 @@ function App() {
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          backgroundAttachment: 'fixed'
+          // Убрали backgroundAttachment: 'fixed' - это вызывает рефлоу при каждом скролле
+          // Вместо этого используем статичный фон для лучшей производительности
         }}
       >
-        {/* Затемнение для лучшей читаемости контента */}
-        <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px] pointer-events-none"></div>
+        {/* Затемнение для лучшей читаемости контента - оптимизировано для скролла */}
+        <div 
+          className="absolute inset-0 bg-white/20 pointer-events-none"
+          style={{
+            // Убрали backdrop-blur для лучшей производительности при скролле
+            // Используем только opacity для затемнения
+            willChange: 'auto', // Не нужно GPU ускорение для статичного элемента
+          }}
+        ></div>
         <Header />
-        <main className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto -webkit-overflow-scrolling-touch pb-20 md:pb-4 relative z-10">
+        <main 
+          className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto -webkit-overflow-scrolling-touch pb-20 md:pb-4 relative z-10"
+          style={{
+            // Оптимизация для плавного скролла
+            willChange: 'scroll-position',
+            // Включаем аппаратное ускорение для прокручиваемого контента
+            transform: 'translateZ(0)',
+            // Предотвращаем лишние рефлоу
+            contain: 'layout style paint',
+          }}
+        >
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/home" element={<Home />} />

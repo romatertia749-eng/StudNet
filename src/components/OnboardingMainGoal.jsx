@@ -10,7 +10,10 @@ const OnboardingMainGoal = () => {
   const { setMainGoal, setHasCompletedOnboarding } = useWebApp();
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    // Оптимизация: используем requestAnimationFrame для плавной прокрутки
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    });
   }, []);
 
   const goals = [

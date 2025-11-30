@@ -528,10 +528,13 @@ const ProfileForm = () => {
 
           <Button
             variant="primary"
-            onClick={() => {
-              setViewMode(false);
-              window.scrollTo(0, 0);
-            }}
+              onClick={() => {
+                setViewMode(false);
+                // Оптимизация: используем requestAnimationFrame для плавной прокрутки
+                requestAnimationFrame(() => {
+                  window.scrollTo({ top: 0, behavior: 'instant' });
+                });
+              }}
             className="transform transition-all hover:scale-105 hover:shadow-xl"
           >
             Редактировать профиль
@@ -777,7 +780,10 @@ const ProfileForm = () => {
               type="button"
               variant="outline"
               onClick={() => {
-                window.scrollTo(0, 0);
+                // Оптимизация: используем requestAnimationFrame для плавной прокрутки
+                requestAnimationFrame(() => {
+                  window.scrollTo({ top: 0, behavior: 'instant' });
+                });
                 if (isEditing) {
                   // Если редактируем существующий профиль, возвращаемся к карточке
                   setViewMode(true);

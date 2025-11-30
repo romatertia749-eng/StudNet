@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -140,19 +140,28 @@ const NetworkList = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {matchedProfiles.map((person) => (
-                <Card key={person.id} className="bg-white/20 backdrop-blur-xl border-emerald-200/50">
+                <Card key={person.id} className="bg-white/20 backdrop-blur-xl border-emerald-200/50" style={{ willChange: 'auto' }}>
                   <div className="flex items-start gap-3 mb-3">
                     {person.photos && person.photos.length > 0 && person.photos[0] ? (
                       <img
                         src={person.photos[0]}
                         alt={person.name}
                         className="w-16 h-16 rounded-full object-cover flex-shrink-0"
+                        loading="lazy"
+                        decoding="async"
+                        style={{ willChange: 'auto' }}
                         onError={(e) => {
                           e.target.style.display = 'none';
                         }}
                       />
                     ) : (
-                      <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center flex-shrink-0 border border-white/40">
+                      <div 
+                        className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0 border border-white/40" 
+                        style={{ 
+                          // Оптимизация: убираем backdrop-blur для элементов в списке при скролле
+                          willChange: 'auto',
+                        }}
+                      >
                         <span className="text-2xl">👤</span>
                       </div>
                     )}
@@ -165,7 +174,7 @@ const NetworkList = () => {
                           {person.interests.slice(0, 3).map((interest, index) => (
                             <span
                               key={index}
-                              className="px-2 py-0.5 bg-white/20 backdrop-blur-md text-teal-700 rounded text-xs border border-white/40"
+                              className="px-2 py-0.5 bg-white/20 text-teal-700 rounded text-xs border border-white/40"
                             >
                               {interest}
                             </span>
