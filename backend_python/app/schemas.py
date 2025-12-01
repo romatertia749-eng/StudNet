@@ -4,7 +4,7 @@ from datetime import datetime
 
 class ProfileBase(BaseModel):
     name: str = Field(..., min_length=2)
-    gender: str = Field(..., pattern="^(male|female|other)$")
+    gender: str  # Валидация gender делается в роутере
     age: int = Field(..., ge=15, le=50)
     city: str
     university: str
@@ -14,6 +14,10 @@ class ProfileBase(BaseModel):
     username: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    
+    class Config:
+        # Отключаем строгую валидацию для более гибкой обработки
+        extra = "forbid"
 
 class ProfileCreate(ProfileBase):
     user_id: int

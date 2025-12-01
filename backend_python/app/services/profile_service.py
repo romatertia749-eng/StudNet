@@ -13,35 +13,43 @@ def create_or_update_profile(
     profile_data: ProfileCreate,
     photo: Optional[UploadFile] = None
 ) -> Profile:
-    existing = db.query(Profile).filter(Profile.user_id == user_id).first()
-    
-    if existing:
-        profile = existing
-    else:
-        profile = Profile()
-        profile.user_id = user_id
-    
-    profile.name = profile_data.name
-    profile.gender = profile_data.gender
-    profile.age = profile_data.age
-    profile.city = profile_data.city
-    profile.university = profile_data.university
-    profile.interests = profile_data.interests
-    profile.goals = profile_data.goals
-    profile.bio = profile_data.bio
-    profile.username = profile_data.username
-    profile.first_name = profile_data.first_name
-    profile.last_name = profile_data.last_name
-    
-    if photo:
-        photo_url = store_file(photo)
-        if photo_url:
-            profile.photo_url = photo_url
-    
-    db.add(profile)
-    db.commit()
-    db.refresh(profile)
-    return profile
+    try:
+        existing = db.query(Profile).filter(Profile.user_id == user_id).first()
+        
+        if existing:
+            profile = existing
+        else:
+            profile = Profile()
+            profile.user_id = user_id
+        
+        profile.name = profile_data.name.strip() if profile_data.name else profile_data.name
+        profile.gender = profile_data.gender
+        profile.age = profile_data.age
+        profile.city = profile_data.city.strip() if profile_data.city else profile_data.city
+        profile.university = profile_data.university.strip() if profile_data.university else profile_data.university
+        profile.interests = profile_data.interests
+        profile.goals = profile_data.goals
+        profile.bio = profile_data.bio.strip() if profile_data.bio else profile_data.bio
+        profile.username = profile_data.username.strip() if profile_data.username else profile_data.username
+        profile.first_name = profile_data.first_name.strip() if profile_data.first_name else profile_data.first_name
+        profile.last_name = profile_data.last_name.strip() if profile_data.last_name else profile_data.last_name
+        
+        # Валидация длины bio перед сохранением
+        if profile.bio and len(profile.bio) > 300:
+            raise ValueError("Описание не должно превышать 300 символов")
+        
+        if photo:
+            photo_url = store_file(photo)
+            if photo_url:
+                profile.photo_url = photo_url
+        
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+        return profile
+    except Exception as e:
+        db.rollback()
+        raise
 
 def get_available_profiles(
     db: Session,

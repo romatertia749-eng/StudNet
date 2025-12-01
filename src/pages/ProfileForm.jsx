@@ -241,6 +241,13 @@ const ProfileForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // Защита от повторной отправки
+    if (loading) {
+      console.log('Form is already submitting, ignoring duplicate submit');
+      return;
+    }
     
     console.log('=== PROFILE SUBMIT START ===');
     console.log('userInfo:', userInfo);
@@ -268,7 +275,7 @@ const ProfileForm = () => {
       return;
     }
 
-      console.log('Starting form submission...');
+    console.log('Starting form submission...');
     setLoading(true);
     
     // Проверяем доступность API перед отправкой
@@ -550,7 +557,7 @@ const ProfileForm = () => {
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           {isEditing ? 'Редактировать профиль' : 'Добавить мой профиль'}
         </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               {/* Имя */}
               <div>
                 <label className="block text-sm font-medium text-gray-800 mb-2">

@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import Optional
+from pydantic import ValidationError
 from app.database import get_db
 from app.schemas import ProfileCreate, ProfileResponse, PageResponse
 from app.services import profile_service
@@ -26,37 +28,87 @@ def create_profile(
     db: Session = Depends(get_db)
 ):
     try:
-        # Валидация
-        if len(name) < 2:
+        # Валидация базовых полей
+        if not name or len(name.strip()) < 2:
             raise HTTPException(status_code=400, detail="Имя должно содержать минимум 2 символа")
-        if age < 15 or age > 50:
+        if not isinstance(age, int) or age < 15 or age > 50:
             raise HTTPException(status_code=400, detail="Возраст должен быть от 15 до 50 лет")
         if gender not in ["male", "female", "other"]:
             raise HTTPException(status_code=400, detail="Неверное значение пола")
+        if not city or not city.strip():
+            raise HTTPException(status_code=400, detail="Город обязателен")
+        if not university or not university.strip():
+            raise HTTPException(status_code=400, detail="Университет обязателен")
         
-        profile_data = ProfileCreate(
-            user_id=user_id,
-            name=name,
-            gender=gender,
-            age=age,
-            city=city,
-            university=university,
-            interests=interests,
-            goals=goals,
-            bio=bio,
-            username=username,
-            first_name=first_name,
-            last_name=last_name
-        )
+        # Валидация bio длины
+        if bio and len(bio) > 300:
+            raise HTTPException(status_code=400, detail="Описание не должно превышать 300 символов")
         
-        profile = profile_service.create_or_update_profile(
-            db=db,
-            user_id=user_id,
-            profile_data=profile_data,
-            photo=photo
-        )
+        # Валидация и парсинг interests и goals
+        try:
+            if not interests or not interests.strip():
+                raise HTTPException(status_code=400, detail="Интересы обязательны")
+            parsed_interests = json.loads(interests) if isinstance(interests, str) else interests
+            if not isinstance(parsed_interests, list):
+                raise HTTPException(status_code=400, detail="Интересы должны быть массивом")
+            if len(parsed_interests) == 0:
+                raise HTTPException(status_code=400, detail="Выберите хотя бы один интерес")
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail=f"Неверный формат интересов (ожидается JSON массив): {str(e)}")
         
-        return profile
+        try:
+            if not goals or not goals.strip():
+                raise HTTPException(status_code=400, detail="Цели обязательны")
+            parsed_goals = json.loads(goals) if isinstance(goals, str) else goals
+            if not isinstance(parsed_goals, list):
+                raise HTTPException(status_code=400, detail="Цели должны быть массивом")
+            if len(parsed_goals) == 0:
+                raise HTTPException(status_code=400, detail="Выберите хотя бы одну цель")
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail=f"Неверный формат целей (ожидается JSON массив): {str(e)}")
+        
+        # Создаем ProfileCreate с валидированными данными
+        try:
+            profile_data = ProfileCreate(
+                user_id=user_id,
+                name=name.strip(),
+                gender=gender,
+                age=age,
+                city=city.strip(),
+                university=university.strip(),
+                interests=interests,  # Оставляем как строку для схемы
+                goals=goals,  # Оставляем как строку для схемы
+                bio=bio.strip() if bio else None,
+                username=username.strip() if username else None,
+                first_name=first_name.strip() if first_name else None,
+                last_name=last_name.strip() if last_name else None
+            )
+        except ValidationError as e:
+            error_messages = []
+            for error in e.errors():
+                field = '.'.join(str(x) for x in error['loc'])
+                error_messages.append(f"{field}: {error['msg']}")
+            raise HTTPException(status_code=400, detail=f"Ошибка валидации: {', '.join(error_messages)}")
+        
+        # Создаем или обновляем профиль
+        try:
+            profile = profile_service.create_or_update_profile(
+                db=db,
+                user_id=user_id,
+                profile_data=profile_data,
+                photo=photo
+            )
+            return profile
+        except IntegrityError as e:
+            db.rollback()
+            error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+            if 'unique constraint' in error_msg.lower() or 'duplicate' in error_msg.lower():
+                raise HTTPException(status_code=400, detail="Профиль с таким user_id уже существует")
+            raise HTTPException(status_code=400, detail=f"Ошибка базы данных: {error_msg}")
+        except Exception as db_error:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Ошибка при сохранении профиля: {str(db_error)}")
+            
     except HTTPException:
         raise
     except Exception as e:
