@@ -231,8 +231,8 @@ const ProfileForm = () => {
     if (!formData.university) newErrors.university = 'Выберите университет';
     if (formData.interests.length === 0) newErrors.interests = 'Выберите хотя бы один интерес';
     if (formData.goals.length === 0) newErrors.goals = 'Выберите хотя бы одну цель';
-    if (formData.bio.length > 200) {
-      newErrors.bio = 'Максимум 200 символов';
+    if (formData.bio.length > 300) {
+      newErrors.bio = 'Максимум 300 символов';
     }
 
     setErrors(newErrors);
@@ -712,16 +712,16 @@ const ProfileForm = () => {
                 errors.bio ? 'border-red-300' : 'border-gray-200'
               } focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none text-sm`}
               rows="5"
-              placeholder="Расскажите о себе: о своих увлечениях, навыках, интересах и т.д (до 200 символов)..."
+              placeholder="Расскажите о себе: о своих увлечениях, навыках, интересах и т.д (до 300 символов)..."
               value={formData.bio}
               onChange={(e) => handleInputChange('bio', e.target.value)}
-              maxLength={200}
+              maxLength={300}
             />
             <div className="flex justify-end items-center mt-1">
               {errors.bio && (
                 <p className="text-red-500 text-xs mr-2">{errors.bio}</p>
               )}
-              <p className="text-gray-400 text-xs">{formData.bio.length}/200</p>
+              <p className="text-gray-400 text-xs">{formData.bio.length}/300</p>
             </div>
           </div>
 

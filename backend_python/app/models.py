@@ -26,7 +26,7 @@ class Profile(Base):
     __table_args__ = (
         CheckConstraint("gender IN ('male', 'female', 'other')", name='check_gender'),
         CheckConstraint("age >= 15 AND age <= 50", name='check_age'),
-        CheckConstraint("LENGTH(bio) <= 200", name='check_bio_length'),
+        CheckConstraint("LENGTH(bio) <= 300", name='check_bio_length'),
     )
 
 class Swipe(Base):

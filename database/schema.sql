@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     university VARCHAR(255) NOT NULL,
     interests TEXT, -- JSON массив: ["IT", "Дизайн", ...]
     goals TEXT, -- JSON массив: ["Совместная учёба", "Хакатон", ...]
-    bio TEXT CHECK (LENGTH(bio) <= 200),
+    bio TEXT CHECK (LENGTH(bio) <= 300),
     photo_url VARCHAR(500),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

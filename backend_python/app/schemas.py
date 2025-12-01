@@ -10,7 +10,7 @@ class ProfileBase(BaseModel):
     university: str
     interests: str
     goals: str
-    bio: Optional[str] = Field(None, max_length=200)
+    bio: Optional[str] = Field(None, max_length=300)
     username: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
