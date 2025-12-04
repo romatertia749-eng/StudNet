@@ -138,6 +138,7 @@ const NetworkList = () => {
     const fetchMatches = async () => {
       if (!userInfo?.id) {
         setMatchedProfiles([]);
+        setContextMatchedProfiles([]); // Обновляем контекст
         setLoading(false);
         return;
       }
@@ -220,27 +221,29 @@ const NetworkList = () => {
           
           console.log('[NetworkList] Final formatted matches:', formattedMatches);
           setMatchedProfiles(formattedMatches);
-          // Обновляем контекст с мэтчами для синхронизации connectsCount
+          // Обновляем контекст с мэтчами - это единственный источник данных
           setContextMatchedProfiles(formattedMatches);
-          // Обновляем connectsCount (но не matchedProfiles в контексте, чтобы избежать конфликтов)
-          updateConnectsCount(userInfo.id);
+          // connectsCount обновится автоматически в setMatchedProfilesAndUpdateCount
+          // НЕ вызываем updateConnectsCount здесь, чтобы избежать циклов
         } else {
           const errorText = await response.text().catch(() => 'Unknown error');
           console.error('Matches response error:', response.status, errorText);
           // Бэкенд недоступен — показываем пустой список
           setMatchedProfiles([]);
+          setContextMatchedProfiles([]); // Обновляем контекст, чтобы connectsCount стал 0
         }
       } catch (error) {
         console.error('Error fetching matches:', error);
         // При ошибке показываем пустой список
         setMatchedProfiles([]);
+        setContextMatchedProfiles([]); // Обновляем контекст, чтобы connectsCount стал 0
       } finally {
         setLoading(false);
       }
     };
     
     fetchMatches();
-  }, [userInfo, checkingProfile, setContextMatchedProfiles, updateConnectsCount]);
+  }, [userInfo, checkingProfile, setContextMatchedProfiles]);
 
   // Мемоизированные обработчики для предотвращения пересоздания при каждом рендере
   const handleViewProfile = useCallback((id) => {

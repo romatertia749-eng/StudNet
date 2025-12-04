@@ -192,7 +192,7 @@ const UserCard = () => {
         <div className="space-y-3">
           {!isMatched ? (
             <Button variant="primary" onClick={handleMatch}>
-              💚 Мэтч / Предложить знакомство
+              Перейти в чат
             </Button>
           ) : (
             <>

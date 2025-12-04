@@ -14,9 +14,11 @@ const Header = () => {
   useEffect(() => {
     if (!isReady || !userInfo?.id) return;
     
-    // Обновляем connectsCount при загрузке
+    // Обновляем connectsCount при первой загрузке приложения
+    // НЕ обновляем при каждом изменении userInfo, чтобы избежать циклов
     updateConnectsCount(userInfo.id);
-  }, [isReady, userInfo, updateConnectsCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady]); // Только при isReady, не при каждом изменении userInfo
 
   useEffect(() => {
     const updateLogoSize = () => {

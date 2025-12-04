@@ -14,13 +14,7 @@ export const useMatches = () => {
 export const MatchProvider = ({ children }) => {
   const [matchedProfiles, setMatchedProfiles] = useState([]);
   const [connectsCount, setConnectsCount] = useState(0);
-
-  // Обновляем connectsCount при изменении matchedProfiles
-  useEffect(() => {
-    // connectsCount равен количеству взаимных мэтчей (matchedProfiles)
-    // В matchedProfiles уже хранятся только взаимные мэтчи
-    setConnectsCount(matchedProfiles.length);
-  }, [matchedProfiles]);
+  const [isLoadingCount, setIsLoadingCount] = useState(false);
 
   // Убрана загрузка из localStorage - данные загружаются только с API
   // Очищаем старые данные из localStorage при инициализации
@@ -28,39 +22,41 @@ export const MatchProvider = ({ children }) => {
     localStorage.removeItem('matchedProfiles');
   }, []);
 
-  // Функция для обновления connectsCount из API
-  // ВАЖНО: Эта функция НЕ должна обновлять matchedProfiles, чтобы избежать конфликтов
-  // matchedProfiles обновляются только в NetworkList.jsx
+  // ЕДИНЫЙ ИСТОЧНИК ИСТИНЫ: connectsCount обновляется только из API
+  // НЕ обновляем connectsCount при изменении matchedProfiles, чтобы избежать циклов
   const updateConnectsCount = useCallback(async (userId) => {
-    if (!userId) return;
+    if (!userId || isLoadingCount) return; // Предотвращаем параллельные запросы
     
+    setIsLoadingCount(true);
     try {
       console.log('[MatchContext] updateConnectsCount called for userId:', userId);
       const response = await fetch(`${API_ENDPOINTS.MATCHES}?user_id=${userId}`);
       if (response.ok) {
         const data = await response.json();
-        console.log('[MatchContext] Matches count from API:', data.length);
-        // Количество взаимных мэтчей = длина массива мэтчей
-        setConnectsCount(data.length);
-        // НЕ обновляем matchedProfiles здесь - это делает NetworkList.jsx
+        const count = Array.isArray(data) ? data.length : 0;
+        console.log('[MatchContext] Matches count from API:', count);
+        setConnectsCount(count);
       } else {
         console.error('[MatchContext] Failed to fetch matches count:', response.status);
       }
     } catch (error) {
       console.error('[MatchContext] Error fetching connects count:', error);
       // Fallback - не обновляем, оставляем текущее значение
+    } finally {
+      setIsLoadingCount(false);
     }
-  }, []);
+  }, [isLoadingCount]);
 
   const addMatch = (profile) => {
     const updated = [...matchedProfiles, profile];
     setMatchedProfiles(updated);
-    setConnectsCount(updated.length);
-    // Убрано сохранение в localStorage - данные всегда свежие с API
+    // НЕ обновляем connectsCount здесь - он обновится через updateConnectsCount
   };
 
   const setMatchedProfilesAndUpdateCount = (profiles) => {
     setMatchedProfiles(profiles);
+    // connectsCount всегда равен длине profiles
+    // Это синхронизирует состояние с реальными данными из NetworkList
     setConnectsCount(profiles.length);
   };
 
