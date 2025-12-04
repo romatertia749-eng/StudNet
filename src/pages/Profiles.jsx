@@ -946,12 +946,7 @@ const Profiles = () => {
           </div>
         )}
 
-        {/* Загрузка входящих лайков */}
-        {activeTab === 'incoming' && loadingIncoming && (
-          <Card>
-            <p className="text-center text-gray-800 font-medium py-8">Загрузка...</p>
-          </Card>
-        )}
+        {/* Загрузка входящих лайков - убрано отображение "Загрузка..." */}
 
         {/* Ошибка загрузки входящих (реальная ошибка, не 404) */}
         {activeTab === 'incoming' && (incomingError === 'load_error' || incomingError === 'network_error') && !loadingIncoming && (

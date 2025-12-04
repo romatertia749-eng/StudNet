@@ -99,19 +99,38 @@ def respond_to_like(
 
 @router.get("/matches", response_model=List[MatchResponse])
 def get_matches(user_id: int, db: Session = Depends(get_db)):
-    matches = match_service.get_matches(db, user_id)
-    
-    responses = []
-    for match in matches:
-        # Находим профиль второго пользователя
-        other_user_id = match.user2_id if match.user1_id == user_id else match.user1_id
-        other_profile = profile_service.get_profile_by_user_id(db, other_user_id)
+    """Получает список мэтчей для пользователя"""
+    try:
+        matches = match_service.get_matches(db, user_id)
+        print(f"[get_matches] Found {len(matches)} matches for user_id {user_id}")
         
-        responses.append(MatchResponse(
-            id=match.id,
-            matched_profile=other_profile,
-            matched_at=match.matched_at
-        ))
-    
-    return responses
+        responses = []
+        for match in matches:
+            # Находим профиль второго пользователя
+            other_user_id = match.user2_id if match.user1_id == user_id else match.user1_id
+            print(f"[get_matches] Processing match {match.id}: user1_id={match.user1_id}, user2_id={match.user2_id}, other_user_id={other_user_id}")
+            
+            other_profile = profile_service.get_profile_by_user_id(db, other_user_id)
+            
+            if not other_profile:
+                print(f"[get_matches] WARNING: Profile not found for user_id {other_user_id} in match {match.id}")
+                continue
+            
+            print(f"[get_matches] Found profile for user_id {other_user_id}: id={other_profile.id}, name={other_profile.name}")
+            
+            # ProfileResponse автоматически преобразует из модели через from_attributes=True
+            # interests и goals уже в формате строки (JSON) в БД, так что все должно работать
+            responses.append(MatchResponse(
+                id=match.id,
+                matched_profile=other_profile,
+                matched_at=match.matched_at
+            ))
+        
+        print(f"[get_matches] Returning {len(responses)} match responses")
+        return responses
+    except Exception as e:
+        import traceback
+        print(f"[get_matches] ERROR: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении мэтчей: {str(e)}")
 

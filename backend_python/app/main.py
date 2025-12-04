@@ -58,6 +58,8 @@ app.add_middleware(
 # Роутеры - ВАЖНО: регистрируем в правильном порядке
 # Сначала более специфичные, потом общие
 # API роуты должны быть зарегистрированы ДО catch-all роута
+
+# Регистрируем роутеры
 app.include_router(auth.router)
 app.include_router(profiles.router)
 app.include_router(matches.router)

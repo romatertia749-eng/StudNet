@@ -143,28 +143,72 @@ const NetworkList = () => {
       }
       
       try {
-        const response = await fetch(`${API_ENDPOINTS.MATCHES}?user_id=${userInfo.id}`);
+        const url = `${API_ENDPOINTS.MATCHES}?user_id=${userInfo.id}`;
+        console.log('Fetching matches from:', url);
+        const response = await fetch(url);
+        console.log('Matches response status:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('Matches data received:', data);
+          console.log('Matches count:', data.length);
+          
           // Преобразуем данные из API в формат для отображения
-          const formattedMatches = data.map(match => ({
-            id: match.matchedProfile.id,
-            userId: match.matchedProfile.user_id || match.matchedProfile.id,
-            name: match.matchedProfile.name,
-            age: match.matchedProfile.age,
-            city: match.matchedProfile.city,
-            university: match.matchedProfile.university,
-            bio: match.matchedProfile.bio,
-            interests: match.matchedProfile.interests || [],
-            photos: match.matchedProfile.photo_url ? [getPhotoUrl(match.matchedProfile.photo_url)] : [],
-            username: match.matchedProfile.username || null,
-          }));
+          const formattedMatches = data.map(match => {
+            // Безопасная обработка interests
+            let interestsArray = [];
+            if (match.matchedProfile?.interests) {
+              if (Array.isArray(match.matchedProfile.interests)) {
+                interestsArray = match.matchedProfile.interests;
+              } else if (typeof match.matchedProfile.interests === 'string') {
+                try {
+                  interestsArray = JSON.parse(match.matchedProfile.interests);
+                } catch (e) {
+                  console.warn('Failed to parse interests:', e);
+                  interestsArray = [];
+                }
+              }
+            }
+            
+            // Безопасная обработка goals
+            let goalsArray = [];
+            if (match.matchedProfile?.goals) {
+              if (Array.isArray(match.matchedProfile.goals)) {
+                goalsArray = match.matchedProfile.goals;
+              } else if (typeof match.matchedProfile.goals === 'string') {
+                try {
+                  goalsArray = JSON.parse(match.matchedProfile.goals);
+                } catch (e) {
+                  console.warn('Failed to parse goals:', e);
+                  goalsArray = [];
+                }
+              }
+            }
+            
+            return {
+              id: match.matchedProfile?.id,
+              userId: match.matchedProfile?.user_id || match.matchedProfile?.id,
+              name: match.matchedProfile?.name || '',
+              age: match.matchedProfile?.age || 0,
+              city: match.matchedProfile?.city || '',
+              university: match.matchedProfile?.university || '',
+              bio: match.matchedProfile?.bio || '',
+              interests: interestsArray,
+              goals: goalsArray,
+              photos: match.matchedProfile?.photo_url ? [getPhotoUrl(match.matchedProfile.photo_url)] : [],
+              username: match.matchedProfile?.username || null,
+            };
+          });
+          
+          console.log('Formatted matches:', formattedMatches);
           setMatchedProfiles(formattedMatches);
           // Обновляем контекст с мэтчами для синхронизации connectsCount
           setContextMatchedProfiles(formattedMatches);
           // Также обновляем connectsCount напрямую
           updateConnectsCount(userInfo.id);
         } else {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          console.error('Matches response error:', response.status, errorText);
           // Бэкенд недоступен — показываем пустой список
           setMatchedProfiles([]);
         }
