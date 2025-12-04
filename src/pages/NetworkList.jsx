@@ -137,8 +137,9 @@ const NetworkList = () => {
 
     const fetchMatches = async () => {
       if (!userInfo?.id) {
+        console.log('[NetworkList] No userInfo.id, skipping fetch');
         setMatchedProfiles([]);
-        setContextMatchedProfiles([]); // Обновляем контекст
+        // НЕ обновляем контекст здесь - оставляем текущее значение
         setLoading(false);
         return;
       }
@@ -146,7 +147,7 @@ const NetworkList = () => {
       try {
         const url = `${API_ENDPOINTS.MATCHES}?user_id=${userInfo.id}`;
         console.log('[NetworkList] Fetching matches from:', url);
-        console.log('[NetworkList] userInfo.id:', userInfo.id);
+        console.log('[NetworkList] userInfo.id:', userInfo.id, 'type:', typeof userInfo.id);
         const response = await fetch(url);
         console.log('[NetworkList] Matches response status:', response.status);
         
@@ -176,22 +177,25 @@ const NetworkList = () => {
             console.log(`[NetworkList] Match has matchedProfile:`, 'matchedProfile' in match);
             console.log(`[NetworkList] Match matchedProfile value:`, match.matchedProfile);
             
-            if (!match.matchedProfile) {
-              console.error(`[NetworkList] ERROR: match ${index} has no matchedProfile!`, match);
+            // Проверяем разные варианты структуры данных
+            const profile = match.matchedProfile || match.matched_profile || match.profile;
+            
+            if (!profile) {
+              console.error(`[NetworkList] ERROR: match ${index} has no profile!`, match);
               console.error(`[NetworkList] Full match object:`, JSON.stringify(match, null, 2));
               return null;
             }
             
-            console.log(`[NetworkList] Match ${index} matchedProfile keys:`, Object.keys(match.matchedProfile));
+            console.log(`[NetworkList] Match ${index} profile keys:`, Object.keys(profile));
             
             // Безопасная обработка interests
             let interestsArray = [];
-            if (match.matchedProfile?.interests) {
-              if (Array.isArray(match.matchedProfile.interests)) {
-                interestsArray = match.matchedProfile.interests;
-              } else if (typeof match.matchedProfile.interests === 'string') {
+            if (profile?.interests) {
+              if (Array.isArray(profile.interests)) {
+                interestsArray = profile.interests;
+              } else if (typeof profile.interests === 'string') {
                 try {
-                  interestsArray = JSON.parse(match.matchedProfile.interests);
+                  interestsArray = JSON.parse(profile.interests);
                 } catch (e) {
                   console.warn(`[NetworkList] Failed to parse interests for match ${index}:`, e);
                   interestsArray = [];
@@ -201,12 +205,12 @@ const NetworkList = () => {
             
             // Безопасная обработка goals
             let goalsArray = [];
-            if (match.matchedProfile?.goals) {
-              if (Array.isArray(match.matchedProfile.goals)) {
-                goalsArray = match.matchedProfile.goals;
-              } else if (typeof match.matchedProfile.goals === 'string') {
+            if (profile?.goals) {
+              if (Array.isArray(profile.goals)) {
+                goalsArray = profile.goals;
+              } else if (typeof profile.goals === 'string') {
                 try {
-                  goalsArray = JSON.parse(match.matchedProfile.goals);
+                  goalsArray = JSON.parse(profile.goals);
                 } catch (e) {
                   console.warn(`[NetworkList] Failed to parse goals for match ${index}:`, e);
                   goalsArray = [];
@@ -215,17 +219,17 @@ const NetworkList = () => {
             }
             
             const formatted = {
-              id: match.matchedProfile?.id,
-              userId: match.matchedProfile?.user_id || match.matchedProfile?.id,
-              name: match.matchedProfile?.name || '',
-              age: match.matchedProfile?.age || 0,
-              city: match.matchedProfile?.city || '',
-              university: match.matchedProfile?.university || '',
-              bio: match.matchedProfile?.bio || '',
+              id: profile?.id,
+              userId: profile?.user_id || profile?.id,
+              name: profile?.name || '',
+              age: profile?.age || 0,
+              city: profile?.city || '',
+              university: profile?.university || '',
+              bio: profile?.bio || '',
               interests: interestsArray,
               goals: goalsArray,
-              photos: match.matchedProfile?.photo_url ? [getPhotoUrl(match.matchedProfile.photo_url)] : [],
-              username: match.matchedProfile?.username || null,
+              photos: profile?.photo_url ? [getPhotoUrl(profile.photo_url)] : [],
+              username: profile?.username || null,
             };
             
             console.log(`[NetworkList] Formatted match ${index}:`, formatted);
@@ -240,23 +244,29 @@ const NetworkList = () => {
             console.error('[NetworkList] This means matchedProfile is missing or null in response');
           }
           
+          console.log('[NetworkList] Setting matchedProfiles:', formattedMatches.length);
           setMatchedProfiles(formattedMatches);
           // Обновляем контекст с мэтчами - это единственный источник данных
-          setContextMatchedProfiles(formattedMatches);
-          // connectsCount обновится автоматически в setMatchedProfilesAndUpdateCount
-          // НЕ вызываем updateConnectsCount здесь, чтобы избежать циклов
+          // ВАЖНО: обновляем только если есть данные, чтобы не сбрасывать счетчик
+          if (formattedMatches.length > 0) {
+            console.log('[NetworkList] Updating context with', formattedMatches.length, 'matches');
+            setContextMatchedProfiles(formattedMatches);
+          } else {
+            console.log('[NetworkList] No matches to update context, keeping current value');
+            // НЕ обновляем контекст если данных нет - оставляем текущее значение
+          }
         } else {
           const errorText = await response.text().catch(() => 'Unknown error');
-          console.error('Matches response error:', response.status, errorText);
-          // Бэкенд недоступен — показываем пустой список
+          console.error('[NetworkList] Matches response error:', response.status, errorText);
+          // Бэкенд недоступен — показываем пустой список локально
           setMatchedProfiles([]);
-          setContextMatchedProfiles([]); // Обновляем контекст, чтобы connectsCount стал 0
+          // НЕ обновляем контекст при ошибке - оставляем текущее значение
         }
       } catch (error) {
-        console.error('Error fetching matches:', error);
-        // При ошибке показываем пустой список
+        console.error('[NetworkList] Error fetching matches:', error);
+        // При ошибке показываем пустой список локально
         setMatchedProfiles([]);
-        setContextMatchedProfiles([]); // Обновляем контекст, чтобы connectsCount стал 0
+        // НЕ обновляем контекст при ошибке - оставляем текущее значение
       } finally {
         setLoading(false);
       }
