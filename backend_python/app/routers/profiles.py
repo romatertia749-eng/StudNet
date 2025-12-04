@@ -10,7 +10,7 @@ import json
 
 router = APIRouter(prefix="/api/profiles", tags=["profiles"])
 
-@router.post("", response_model=ProfileResponse)
+@router.post("/", response_model=ProfileResponse)
 def create_profile(
     user_id: int = Form(...),
     name: str = Form(...),
@@ -114,7 +114,7 @@ def create_profile(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при создании профиля: {str(e)}")
 
-@router.get("", response_model=PageResponse)
+@router.get("/", response_model=PageResponse)
 def get_profiles(
     user_id: Optional[int] = None,
     city: Optional[str] = None,
