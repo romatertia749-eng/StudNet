@@ -360,8 +360,10 @@ const Profiles = () => {
           response = await fetchWithAuth(url);
         } catch (fetchError) {
           console.error('Error in fetchWithAuth for profiles:', fetchError);
-          // Fallback на мок данные при ошибке сети
-          setAllProfiles(getMockProfiles());
+          // НЕ используем мок данные при ошибке сети - показываем пустой список
+          // Моки только для разработки без бэкенда
+          console.warn('Network error, showing empty list instead of mocks');
+          setAllProfiles([]);
           setLoading(false);
           return;
         }
@@ -372,7 +374,9 @@ const Profiles = () => {
             data = await response.json();
           } catch (parseError) {
             console.error('Error parsing response JSON:', parseError);
-            setAllProfiles(getMockProfiles());
+            // НЕ используем мок данные при ошибке парсинга - показываем пустой список
+            console.warn('Parse error, showing empty list instead of mocks');
+            setAllProfiles([]);
             setLoading(false);
             return;
           }
@@ -447,13 +451,25 @@ const Profiles = () => {
           }
         } else {
           console.error('Response not OK, status:', response.status);
-          // Fallback на мок данные если бэкенд недоступен
-          setAllProfiles(getMockProfiles());
+          const errorText = await response.text().catch(() => 'Unknown error');
+          console.error('Error response:', errorText);
+          
+          // НЕ используем мок данные при ошибке - показываем пустой список
+          // Моки только для разработки без бэкенда
+          if (response.status === 401 || response.status === 403) {
+            console.warn('Authentication error, showing empty list');
+            setAllProfiles([]);
+          } else {
+            console.warn('Backend error, showing empty list instead of mocks');
+            setAllProfiles([]);
+          }
         }
       } catch (error) {
         console.error('Error fetching profiles:', error);
-        // Fallback на мок данные при ошибке
-        setAllProfiles(getMockProfiles());
+        // НЕ используем мок данные при ошибке - показываем пустой список
+        // Моки только для разработки без бэкенда
+        console.warn('Error fetching, showing empty list instead of mocks');
+        setAllProfiles([]);
       } finally {
         setLoading(false);
       }

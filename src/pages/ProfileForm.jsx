@@ -45,7 +45,9 @@ const ProfileForm = () => {
     const loadProfile = async () => {
       try {
         const url = API_ENDPOINTS.PROFILE_BY_USER_ID(userInfo.id);
+        console.log('Loading profile from:', url);
         const response = await fetch(url);
+        console.log('Profile load response status:', response.status);
         
         if (response.ok) {
           const data = await response.json();
@@ -347,14 +349,15 @@ const ProfileForm = () => {
         console.log('Full URL:', apiUrl);
         console.log('Method: POST');
         console.log('Body type: FormData');
+        console.log('Is editing:', isEditing);
         
         const startTime = Date.now();
         response = await fetch(apiUrl, {
-          method: 'POST',
+          method: 'POST',  // POST используется и для создания, и для обновления
           body: formDataToSend,
           signal: controller.signal,
           // НЕ добавляем Content-Type для FormData - браузер сам установит multipart/form-data с boundary
-          // НЕ добавляем Authorization здесь - это FormData, токен не нужен для создания профиля
+          // НЕ добавляем Authorization здесь - это FormData, токен не нужен для создания/обновления профиля
         });
         const endTime = Date.now();
         console.log(`Fetch completed in ${endTime - startTime}ms`);
@@ -420,6 +423,16 @@ const ProfileForm = () => {
         } catch (e) {
           errorMessage = `Ошибка ${response.status}: ${errorText.substring(0, 100)}`;
         }
+        
+        // Специальная обработка для Method not Allowed
+        if (response.status === 405) {
+          errorMessage = `Method not Allowed (405). Проверьте, что бэкенд поддерживает POST запросы к ${API_ENDPOINTS.PROFILES}`;
+          console.error('=== METHOD NOT ALLOWED ERROR ===');
+          console.error('URL:', API_ENDPOINTS.PROFILES);
+          console.error('Method: POST');
+          console.error('Status: 405');
+        }
+        
         alert(errorMessage);
       }
     } catch (error) {
