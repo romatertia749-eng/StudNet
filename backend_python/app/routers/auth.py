@@ -6,7 +6,7 @@ from app.schemas import ProfileResponse
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 # POST /api/auth - авторизация
-@router.post("", include_in_schema=True)
+@router.post("/", include_in_schema=True)
 def auth(authorization: Optional[str] = Header(None)):
     """
     Получает initData от фронтенда, валидирует его и возвращает JWT токен

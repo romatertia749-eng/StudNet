@@ -4,8 +4,8 @@ console.log('API_BASE_URL:', API_BASE_URL);
 console.log('REACT_APP_API_BASE_URL from env:', process.env.REACT_APP_API_BASE_URL);
 
 export const API_ENDPOINTS = {
-  AUTH: `${API_BASE_URL}/api/auth`,
-  PROFILES: `${API_BASE_URL}/api/profiles`, // Без слэша в конце - FastAPI нормализует путь
+  AUTH: `${API_BASE_URL}/api/auth/`, // Со слэшем для надежности
+  PROFILES: `${API_BASE_URL}/api/profiles/`, // Со слэшем для надежности
   CHECK_PROFILE: (user_id) => `${API_BASE_URL}/api/profiles/check/${user_id}`,
   PROFILE_BY_USER_ID: (user_id) => `${API_BASE_URL}/api/profiles/user/${user_id}`,
   PROFILE_BY_ID: (id) => `${API_BASE_URL}/api/profiles/${id}`,

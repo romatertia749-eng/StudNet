@@ -10,8 +10,10 @@ import json
 
 router = APIRouter(prefix="/api/profiles", tags=["profiles"])
 
-# POST /api/profiles - создание профиля
-# Используем пустую строку, чтобы путь был точно /api/profiles (без слэша в конце)
+# ВАЖНО: Роуты с параметрами должны быть ПЕРЕД роутами без параметров
+# Иначе FastAPI может неправильно их обработать
+
+# POST /api/profiles - создание/обновление профиля
 @router.post("", response_model=ProfileResponse, include_in_schema=True)
 def create_profile(
     user_id: int = Form(...),
@@ -116,32 +118,6 @@ def create_profile(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при создании профиля: {str(e)}")
 
-# GET /api/profiles - получение списка профилей
-@router.get("", response_model=PageResponse, include_in_schema=True)
-def get_profiles(
-    user_id: Optional[int] = None,
-    city: Optional[str] = None,
-    university: Optional[str] = None,
-    page: int = 0,
-    size: int = 20,
-    db: Session = Depends(get_db)
-):
-    if user_id is None:
-        raise HTTPException(status_code=400, detail="Параметр userId обязателен")
-    
-    try:
-        result = profile_service.get_available_profiles(
-            db=db,
-            user_id=user_id,
-            city=city,
-            university=university,
-            page=page,
-            size=size
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при получении профилей: {str(e)}")
-
 # Важно: более специфичные роуты должны быть ПЕРЕД общим роутом /{profile_id}
 @router.get("/check/{user_id}")
 def check_profile_exists(user_id: int, db: Session = Depends(get_db)):
@@ -184,8 +160,35 @@ def get_profile_by_user_id(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Профиль не найден")
     return profile
 
+# GET /api/profiles - получение списка профилей (должен быть ПОСЛЕ специфичных роутов)
+@router.get("/", response_model=PageResponse, include_in_schema=True)
+def get_profiles(
+    user_id: Optional[int] = None,
+    city: Optional[str] = None,
+    university: Optional[str] = None,
+    page: int = 0,
+    size: int = 20,
+    db: Session = Depends(get_db)
+):
+    if user_id is None:
+        raise HTTPException(status_code=400, detail="Параметр userId обязателен")
+    
+    try:
+        result = profile_service.get_available_profiles(
+            db=db,
+            user_id=user_id,
+            city=city,
+            university=university,
+            page=page,
+            size=size
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении профилей: {str(e)}")
+
 @router.get("/{profile_id}", response_model=ProfileResponse)
 def get_profile(profile_id: int, db: Session = Depends(get_db)):
+    """Получает профиль по ID"""
     profile = profile_service.get_profile_by_id(db, profile_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Профиль не найден")
