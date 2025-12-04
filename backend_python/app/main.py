@@ -47,14 +47,17 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Явно указываем все методы
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Статические файлы больше не нужны, используем Cloudinary
 # Но оставляем для обратной совместимости, если кто-то использует локальное хранилище
 
-# Роутеры
+# Роутеры - ВАЖНО: регистрируем в правильном порядке
+# Сначала более специфичные, потом общие
+# API роуты должны быть зарегистрированы ДО catch-all роута
 app.include_router(auth.router)
 app.include_router(profiles.router)
 app.include_router(matches.router)

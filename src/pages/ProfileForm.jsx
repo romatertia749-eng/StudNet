@@ -342,12 +342,19 @@ const ProfileForm = () => {
 
       let response;
       try {
-        console.log('Sending fetch request...');
+        const apiUrl = API_ENDPOINTS.PROFILES;
+        console.log('=== SENDING PROFILE REQUEST ===');
+        console.log('Full URL:', apiUrl);
+        console.log('Method: POST');
+        console.log('Body type: FormData');
+        
         const startTime = Date.now();
-        response = await fetch(API_ENDPOINTS.PROFILES, {
+        response = await fetch(apiUrl, {
           method: 'POST',
           body: formDataToSend,
           signal: controller.signal,
+          // НЕ добавляем Content-Type для FormData - браузер сам установит multipart/form-data с boundary
+          // НЕ добавляем Authorization здесь - это FormData, токен не нужен для создания профиля
         });
         const endTime = Date.now();
         console.log(`Fetch completed in ${endTime - startTime}ms`);
