@@ -249,6 +249,8 @@ const Profiles = () => {
     
     setLoadingIncoming(true);
     setIncomingError(null);
+    // Очищаем старые данные перед загрузкой новых, чтобы избежать двойного рендера
+    setIncomingLikes([]);
     
     try {
       const url = `${API_ENDPOINTS.INCOMING_LIKES}?user_id=${userInfo.id}`;
@@ -288,7 +290,9 @@ const Profiles = () => {
           };
         });
         
+        // Устанавливаем данные и сбрасываем индекс только после загрузки
         setIncomingLikes(processedProfiles);
+        setCurrentIndex(0); // Сбрасываем индекс только когда данные загружены
         
         // Показываем подсказку только первый раз
         const hasSeenIncomingTip = localStorage.getItem('maxnet_incoming_tip_seen');
@@ -300,14 +304,19 @@ const Profiles = () => {
         console.warn('Incoming likes endpoint not implemented yet');
         setIncomingLikes([]);
         setIncomingError('not_implemented');
+        setCurrentIndex(0);
       } else {
         const errorText = await response.text().catch(() => 'Unknown error');
         console.error('Incoming likes error:', response.status, errorText);
         setIncomingError('load_error');
+        setIncomingLikes([]);
+        setCurrentIndex(0);
       }
     } catch (error) {
       console.error('Error fetching incoming likes:', error);
       setIncomingError('network_error');
+      setIncomingLikes([]);
+      setCurrentIndex(0);
     } finally {
       setLoadingIncoming(false);
     }
@@ -315,9 +324,10 @@ const Profiles = () => {
 
   useEffect(() => {
     if (activeTab === 'incoming' && isReady && userInfo?.id) {
-      fetchIncomingLikes();
-      setCurrentIndex(0);
+      // Очищаем свайпы и старые данные, индекс сбросится в fetchIncomingLikes после загрузки
       setSwipedProfiles([]);
+      setIncomingLikes([]); // Очищаем старые данные сразу, чтобы не показывать их
+      fetchIncomingLikes();
     }
   }, [activeTab, isReady, userInfo?.id]);
 
@@ -505,7 +515,10 @@ const Profiles = () => {
   );
 
   // Профили для текущей вкладки
-  const currentProfiles = activeTab === 'incoming' ? incomingLikes : availableProfiles;
+  // Для входящих показываем только после загрузки, чтобы избежать двойного рендера
+  const currentProfiles = activeTab === 'incoming' 
+    ? (loadingIncoming ? [] : incomingLikes) 
+    : availableProfiles;
   const currentProfile = currentProfiles[currentIndex];
 
   // Сброс индекса и очистка свайпов при изменении фильтров
@@ -1013,7 +1026,10 @@ const Profiles = () => {
         {/* Карточка профиля с плавной анимацией появления через Framer Motion */}
         {/* GLOW-АНИМАЦИЯ: после завершения эффекта карточка появляется с неоновой подсветкой */}
         <AnimatePresence mode="wait">
-          {currentProfile && (activeTab === 'all' || (activeTab === 'incoming' && !loadingIncoming && !incomingError)) && (
+          {currentProfile && (
+            activeTab === 'all' || 
+            (activeTab === 'incoming' && !loadingIncoming && incomingLikes.length > 0 && !incomingError)
+          ) && (
             <motion.div
               key={currentProfile.id}
               ref={cardRef}
