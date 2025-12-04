@@ -29,63 +29,25 @@ export const MatchProvider = ({ children }) => {
   }, []);
 
   // Функция для обновления connectsCount из API
+  // ВАЖНО: Эта функция НЕ должна обновлять matchedProfiles, чтобы избежать конфликтов
+  // matchedProfiles обновляются только в NetworkList.jsx
   const updateConnectsCount = useCallback(async (userId) => {
     if (!userId) return;
     
     try {
+      console.log('[MatchContext] updateConnectsCount called for userId:', userId);
       const response = await fetch(`${API_ENDPOINTS.MATCHES}?user_id=${userId}`);
       if (response.ok) {
         const data = await response.json();
+        console.log('[MatchContext] Matches count from API:', data.length);
         // Количество взаимных мэтчей = длина массива мэтчей
         setConnectsCount(data.length);
-        // Также обновляем matchedProfiles для синхронизации
-        // Безопасная обработка interests и goals
-        const formattedMatches = data.map(match => {
-          let interestsArray = [];
-          if (match.matchedProfile?.interests) {
-            if (Array.isArray(match.matchedProfile.interests)) {
-              interestsArray = match.matchedProfile.interests;
-            } else if (typeof match.matchedProfile.interests === 'string') {
-              try {
-                interestsArray = JSON.parse(match.matchedProfile.interests);
-              } catch (e) {
-                interestsArray = [];
-              }
-            }
-          }
-          
-          let goalsArray = [];
-          if (match.matchedProfile?.goals) {
-            if (Array.isArray(match.matchedProfile.goals)) {
-              goalsArray = match.matchedProfile.goals;
-            } else if (typeof match.matchedProfile.goals === 'string') {
-              try {
-                goalsArray = JSON.parse(match.matchedProfile.goals);
-              } catch (e) {
-                goalsArray = [];
-              }
-            }
-          }
-          
-          return {
-            id: match.matchedProfile?.id,
-            userId: match.matchedProfile?.user_id || match.matchedProfile?.id,
-            name: match.matchedProfile?.name || '',
-            age: match.matchedProfile?.age || 0,
-            city: match.matchedProfile?.city || '',
-            university: match.matchedProfile?.university || '',
-            bio: match.matchedProfile?.bio || '',
-            interests: interestsArray,
-            goals: goalsArray,
-            photos: match.matchedProfile?.photo_url ? [match.matchedProfile.photo_url] : [],
-            username: match.matchedProfile?.username || null,
-          };
-        });
-        setMatchedProfiles(formattedMatches);
-        // Убрано сохранение в localStorage - данные всегда свежие с API
+        // НЕ обновляем matchedProfiles здесь - это делает NetworkList.jsx
+      } else {
+        console.error('[MatchContext] Failed to fetch matches count:', response.status);
       }
     } catch (error) {
-      console.error('Error fetching connects count:', error);
+      console.error('[MatchContext] Error fetching connects count:', error);
       // Fallback - не обновляем, оставляем текущее значение
     }
   }, []);

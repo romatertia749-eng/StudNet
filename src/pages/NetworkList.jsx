@@ -144,17 +144,32 @@ const NetworkList = () => {
       
       try {
         const url = `${API_ENDPOINTS.MATCHES}?user_id=${userInfo.id}`;
-        console.log('Fetching matches from:', url);
+        console.log('[NetworkList] Fetching matches from:', url);
+        console.log('[NetworkList] userInfo.id:', userInfo.id);
         const response = await fetch(url);
-        console.log('Matches response status:', response.status);
+        console.log('[NetworkList] Matches response status:', response.status);
         
         if (response.ok) {
           const data = await response.json();
-          console.log('Matches data received:', data);
-          console.log('Matches count:', data.length);
+          console.log('[NetworkList] Raw matches data received:', JSON.stringify(data, null, 2));
+          console.log('[NetworkList] Matches count:', data.length);
+          
+          if (!Array.isArray(data)) {
+            console.error('[NetworkList] ERROR: Data is not an array!', data);
+            setMatchedProfiles([]);
+            setLoading(false);
+            return;
+          }
           
           // Преобразуем данные из API в формат для отображения
-          const formattedMatches = data.map(match => {
+          const formattedMatches = data.map((match, index) => {
+            console.log(`[NetworkList] Processing match ${index}:`, match);
+            
+            if (!match.matchedProfile) {
+              console.error(`[NetworkList] ERROR: match ${index} has no matchedProfile!`, match);
+              return null;
+            }
+            
             // Безопасная обработка interests
             let interestsArray = [];
             if (match.matchedProfile?.interests) {
@@ -164,7 +179,7 @@ const NetworkList = () => {
                 try {
                   interestsArray = JSON.parse(match.matchedProfile.interests);
                 } catch (e) {
-                  console.warn('Failed to parse interests:', e);
+                  console.warn(`[NetworkList] Failed to parse interests for match ${index}:`, e);
                   interestsArray = [];
                 }
               }
@@ -179,13 +194,13 @@ const NetworkList = () => {
                 try {
                   goalsArray = JSON.parse(match.matchedProfile.goals);
                 } catch (e) {
-                  console.warn('Failed to parse goals:', e);
+                  console.warn(`[NetworkList] Failed to parse goals for match ${index}:`, e);
                   goalsArray = [];
                 }
               }
             }
             
-            return {
+            const formatted = {
               id: match.matchedProfile?.id,
               userId: match.matchedProfile?.user_id || match.matchedProfile?.id,
               name: match.matchedProfile?.name || '',
@@ -198,13 +213,16 @@ const NetworkList = () => {
               photos: match.matchedProfile?.photo_url ? [getPhotoUrl(match.matchedProfile.photo_url)] : [],
               username: match.matchedProfile?.username || null,
             };
-          });
+            
+            console.log(`[NetworkList] Formatted match ${index}:`, formatted);
+            return formatted;
+          }).filter(match => match !== null); // Убираем null значения
           
-          console.log('Formatted matches:', formattedMatches);
+          console.log('[NetworkList] Final formatted matches:', formattedMatches);
           setMatchedProfiles(formattedMatches);
           // Обновляем контекст с мэтчами для синхронизации connectsCount
           setContextMatchedProfiles(formattedMatches);
-          // Также обновляем connectsCount напрямую
+          // Обновляем connectsCount (но не matchedProfiles в контексте, чтобы избежать конфликтов)
           updateConnectsCount(userInfo.id);
         } else {
           const errorText = await response.text().catch(() => 'Unknown error');
