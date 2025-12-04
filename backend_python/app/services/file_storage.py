@@ -11,11 +11,17 @@ MAX_SIZE = int(os.getenv("MAX_FILE_SIZE", "5242880"))  # 5MB
 ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
 # Настройка Cloudinary
-cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME", ""),
-    api_key=os.getenv("CLOUDINARY_API_KEY", ""),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET", "")
-)
+# Поддержка CLOUDINARY_URL (формат: cloudinary://api_key:api_secret@cloud_name)
+cloudinary_url = os.getenv("CLOUDINARY_URL", "")
+if cloudinary_url:
+    cloudinary.config(cloudinary_url=cloudinary_url)
+else:
+    # Или отдельные переменные
+    cloudinary.config(
+        cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME", ""),
+        api_key=os.getenv("CLOUDINARY_API_KEY", ""),
+        api_secret=os.getenv("CLOUDINARY_API_SECRET", "")
+    )
 
 def store_file(file: UploadFile) -> str:
     if not file or file.size == 0:
@@ -35,19 +41,19 @@ def store_file(file: UploadFile) -> str:
             detail="Недопустимый тип файла. Разрешены: JPEG, PNG, WebP"
         )
     
-    # Если Cloudinary не настроен, используем fallback (сохранение в БД как base64)
-    if not os.getenv("CLOUDINARY_CLOUD_NAME"):
-        # Fallback: возвращаем None, фото не сохраняется
-        # В будущем можно сохранять как base64 в БД
+    # Проверяем, что Cloudinary настроен
+    cloudinary_url = os.getenv("CLOUDINARY_URL", "")
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
+    
+    if not cloudinary_url and not cloud_name:
         raise HTTPException(
             status_code=500,
-            detail="Cloudinary не настроен. Пожалуйста, настройте CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY и CLOUDINARY_API_SECRET"
+            detail="Cloudinary не настроен. Настройте CLOUDINARY_URL или CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY и CLOUDINARY_API_SECRET"
         )
     
     try:
-        # Проверяем, что Cloudinary настроен правильно
-        cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
-        if not cloud_name:
+        # Если используем отдельные переменные, проверяем cloud_name
+        if not cloudinary_url and not cloud_name:
             raise HTTPException(
                 status_code=500,
                 detail="CLOUDINARY_CLOUD_NAME не задан. Проверьте переменные окружения в Koyeb."

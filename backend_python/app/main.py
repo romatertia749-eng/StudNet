@@ -26,6 +26,9 @@ cors_origins = os.getenv("CORS_ORIGINS", "").split(",")
 if cors_origins and cors_origins[0]:
     allowed_origins.extend([origin.strip() for origin in cors_origins if origin.strip()])
 
+# Убираем дубликаты
+allowed_origins = list(dict.fromkeys(allowed_origins))
+
 # Для Render и других платформ добавляем поддержку Telegram доменов
 # Это необходимо для работы Telegram Mini Apps
 # Примечание: FastAPI не поддерживает wildcard в CORS, поэтому добавляем конкретные домены
