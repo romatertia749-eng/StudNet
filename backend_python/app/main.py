@@ -12,6 +12,7 @@ app = FastAPI(title="Networking App API", version="1.0.0")
 allowed_origins = [
     "http://localhost:3000",
     "https://web.telegram.org",
+    "https://telegram.org",
 ]
 
 # Добавляем домен из переменной окружения, если указан
@@ -24,6 +25,20 @@ if frontend_url:
 cors_origins = os.getenv("CORS_ORIGINS", "").split(",")
 if cors_origins and cors_origins[0]:
     allowed_origins.extend([origin.strip() for origin in cors_origins if origin.strip()])
+
+# Для Render и других платформ добавляем поддержку Telegram доменов
+# Это необходимо для работы Telegram Mini Apps
+# Примечание: FastAPI не поддерживает wildcard в CORS, поэтому добавляем конкретные домены
+if os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_URL"):
+    # Telegram использует несколько доменов, добавляем основные
+    telegram_domains = [
+        "https://web.telegram.org",
+        "https://telegram.org",
+        "https://desktop.telegram.org",
+    ]
+    for domain in telegram_domains:
+        if domain not in allowed_origins:
+            allowed_origins.append(domain)
 
 app.add_middleware(
     CORSMiddleware,
@@ -85,12 +100,15 @@ if build_path.exists():
         return {"error": "Not found"}
 
 # Catch-all для всех остальных GET запросов - отдаем index.html (SPA routing)
+# ВАЖНО: Этот роут должен быть последним, чтобы не перехватывать API запросы
+# Используем только GET, чтобы не перехватывать POST/PUT/DELETE запросы к API
 @app.get("/{path:path}")
 async def serve_spa(path: str):
     # Исключаем API endpoints, статические файлы и health check
-    if path.startswith("api/") or path.startswith("static/") or path.startswith("assets/") or path == "health":
+    # Если это API endpoint, возвращаем 404 (роут не должен был сюда попасть, т.к. это GET)
+    if path.startswith("api/"):
         from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail="API endpoint not found")
     
     # Проверяем, существует ли файл в build (для прямых запросов к файлам)
     if build_path.exists():
