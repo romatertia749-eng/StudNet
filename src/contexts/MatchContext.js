@@ -22,18 +22,10 @@ export const MatchProvider = ({ children }) => {
     setConnectsCount(matchedProfiles.length);
   }, [matchedProfiles]);
 
+  // Убрана загрузка из localStorage - данные загружаются только с API
+  // Очищаем старые данные из localStorage при инициализации
   useEffect(() => {
-    // Загрузка из localStorage при инициализации
-    const saved = localStorage.getItem('matchedProfiles');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setMatchedProfiles(parsed);
-        setConnectsCount(parsed.length);
-      } catch (e) {
-        console.error('Error loading matches:', e);
-      }
-    }
+    localStorage.removeItem('matchedProfiles');
   }, []);
 
   // Функция для обновления connectsCount из API
@@ -47,19 +39,50 @@ export const MatchProvider = ({ children }) => {
         // Количество взаимных мэтчей = длина массива мэтчей
         setConnectsCount(data.length);
         // Также обновляем matchedProfiles для синхронизации
-        const formattedMatches = data.map(match => ({
-          id: match.matchedProfile.id,
-          userId: match.matchedProfile.user_id || match.matchedProfile.id,
-          name: match.matchedProfile.name,
-          age: match.matchedProfile.age,
-          city: match.matchedProfile.city,
-          university: match.matchedProfile.university,
-          bio: match.matchedProfile.bio,
-          interests: match.matchedProfile.interests || [],
-          photos: match.matchedProfile.photo_url ? [match.matchedProfile.photo_url] : [],
-        }));
+        // Безопасная обработка interests и goals
+        const formattedMatches = data.map(match => {
+          let interestsArray = [];
+          if (match.matchedProfile?.interests) {
+            if (Array.isArray(match.matchedProfile.interests)) {
+              interestsArray = match.matchedProfile.interests;
+            } else if (typeof match.matchedProfile.interests === 'string') {
+              try {
+                interestsArray = JSON.parse(match.matchedProfile.interests);
+              } catch (e) {
+                interestsArray = [];
+              }
+            }
+          }
+          
+          let goalsArray = [];
+          if (match.matchedProfile?.goals) {
+            if (Array.isArray(match.matchedProfile.goals)) {
+              goalsArray = match.matchedProfile.goals;
+            } else if (typeof match.matchedProfile.goals === 'string') {
+              try {
+                goalsArray = JSON.parse(match.matchedProfile.goals);
+              } catch (e) {
+                goalsArray = [];
+              }
+            }
+          }
+          
+          return {
+            id: match.matchedProfile?.id,
+            userId: match.matchedProfile?.user_id || match.matchedProfile?.id,
+            name: match.matchedProfile?.name || '',
+            age: match.matchedProfile?.age || 0,
+            city: match.matchedProfile?.city || '',
+            university: match.matchedProfile?.university || '',
+            bio: match.matchedProfile?.bio || '',
+            interests: interestsArray,
+            goals: goalsArray,
+            photos: match.matchedProfile?.photo_url ? [match.matchedProfile.photo_url] : [],
+            username: match.matchedProfile?.username || null,
+          };
+        });
         setMatchedProfiles(formattedMatches);
-        localStorage.setItem('matchedProfiles', JSON.stringify(formattedMatches));
+        // Убрано сохранение в localStorage - данные всегда свежие с API
       }
     } catch (error) {
       console.error('Error fetching connects count:', error);
@@ -71,7 +94,7 @@ export const MatchProvider = ({ children }) => {
     const updated = [...matchedProfiles, profile];
     setMatchedProfiles(updated);
     setConnectsCount(updated.length);
-    localStorage.setItem('matchedProfiles', JSON.stringify(updated));
+    // Убрано сохранение в localStorage - данные всегда свежие с API
   };
 
   const setMatchedProfilesAndUpdateCount = (profiles) => {
