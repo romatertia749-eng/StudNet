@@ -154,6 +154,13 @@ const NetworkList = () => {
           const data = await response.json();
           console.log('[NetworkList] Raw matches data received:', JSON.stringify(data, null, 2));
           console.log('[NetworkList] Matches count:', data.length);
+          console.log('[NetworkList] Data type:', typeof data, Array.isArray(data));
+          
+          // Проверяем структуру данных
+          if (data.length > 0) {
+            console.log('[NetworkList] First match structure:', Object.keys(data[0]));
+            console.log('[NetworkList] First match matchedProfile:', data[0].matchedProfile ? Object.keys(data[0].matchedProfile) : 'null');
+          }
           
           if (!Array.isArray(data)) {
             console.error('[NetworkList] ERROR: Data is not an array!', data);
@@ -165,11 +172,17 @@ const NetworkList = () => {
           // Преобразуем данные из API в формат для отображения
           const formattedMatches = data.map((match, index) => {
             console.log(`[NetworkList] Processing match ${index}:`, match);
+            console.log(`[NetworkList] Match keys:`, Object.keys(match));
+            console.log(`[NetworkList] Match has matchedProfile:`, 'matchedProfile' in match);
+            console.log(`[NetworkList] Match matchedProfile value:`, match.matchedProfile);
             
             if (!match.matchedProfile) {
               console.error(`[NetworkList] ERROR: match ${index} has no matchedProfile!`, match);
+              console.error(`[NetworkList] Full match object:`, JSON.stringify(match, null, 2));
               return null;
             }
+            
+            console.log(`[NetworkList] Match ${index} matchedProfile keys:`, Object.keys(match.matchedProfile));
             
             // Безопасная обработка interests
             let interestsArray = [];
@@ -220,6 +233,13 @@ const NetworkList = () => {
           }).filter(match => match !== null); // Убираем null значения
           
           console.log('[NetworkList] Final formatted matches:', formattedMatches);
+          console.log('[NetworkList] Formatted matches count:', formattedMatches.length);
+          
+          if (formattedMatches.length === 0 && data.length > 0) {
+            console.error('[NetworkList] WARNING: Data received but formatted matches is empty!');
+            console.error('[NetworkList] This means matchedProfile is missing or null in response');
+          }
+          
           setMatchedProfiles(formattedMatches);
           // Обновляем контекст с мэтчами - это единственный источник данных
           setContextMatchedProfiles(formattedMatches);

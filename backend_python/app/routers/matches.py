@@ -101,8 +101,21 @@ def respond_to_like(
 def get_matches(user_id: int, db: Session = Depends(get_db)):
     """Получает список мэтчей для пользователя"""
     try:
+        print(f"[get_matches] Request received for user_id={user_id} (type: {type(user_id)})")
+        
+        # Проверяем, что user_id правильный тип
+        user_id = int(user_id)
+        
         matches = match_service.get_matches(db, user_id)
         print(f"[get_matches] Found {len(matches)} matches for user_id {user_id}")
+        
+        if len(matches) == 0:
+            print(f"[get_matches] No matches found. Checking if user_id exists in matches table...")
+            # Проверяем все мэтчи для отладки
+            all_matches = db.query(Match).all()
+            print(f"[get_matches] Total matches in DB: {len(all_matches)}")
+            for m in all_matches:
+                print(f"[get_matches] DB match: id={m.id}, user1_id={m.user1_id} (type: {type(m.user1_id)}), user2_id={m.user2_id} (type: {type(m.user2_id)})")
         
         responses = []
         for match in matches:
@@ -114,19 +127,27 @@ def get_matches(user_id: int, db: Session = Depends(get_db)):
             
             if not other_profile:
                 print(f"[get_matches] WARNING: Profile not found for user_id {other_user_id} in match {match.id}")
+                # Проверяем, есть ли профиль с таким user_id вообще
+                from app.models import Profile
+                all_profiles = db.query(Profile).filter(Profile.user_id == other_user_id).all()
+                print(f"[get_matches] Profiles with user_id {other_user_id}: {len(all_profiles)}")
                 continue
             
-            print(f"[get_matches] Found profile for user_id {other_user_id}: id={other_profile.id}, name={other_profile.name}")
+            print(f"[get_matches] Found profile for user_id {other_user_id}: id={other_profile.id}, name={other_profile.name}, user_id={other_profile.user_id}")
             
-            # ProfileResponse автоматически преобразует из модели через from_attributes=True
-            # interests и goals уже в формате строки (JSON) в БД, так что все должно работать
-            responses.append(MatchResponse(
+            # Создаем MatchResponse
+            match_response = MatchResponse(
                 id=match.id,
                 matched_profile=other_profile,
                 matched_at=match.matched_at
-            ))
+            )
+            
+            print(f"[get_matches] Created MatchResponse: id={match_response.id}, profile_id={match_response.matched_profile.id if match_response.matched_profile else None}")
+            responses.append(match_response)
         
         print(f"[get_matches] Returning {len(responses)} match responses")
+        if len(responses) > 0:
+            print(f"[get_matches] First response profile: {responses[0].matched_profile.name if responses[0].matched_profile else 'None'}")
         return responses
     except Exception as e:
         import traceback
