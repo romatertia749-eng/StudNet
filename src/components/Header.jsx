@@ -14,9 +14,12 @@ const Header = () => {
   useEffect(() => {
     if (!isReady || !userInfo?.id) return;
     
-    // Обновляем connectsCount при первой загрузке приложения
-    // НЕ обновляем при каждом изменении userInfo, чтобы избежать циклов
-    updateConnectsCount(userInfo.id);
+    // Обновляем connectsCount с задержкой, чтобы не блокировать загрузку
+    const timer = setTimeout(() => {
+      updateConnectsCount(userInfo.id);
+    }, 1000); // Задержка 1 секунда
+    
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady]); // Только при isReady, не при каждом изменении userInfo
 

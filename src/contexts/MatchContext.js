@@ -29,18 +29,24 @@ export const MatchProvider = ({ children }) => {
     
     setIsLoadingCount(true);
     try {
-      console.log('[MatchContext] updateConnectsCount called for userId:', userId);
-      const response = await fetch(`${API_ENDPOINTS.MATCHES}?user_id=${userId}`);
+      // Используем AbortController для таймаута
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 секунд таймаут
+      
+      const response = await fetch(`${API_ENDPOINTS.MATCHES}?user_id=${userId}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
         const data = await response.json();
         const count = Array.isArray(data) ? data.length : 0;
-        console.log('[MatchContext] Matches count from API:', count);
         setConnectsCount(count);
-      } else {
-        console.error('[MatchContext] Failed to fetch matches count:', response.status);
       }
     } catch (error) {
-      console.error('[MatchContext] Error fetching connects count:', error);
+      if (error.name !== 'AbortError') {
+        console.error('[MatchContext] Error fetching connects count:', error);
+      }
       // Fallback - не обновляем, оставляем текущее значение
     } finally {
       setIsLoadingCount(false);

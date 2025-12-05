@@ -81,112 +81,44 @@ const NetworkList = () => {
   const { userInfo, isReady } = useWebApp();
   const [matchedProfiles, setMatchedProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [checkingProfile, setCheckingProfile] = useState(true);
 
-  // Проверка наличия профиля пользователя
+  // Убрана блокирующая проверка профиля - загрузка происходит сразу
+
   useEffect(() => {
+    // Загружаем мэтчи сразу, не ждем проверку профиля
     if (!isReady || !userInfo?.id) {
-      return;
-    }
-
-    const checkUserProfile = async () => {
-      setCheckingProfile(true);
-      try {
-        // Проверяем наличие профиля через специальный эндпоинт
-        const url = API_ENDPOINTS.CHECK_PROFILE(userInfo.id);
-        const response = await fetch(url);
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (!data.exists) {
-            // Профиля нет, перенаправляем на создание
-            alert('Сначала создайте свой профиль, чтобы начать искать знакомства');
-            navigate('/profile/edit');
-            return;
-          }
-        } else if (response.status === 404) {
-          // Профиля нет - это нормально, перенаправляем на создание
-          alert('Сначала создайте свой профиль, чтобы начать искать знакомства');
-          navigate('/profile/edit');
-          return;
-        } else {
-          // При другой ошибке не блокируем, возможно бэкенд недоступен
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('Could not check profile, continuing anyway');
-          }
-        }
-      } catch (error) {
-        // При ошибке сети не блокируем, возможно бэкенд недоступен
-        // Логируем только в режиме разработки
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Error checking profile:', error);
-        }
-      } finally {
-        setCheckingProfile(false);
-      }
-    };
-
-    checkUserProfile();
-  }, [isReady, userInfo, navigate]);
-
-  useEffect(() => {
-    // Не загружаем мэтчи, пока проверяем профиль
-    if (checkingProfile) {
+      setLoading(false);
       return;
     }
 
     const fetchMatches = async () => {
-      if (!userInfo?.id) {
-        console.log('[NetworkList] No userInfo.id, skipping fetch');
-        setMatchedProfiles([]);
-        // НЕ обновляем контекст здесь - оставляем текущее значение
-        setLoading(false);
-        return;
-      }
+      setLoading(true);
       
       try {
-        const url = `${API_ENDPOINTS.MATCHES}?user_id=${userInfo.id}`;
-        console.log('[NetworkList] Fetching matches from:', url);
-        console.log('[NetworkList] userInfo.id:', userInfo.id, 'type:', typeof userInfo.id);
-        const response = await fetch(url);
-        console.log('[NetworkList] Matches response status:', response.status);
+        // Используем AbortController для таймаута
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд таймаут
         
+        const url = `${API_ENDPOINTS.MATCHES}?user_id=${userInfo.id}`;
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
         if (response.ok) {
           const data = await response.json();
-          console.log('[NetworkList] Raw matches data received:', JSON.stringify(data, null, 2));
-          console.log('[NetworkList] Matches count:', data.length);
-          console.log('[NetworkList] Data type:', typeof data, Array.isArray(data));
-          
-          // Проверяем структуру данных
-          if (data.length > 0) {
-            console.log('[NetworkList] First match structure:', Object.keys(data[0]));
-            console.log('[NetworkList] First match matchedProfile:', data[0].matchedProfile ? Object.keys(data[0].matchedProfile) : 'null');
-          }
           
           if (!Array.isArray(data)) {
-            console.error('[NetworkList] ERROR: Data is not an array!', data);
             setMatchedProfiles([]);
             setLoading(false);
             return;
           }
           
           // Преобразуем данные из API в формат для отображения
-          const formattedMatches = data.map((match, index) => {
-            console.log(`[NetworkList] Processing match ${index}:`, match);
-            console.log(`[NetworkList] Match keys:`, Object.keys(match));
-            console.log(`[NetworkList] Match has matchedProfile:`, 'matchedProfile' in match);
-            console.log(`[NetworkList] Match matchedProfile value:`, match.matchedProfile);
-            
+          const formattedMatches = data.map((match) => {
             // Проверяем разные варианты структуры данных
             const profile = match.matchedProfile || match.matched_profile || match.profile;
             
             if (!profile) {
-              console.error(`[NetworkList] ERROR: match ${index} has no profile!`, match);
-              console.error(`[NetworkList] Full match object:`, JSON.stringify(match, null, 2));
               return null;
             }
-            
-            console.log(`[NetworkList] Match ${index} profile keys:`, Object.keys(profile));
             
             // Безопасная обработка interests
             let interestsArray = [];
@@ -197,7 +129,6 @@ const NetworkList = () => {
                 try {
                   interestsArray = JSON.parse(profile.interests);
                 } catch (e) {
-                  console.warn(`[NetworkList] Failed to parse interests for match ${index}:`, e);
                   interestsArray = [];
                 }
               }
@@ -212,7 +143,6 @@ const NetworkList = () => {
                 try {
                   goalsArray = JSON.parse(profile.goals);
                 } catch (e) {
-                  console.warn(`[NetworkList] Failed to parse goals for match ${index}:`, e);
                   goalsArray = [];
                 }
               }
@@ -232,48 +162,31 @@ const NetworkList = () => {
               username: profile?.username || null,
             };
             
-            console.log(`[NetworkList] Formatted match ${index}:`, formatted);
             return formatted;
-          }).filter(match => match !== null); // Убираем null значения
+          }).filter(match => match !== null);
           
-          console.log('[NetworkList] Final formatted matches:', formattedMatches);
-          console.log('[NetworkList] Formatted matches count:', formattedMatches.length);
-          
-          if (formattedMatches.length === 0 && data.length > 0) {
-            console.error('[NetworkList] WARNING: Data received but formatted matches is empty!');
-            console.error('[NetworkList] This means matchedProfile is missing or null in response');
-          }
-          
-          console.log('[NetworkList] Setting matchedProfiles:', formattedMatches.length);
           setMatchedProfiles(formattedMatches);
           // Обновляем контекст с мэтчами - это единственный источник данных
-          // ВАЖНО: обновляем только если есть данные, чтобы не сбрасывать счетчик
           if (formattedMatches.length > 0) {
-            console.log('[NetworkList] Updating context with', formattedMatches.length, 'matches');
             setContextMatchedProfiles(formattedMatches);
-          } else {
-            console.log('[NetworkList] No matches to update context, keeping current value');
-            // НЕ обновляем контекст если данных нет - оставляем текущее значение
           }
         } else {
-          const errorText = await response.text().catch(() => 'Unknown error');
-          console.error('[NetworkList] Matches response error:', response.status, errorText);
           // Бэкенд недоступен — показываем пустой список локально
           setMatchedProfiles([]);
-          // НЕ обновляем контекст при ошибке - оставляем текущее значение
         }
       } catch (error) {
-        console.error('[NetworkList] Error fetching matches:', error);
         // При ошибке показываем пустой список локально
+        if (error.name !== 'AbortError') {
+          console.error('[NetworkList] Error fetching matches:', error);
+        }
         setMatchedProfiles([]);
-        // НЕ обновляем контекст при ошибке - оставляем текущее значение
       } finally {
         setLoading(false);
       }
     };
     
     fetchMatches();
-  }, [userInfo, checkingProfile, setContextMatchedProfiles]);
+  }, [userInfo, isReady, setContextMatchedProfiles]);
 
   // Мемоизированные обработчики для предотвращения пересоздания при каждом рендере
   const handleViewProfile = useCallback((id) => {
@@ -302,13 +215,13 @@ const NetworkList = () => {
     [matchedProfiles, handleViewProfile, handleMessage]
   );
 
-  if (checkingProfile || loading) {
+  if (loading) {
     return (
       <div className="min-w-[320px] min-h-[600px] max-w-4xl w-full mx-auto p-4 md:p-6 pb-20 md:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         <div className="space-y-4 mt-4">
           <Card>
             <p className="text-gray-800 text-center py-8 font-medium">
-              {checkingProfile ? 'Проверка профиля...' : 'Загрузка мэтчей...'}
+              Загрузка мэтчей...
             </p>
           </Card>
         </div>

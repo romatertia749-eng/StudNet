@@ -23,7 +23,7 @@ const Profiles = () => {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [allProfiles, setAllProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [checkingProfile, setCheckingProfile] = useState(true);
+  // Убрана блокирующая проверка профиля
   const [showSwipeTutorial, setShowSwipeTutorial] = useState(false);
   
   // Состояние для вкладок
@@ -153,69 +153,17 @@ const Profiles = () => {
     },
   ];
 
-  // Проверка наличия профиля пользователя
-  useEffect(() => {
-    if (!isReady || !userInfo?.id) {
-      return;
-    }
-
-    const checkUserProfile = async () => {
-      setCheckingProfile(true);
-      try {
-        // Проверяем наличие профиля через специальный эндпоинт
-        const url = API_ENDPOINTS.CHECK_PROFILE(userInfo.id);
-        let response;
-        try {
-          response = await fetchWithAuth(url);
-        } catch (fetchError) {
-          console.error('Error in fetchWithAuth for profile check:', fetchError);
-          // Продолжаем работу, возможно бэкенд недоступен
-          setCheckingProfile(false);
-          return;
-        }
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (!data.exists) {
-            // Профиля нет, перенаправляем на создание
-            alert('Сначала создайте свой профиль, чтобы начать искать знакомства');
-            navigate('/profile/edit');
-            return;
-          }
-        } else if (response.status === 404) {
-          // Профиля нет - это нормально, перенаправляем на создание
-          alert('Сначала создайте свой профиль, чтобы начать искать знакомства');
-          navigate('/profile/edit');
-          return;
-        } else {
-          // При другой ошибке не блокируем, возможно бэкенд недоступен
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('Could not check profile, continuing anyway');
-          }
-        }
-      } catch (error) {
-        // При ошибке сети не блокируем, возможно бэкенд недоступен
-        // Логируем только в режиме разработки
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Error checking profile:', error);
-        }
-      } finally {
-        setCheckingProfile(false);
-      }
-    };
-
-    checkUserProfile();
-  }, [isReady, userInfo, navigate]);
+  // Убрана блокирующая проверка профиля - загрузка происходит сразу
 
   // Проверка, нужно ли показать модалку с объяснением свайпов
   useEffect(() => {
-    if (!isReady || checkingProfile || loading) return;
+    if (!isReady || loading) return;
     
     const hasSeenTutorial = localStorage.getItem('maxnet_swipe_tutorial_seen');
     if (!hasSeenTutorial) {
       setShowSwipeTutorial(true);
     }
-  }, [isReady, checkingProfile, loading]);
+  }, [isReady, loading]);
 
   // Скрываем шапку и нижнее меню когда открыта модалка
   useEffect(() => {
@@ -333,27 +281,26 @@ const Profiles = () => {
 
   // Загрузка профилей с бэкенда
   useEffect(() => {
-    // Не загружаем профили, пока WebApp не готов или проверяем профиль
-    if (!isReady || checkingProfile) {
-      console.log('WebApp not ready yet or checking profile, waiting...');
+    // Не загружаем профили, пока WebApp не готов
+    if (!isReady) {
       return;
     }
     
     const fetchProfiles = async () => {
       setLoading(true);
       
-      console.log('Fetching profiles, userInfo:', userInfo);
-      console.log('API_ENDPOINTS.PROFILES:', API_ENDPOINTS.PROFILES);
-      
       // Если нет userInfo, используем моковые данные
       if (!userInfo?.id) {
-        console.warn('No userInfo.id, using mock data');
         setAllProfiles(getMockProfiles());
         setLoading(false);
         return;
       }
       
       try {
+        // Используем AbortController для таймаута
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд таймаут
+        
         const params = new URLSearchParams({
           user_id: userInfo.id,
           ...(selectedCity && { city: selectedCity }),
@@ -364,20 +311,21 @@ const Profiles = () => {
         });
         
         const url = `${API_ENDPOINTS.PROFILES}?${params}`;
-        console.log('Fetching from:', url);
         let response;
         try {
-          response = await fetchWithAuth(url);
+          response = await fetchWithAuth(url, { signal: controller.signal });
+          clearTimeout(timeoutId);
         } catch (fetchError) {
-          console.error('Error in fetchWithAuth for profiles:', fetchError);
-          // НЕ используем мок данные при ошибке сети - показываем пустой список
-          // Моки только для разработки без бэкенда
-          console.warn('Network error, showing empty list instead of mocks');
+          clearTimeout(timeoutId);
+          if (fetchError.name === 'AbortError') {
+            console.warn('Request timeout');
+          } else {
+            console.error('Error in fetchWithAuth for profiles:', fetchError);
+          }
           setAllProfiles([]);
           setLoading(false);
           return;
         }
-        console.log('Response status:', response.status);
         if (response.ok) {
           let data;
           try {
@@ -486,7 +434,7 @@ const Profiles = () => {
     };
     
     fetchProfiles();
-  }, [isReady, userInfo, selectedCity, selectedUniversity, selectedInterests, checkingProfile, navigate]);
+  }, [isReady, userInfo, selectedCity, selectedUniversity, selectedInterests]);
 
   // Фильтрация на фронтенде (для мок данных или дополнительная фильтрация)
   // Оптимизация: мемоизация фильтрации профилей для предотвращения лишних вычислений
@@ -798,13 +746,13 @@ const Profiles = () => {
     touchEndY.current = 0;
   };
 
-  if (checkingProfile || loading) {
+  if (loading) {
     return (
       <div className="min-w-[320px] min-h-[600px] max-w-4xl w-full mx-auto p-4 md:p-6 pb-32 md:pb-6" style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom))' }}>
         <div className="space-y-4 mt-4">
           <Card>
             <p className="text-center text-gray-800 font-medium">
-              {checkingProfile ? 'Проверка профиля...' : 'Загрузка профилей...'}
+              Загрузка профилей...
             </p>
           </Card>
         </div>
