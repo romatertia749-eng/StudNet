@@ -13,23 +13,22 @@ router = APIRouter(prefix="/api/profiles", tags=["profiles"])
 # ВАЖНО: Роуты с параметрами должны быть ПЕРЕД роутами без параметров
 # Иначе FastAPI может неправильно их обработать
 
-# POST /api/profiles - создание/обновление профиля
-@router.post("/", response_model=ProfileResponse, include_in_schema=True)
-def create_profile(
-    user_id: int = Form(...),
-    name: str = Form(...),
-    gender: str = Form(...),
-    age: int = Form(...),
-    city: str = Form(...),
-    university: str = Form(...),
-    interests: str = Form(...),
-    goals: str = Form(...),
-    bio: Optional[str] = Form(None),
-    username: Optional[str] = Form(None),
-    first_name: Optional[str] = Form(None),
-    last_name: Optional[str] = Form(None),
-    photo: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db)
+# Внутренняя функция для создания/обновления профиля
+def _create_profile_impl(
+    user_id: int,
+    name: str,
+    gender: str,
+    age: int,
+    city: str,
+    university: str,
+    interests: str,
+    goals: str,
+    bio: Optional[str],
+    username: Optional[str],
+    first_name: Optional[str],
+    last_name: Optional[str],
+    photo: Optional[UploadFile],
+    db: Session
 ):
     try:
         # Валидация базовых полей
@@ -118,6 +117,52 @@ def create_profile(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при создании профиля: {str(e)}")
 
+# POST /api/profiles - создание/обновление профиля (без слэша)
+@router.post("", response_model=ProfileResponse, include_in_schema=True)
+def create_profile(
+    user_id: int = Form(...),
+    name: str = Form(...),
+    gender: str = Form(...),
+    age: int = Form(...),
+    city: str = Form(...),
+    university: str = Form(...),
+    interests: str = Form(...),
+    goals: str = Form(...),
+    bio: Optional[str] = Form(None),
+    username: Optional[str] = Form(None),
+    first_name: Optional[str] = Form(None),
+    last_name: Optional[str] = Form(None),
+    photo: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    return _create_profile_impl(
+        user_id, name, gender, age, city, university, interests, goals,
+        bio, username, first_name, last_name, photo, db
+    )
+
+# POST /api/profiles/ - создание/обновление профиля (со слэшем)
+@router.post("/", response_model=ProfileResponse, include_in_schema=True)
+def create_profile_with_slash(
+    user_id: int = Form(...),
+    name: str = Form(...),
+    gender: str = Form(...),
+    age: int = Form(...),
+    city: str = Form(...),
+    university: str = Form(...),
+    interests: str = Form(...),
+    goals: str = Form(...),
+    bio: Optional[str] = Form(None),
+    username: Optional[str] = Form(None),
+    first_name: Optional[str] = Form(None),
+    last_name: Optional[str] = Form(None),
+    photo: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    return _create_profile_impl(
+        user_id, name, gender, age, city, university, interests, goals,
+        bio, username, first_name, last_name, photo, db
+    )
+
 # Важно: более специфичные роуты должны быть ПЕРЕД общим роутом /{profile_id}
 @router.get("/check/{user_id}")
 def check_profile_exists(user_id: int, db: Session = Depends(get_db)):
@@ -160,8 +205,8 @@ def get_profile_by_user_id(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Профиль не найден")
     return profile
 
-# GET /api/profiles - получение списка профилей (должен быть ПОСЛЕ специфичных роутов)
-@router.get("/", response_model=PageResponse, include_in_schema=True)
+# GET /api/profiles/ - получение списка профилей (должен быть ПОСЛЕ специфичных роутов)
+@router.get("", response_model=PageResponse, include_in_schema=True)
 def get_profiles(
     user_id: Optional[int] = None,
     city: Optional[str] = None,
