@@ -14,6 +14,11 @@ export const API_ENDPOINTS = {
   MATCHES: `${API_BASE_URL}/api/matches`,
   INCOMING_LIKES: `${API_BASE_URL}/api/profiles/incoming-likes`,
   RESPOND_TO_LIKE: `${API_BASE_URL}/api/likes/respond`,
+  USER_STATS: (user_id) => `${API_BASE_URL}/api/profiles/user/${user_id}/stats`,
+  CONNECTION_FEEDBACK: `${API_BASE_URL}/api/connection-feedback`,
+  CONNECTION_FEEDBACK_TYPES: `${API_BASE_URL}/api/connection-feedback/types`,
+  CONNECTION_FEEDBACK_MATCH: (match_id) => `${API_BASE_URL}/api/connection-feedback/match/${match_id}`,
+  GET_MATCH_ID: `${API_BASE_URL}/api/connection-feedback/match-id`,
 };
 
 // Функция для формирования полного URL фотографии

@@ -56,3 +56,18 @@ class Match(Base):
         CheckConstraint("user1_id < user2_id", name='check_user_order'),
     )
 
+class ConnectionFeedback(Base):
+    __tablename__ = "connection_feedbacks"
+    
+    id = Column(BigInteger, primary_key=True, index=True)
+    match_id = Column(BigInteger, ForeignKey('matches.id', ondelete='CASCADE'), nullable=False, index=True)
+    from_user_id = Column(BigInteger, ForeignKey('profiles.user_id', ondelete='CASCADE'), nullable=False, index=True)
+    to_user_id = Column(BigInteger, ForeignKey('profiles.user_id', ondelete='CASCADE'), nullable=False, index=True)
+    feedback_type = Column(String(50), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    
+    __table_args__ = (
+        UniqueConstraint('match_id', 'from_user_id', 'feedback_type', name='unique_feedback_per_match_type'),
+        CheckConstraint("feedback_type IN ('HELPED_ME', 'I_HELPED', 'PROJECT_TOGETHER', 'EVENT_TOGETHER')", name='check_feedback_type'),
+    )
+

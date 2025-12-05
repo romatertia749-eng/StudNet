@@ -12,6 +12,7 @@ const UserCard = () => {
   const [isMatched, setIsMatched] = useState(false);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
     if (!id) {
@@ -52,6 +53,19 @@ const UserCard = () => {
             bio: data.bio || '',
             photos: data.photo_url ? [getPhotoUrl(data.photo_url)] : [],
           });
+          
+          // Загружаем статистику
+          if (data.user_id) {
+            try {
+              const statsResponse = await fetch(API_ENDPOINTS.USER_STATS(data.user_id));
+              if (statsResponse.ok) {
+                const statsData = await statsResponse.json();
+                setStats(statsData);
+              }
+            } catch (e) {
+              console.error('Error loading stats:', e);
+            }
+          }
         } else {
           if (!isMounted) return;
           // Fallback на мок данные если профиль не найден
@@ -218,6 +232,30 @@ const UserCard = () => {
             </div>
           </div>
         </Card>
+
+        {stats && (
+          <Card className="bg-white/20 backdrop-blur-xl border-teal-200/50">
+            <h3 className="text-lg font-bold text-gray-800 mb-3">Статистика коннектов</h3>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="text-center p-2 bg-white/20 rounded-lg">
+                <div className="text-2xl font-bold text-teal-700">{stats.helped_others || 0}</div>
+                <div className="text-gray-600 text-xs mt-1">Помог другим</div>
+              </div>
+              <div className="text-center p-2 bg-white/20 rounded-lg">
+                <div className="text-2xl font-bold text-emerald-700">{stats.helped_me || 0}</div>
+                <div className="text-gray-600 text-xs mt-1">Помогли мне</div>
+              </div>
+              <div className="text-center p-2 bg-white/20 rounded-lg">
+                <div className="text-2xl font-bold text-blue-700">{stats.projects_together || 0}</div>
+                <div className="text-gray-600 text-xs mt-1">Совместных проектов</div>
+              </div>
+              <div className="text-center p-2 bg-white/20 rounded-lg">
+                <div className="text-2xl font-bold text-purple-700">{stats.events_together || 0}</div>
+                <div className="text-gray-600 text-xs mt-1">Совместных ивентов</div>
+              </div>
+            </div>
+          </Card>
+        )}
 
         <div className="space-y-3">
           {!isMatched ? (

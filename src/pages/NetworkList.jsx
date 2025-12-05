@@ -2,12 +2,26 @@ import { useState, useEffect, useMemo, memo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import ConnectionFeedback from '../components/ConnectionFeedback';
 import { useMatches } from '../contexts/MatchContext';
 import { useWebApp } from '../contexts/WebAppContext';
 import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
 
 // Мемоизированная карточка профиля для предотвращения лишних ре-рендеров при скролле
-const MatchCard = memo(({ person, onViewProfile, onMessage }) => (
+const MatchCard = memo(({ person, onViewProfile, onMessage, onFeedback, currentUserId }) => {
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [stats, setStats] = useState(null);
+  
+  useEffect(() => {
+    if (person.userId) {
+      fetch(API_ENDPOINTS.USER_STATS(person.userId))
+        .then(res => res.ok ? res.json() : null)
+        .then(data => data && setStats(data))
+        .catch(() => {});
+    }
+  }, [person.userId]);
+  
+  return (
   <div 
     className="p-4 rounded-2xl bg-white/20 border border-white/30"
     style={{ contain: 'layout style paint' }}
@@ -32,6 +46,12 @@ const MatchCard = memo(({ person, onViewProfile, onMessage }) => (
       <div className="flex-1 min-w-0">
         <h3 className="font-semibold text-gray-800 mb-1">{person.name}, {person.age}</h3>
         <p className="text-xs text-gray-500 mb-2">{person.city} • {person.university}</p>
+        {stats && (stats.helped_others > 0 || stats.projects_together > 0) && (
+          <p className="text-xs text-gray-600 mb-2">
+            Помог {stats.helped_others || 0} людям
+            {stats.projects_together > 0 && ` • ${stats.projects_together} проектов`}
+          </p>
+        )}
         <p className="text-sm text-gray-800 leading-relaxed line-clamp-2">{person.bio}</p>
         {person.interests && person.interests.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
@@ -69,9 +89,30 @@ const MatchCard = memo(({ person, onViewProfile, onMessage }) => (
           Username не указан
         </p>
       )}
+      {person.matchId && currentUserId && (
+        <Button
+          variant="outline"
+          onClick={() => setShowFeedback(true)}
+          className="w-full text-sm py-2 min-h-[40px]"
+        >
+          ✨ Отметить полезность
+        </Button>
+      )}
     </div>
+    
+    {showFeedback && person.matchId && currentUserId && (
+      <div className="mt-3">
+        <ConnectionFeedback
+          matchId={person.matchId}
+          fromUserId={currentUserId}
+          toUserId={person.userId}
+          onClose={() => setShowFeedback(false)}
+        />
+      </div>
+    )}
   </div>
-));
+  );
+});
 
 MatchCard.displayName = 'MatchCard';
 
@@ -172,6 +213,7 @@ const NetworkList = () => {
             const formatted = {
               id: profile?.id,
               userId: profile?.user_id || profile?.id,
+              matchId: match?.id || null,
               name: profile?.name || '',
               age: profile?.age || 0,
               city: profile?.city || '',
@@ -251,9 +293,10 @@ const NetworkList = () => {
         person={person} 
         onViewProfile={handleViewProfile}
         onMessage={handleMessage}
+        currentUserId={userInfo?.id}
       />
     )), 
-    [matchedProfiles, handleViewProfile, handleMessage]
+    [matchedProfiles, handleViewProfile, handleMessage, userInfo?.id]
   );
 
   if (loading) {

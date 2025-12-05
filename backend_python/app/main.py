@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-from app.routers import profiles, matches, auth
+from app.routers import profiles, matches, auth, connection_feedback
 from app.routers.profiles import _create_profile_impl
 from app.database import get_db
 from app.schemas import ProfileResponse
@@ -121,6 +121,7 @@ async def create_profile_slash_fallback(
 app.include_router(auth.router)
 app.include_router(profiles.router)
 app.include_router(matches.router)
+app.include_router(connection_feedback.router)
 
 @app.get("/health")
 def health():

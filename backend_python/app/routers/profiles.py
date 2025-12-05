@@ -5,8 +5,8 @@ from typing import Optional
 from pydantic import ValidationError
 from app.database import get_db
 from app.models import Profile
-from app.schemas import ProfileCreate, ProfileResponse, PageResponse
-from app.services import profile_service
+from app.schemas import ProfileCreate, ProfileResponse, PageResponse, ConnectionStatsResponse
+from app.services import profile_service, connection_feedback_service
 import json
 
 router = APIRouter(prefix="/api/profiles", tags=["profiles"])
@@ -325,4 +325,13 @@ def get_profile(profile_id: int, db: Session = Depends(get_db)):
     if not profile:
         raise HTTPException(status_code=404, detail="Профиль не найден")
     return profile
+
+@router.get("/user/{user_id}/stats", response_model=ConnectionStatsResponse)
+def get_user_stats(user_id: int, db: Session = Depends(get_db)):
+    """Получает статистику отметок полезности для пользователя"""
+    try:
+        stats = connection_feedback_service.get_user_stats(db, user_id)
+        return ConnectionStatsResponse(**stats)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении статистики: {str(e)}")
 
