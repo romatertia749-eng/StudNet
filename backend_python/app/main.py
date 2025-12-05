@@ -88,11 +88,6 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Статические файлы для загруженных фотографий
-upload_dir = Path("./uploads/photos")
-upload_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
 # Роутеры - ВАЖНО: регистрируем в правильном порядке
 # Сначала более специфичные, потом общие
 # API роуты должны быть зарегистрированы ДО catch-all роута
