@@ -12,7 +12,7 @@ const ProfileForm = () => {
   const { userInfo, isReady, setHasCompletedProfile } = useWebApp();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [viewMode, setViewMode] = useState(true);
   const [profileData, setProfileData] = useState(null);
@@ -42,11 +42,25 @@ const ProfileForm = () => {
       return;
     }
 
+    let isMounted = true;
+
     const loadProfile = async () => {
+      if (!isMounted) return;
+      setLoadingProfile(true);
+
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
         const url = API_ENDPOINTS.PROFILE_BY_USER_ID(userInfo.id);
         console.log('Loading profile from:', url);
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!isMounted) return;
         console.log('Profile load response status:', response.status);
         
         if (response.ok) {
@@ -110,23 +124,31 @@ const ProfileForm = () => {
           // Не логируем и не показываем ошибку пользователю
           setIsEditing(false);
         } else {
+          if (!isMounted) return;
           // Другая ошибка - логируем только в консоль, не показываем пользователю
           console.warn('Unexpected error loading profile:', response.status);
           setIsEditing(false);
         }
       } catch (error) {
-        // При ошибке сети оставляем форму пустой, не показываем ошибку
-        // Логируем только в консоль для отладки
-        if (process.env.NODE_ENV === 'development') {
+        if (!isMounted) return;
+        if (error.name === 'AbortError') {
+          console.warn('Request timeout');
+        } else if (process.env.NODE_ENV === 'development') {
           console.error('Error loading profile:', error);
         }
         setIsEditing(false);
       } finally {
-        setLoadingProfile(false);
+        if (isMounted) {
+          setLoadingProfile(false);
+        }
       }
     };
 
     loadProfile();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [isReady, userInfo]);
 
   // Закрытие dropdown при клике вне его

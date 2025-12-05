@@ -151,7 +151,7 @@ function MyComponent() {
    # Загрузите build/ на хостинг
    ```
 
-2. **Бэкенд** (Railway/Render):
+2. **Бэкенд** (Koyeb/Railway/Render):
    - Настройте переменные окружения
    - Подключите PostgreSQL
    - Деплой через Git

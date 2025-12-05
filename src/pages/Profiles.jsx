@@ -22,7 +22,7 @@ const Profiles = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [allProfiles, setAllProfiles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   // Убрана блокирующая проверка профиля
   const [showSwipeTutorial, setShowSwipeTutorial] = useState(false);
   
@@ -157,13 +157,13 @@ const Profiles = () => {
 
   // Проверка, нужно ли показать модалку с объяснением свайпов
   useEffect(() => {
-    if (!isReady || loading) return;
+    if (!isReady) return;
     
     const hasSeenTutorial = localStorage.getItem('maxnet_swipe_tutorial_seen');
     if (!hasSeenTutorial) {
       setShowSwipeTutorial(true);
     }
-  }, [isReady, loading]);
+  }, [isReady]);
 
   // Скрываем шапку и нижнее меню когда открыта модалка
   useEffect(() => {
@@ -197,13 +197,19 @@ const Profiles = () => {
     
     setLoadingIncoming(true);
     setIncomingError(null);
-    // Очищаем старые данные перед загрузкой новых, чтобы избежать двойного рендера
     setIncomingLikes([]);
     
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      
       const url = `${API_ENDPOINTS.INCOMING_LIKES}?user_id=${userInfo.id}`;
       console.log('Fetching incoming likes from:', url);
-      const response = await fetchWithAuth(url);
+      const response = await fetchWithAuth(url, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
       console.log('Incoming likes response status:', response.status);
       
       if (response.ok) {
@@ -261,8 +267,13 @@ const Profiles = () => {
         setCurrentIndex(0);
       }
     } catch (error) {
-      console.error('Error fetching incoming likes:', error);
-      setIncomingError('network_error');
+      if (error.name === 'AbortError') {
+        console.warn('Incoming likes request timeout');
+        setIncomingError('timeout');
+      } else {
+        console.error('Error fetching incoming likes:', error);
+        setIncomingError('network_error');
+      }
       setIncomingLikes([]);
       setCurrentIndex(0);
     } finally {
@@ -287,12 +298,13 @@ const Profiles = () => {
       return;
     }
     
-    let isMounted = true; // Флаг для проверки, что компонент еще смонтирован
+    let isMounted = true;
+    let controller = null;
     
     const fetchProfiles = async () => {
+      if (!isMounted) return;
       setLoading(true);
       
-      // Если нет userInfo, используем моковые данные
       if (!userInfo?.id) {
         if (isMounted) {
           setAllProfiles(getMockProfiles());
@@ -302,6 +314,9 @@ const Profiles = () => {
       }
       
       try {
+        controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
         const params = new URLSearchParams({
           user_id: userInfo.id,
           ...(selectedCity && { city: selectedCity }),
@@ -312,9 +327,16 @@ const Profiles = () => {
         });
         
         const url = `${API_ENDPOINTS.PROFILES}?${params}`;
-        const response = await fetchWithAuth(url);
+        const response = await fetchWithAuth(url, {
+          signal: controller.signal
+        });
         
-        if (!isMounted) return; // Компонент размонтирован, не обновляем состояние
+        clearTimeout(timeoutId);
+        
+        if (!isMounted) {
+          setLoading(false);
+          return;
+        }
         
         if (response.ok) {
           let data;
@@ -396,7 +418,11 @@ const Profiles = () => {
         }
       } catch (error) {
         if (!isMounted) return;
-        console.error('Error fetching profiles:', error);
+        if (error.name === 'AbortError') {
+          console.warn('Profiles request timeout');
+        } else {
+          console.error('Error fetching profiles:', error);
+        }
         setAllProfiles([]);
       } finally {
         if (isMounted) {
@@ -407,9 +433,11 @@ const Profiles = () => {
     
     fetchProfiles();
     
-    // Cleanup функция для отмены запроса при размонтировании
     return () => {
       isMounted = false;
+      if (controller) {
+        controller.abort();
+      }
     };
   }, [isReady, userInfo, selectedCity, selectedUniversity, selectedInterests]);
 

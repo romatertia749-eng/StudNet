@@ -11,12 +11,31 @@ const UserCard = () => {
   const { userInfo } = useWebApp();
   const [isMatched, setIsMatched] = useState(false);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+
     const fetchProfile = async () => {
+      if (!isMounted) return;
+      setLoading(true);
+
       try {
-        const response = await fetch(API_ENDPOINTS.PROFILE_BY_ID(id));
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
+        const response = await fetch(API_ENDPOINTS.PROFILE_BY_ID(id), {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!isMounted) return;
         if (response.ok) {
           const data = await response.json();
           // Преобразуем данные из API в формат для отображения
@@ -34,6 +53,7 @@ const UserCard = () => {
             photos: data.photo_url ? [getPhotoUrl(data.photo_url)] : [],
           });
         } else {
+          if (!isMounted) return;
           // Fallback на мок данные если профиль не найден
           setProfile({
             id: id,
@@ -49,7 +69,12 @@ const UserCard = () => {
           });
         }
       } catch (error) {
-        console.error('Error fetching profile:', error);
+        if (!isMounted) return;
+        if (error.name === 'AbortError') {
+          console.warn('Request timeout');
+        } else {
+          console.error('Error fetching profile:', error);
+        }
         // Fallback на мок данные при ошибке
         setProfile({
           id: id,
@@ -64,11 +89,17 @@ const UserCard = () => {
           photos: [],
         });
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     
     fetchProfile();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   const handleMatch = async () => {

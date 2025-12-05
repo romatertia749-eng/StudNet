@@ -25,11 +25,18 @@ export const MatchProvider = ({ children }) => {
   // ЕДИНЫЙ ИСТОЧНИК ИСТИНЫ: connectsCount обновляется только из API
   // НЕ обновляем connectsCount при изменении matchedProfiles, чтобы избежать циклов
   const updateConnectsCount = useCallback(async (userId) => {
-    if (!userId || isLoadingCount) return; // Предотвращаем параллельные запросы
+    if (!userId || isLoadingCount) return;
     
     setIsLoadingCount(true);
     try {
-      const response = await fetch(`${API_ENDPOINTS.MATCHES}?user_id=${userId}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(`${API_ENDPOINTS.MATCHES}?user_id=${userId}`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
@@ -37,8 +44,9 @@ export const MatchProvider = ({ children }) => {
         setConnectsCount(count);
       }
     } catch (error) {
-      console.error('[MatchContext] Error fetching connects count:', error);
-      // Fallback - не обновляем, оставляем текущее значение
+      if (error.name !== 'AbortError') {
+        console.error('[MatchContext] Error fetching connects count:', error);
+      }
     } finally {
       setIsLoadingCount(false);
     }

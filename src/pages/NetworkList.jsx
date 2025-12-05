@@ -80,7 +80,7 @@ const NetworkList = () => {
   const { setMatchedProfiles: setContextMatchedProfiles, updateConnectsCount } = useMatches();
   const { userInfo, isReady } = useWebApp();
   const [matchedProfiles, setMatchedProfiles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Убрана блокирующая проверка профиля - загрузка происходит сразу
 
@@ -91,16 +91,25 @@ const NetworkList = () => {
       return;
     }
 
-    let isMounted = true; // Флаг для проверки, что компонент еще смонтирован
+    let isMounted = true;
+    let controller = null;
 
     const fetchMatches = async () => {
+      if (!isMounted) return;
       setLoading(true);
       
       try {
-        const url = `${API_ENDPOINTS.MATCHES}?user_id=${userInfo.id}`;
-        const response = await fetch(url);
+        controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
         
-        if (!isMounted) return; // Компонент размонтирован, не обновляем состояние
+        const url = `${API_ENDPOINTS.MATCHES}?user_id=${userInfo.id}`;
+        const response = await fetch(url, {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!isMounted) return;
         if (response.ok) {
           const data = await response.json();
           
@@ -178,7 +187,11 @@ const NetworkList = () => {
         }
       } catch (error) {
         if (!isMounted) return;
-        console.error('[NetworkList] Error fetching matches:', error);
+        if (error.name === 'AbortError') {
+          console.warn('[NetworkList] Request timeout');
+        } else {
+          console.error('[NetworkList] Error fetching matches:', error);
+        }
         setMatchedProfiles([]);
       } finally {
         if (isMounted) {
@@ -189,9 +202,11 @@ const NetworkList = () => {
     
     fetchMatches();
     
-    // Cleanup функция для отмены запроса при размонтировании
     return () => {
       isMounted = false;
+      if (controller) {
+        controller.abort();
+      }
     };
   }, [userInfo, isReady, setContextMatchedProfiles]);
 
