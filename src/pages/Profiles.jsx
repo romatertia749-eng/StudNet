@@ -292,9 +292,14 @@ const Profiles = () => {
 
   // Загрузка профилей с бэкенда
   useEffect(() => {
-    // Не загружаем профили, пока WebApp не готов
-    if (!isReady) {
-      setLoading(false); // Сбрасываем loading если не готов
+    // Не загружаем профили, пока WebApp не готов или нет user_id
+    if (!isReady || !userInfo?.id) {
+      setLoading(false);
+      return;
+    }
+    
+    // Не загружаем, если активна вкладка "Входящие лайки"
+    if (activeTab === 'incoming') {
       return;
     }
     
@@ -304,14 +309,6 @@ const Profiles = () => {
     const fetchProfiles = async () => {
       if (!isMounted) return;
       setLoading(true);
-      
-      if (!userInfo?.id) {
-        if (isMounted) {
-          setAllProfiles(getMockProfiles());
-          setLoading(false);
-        }
-        return;
-      }
       
       try {
         controller = new AbortController();
@@ -327,11 +324,14 @@ const Profiles = () => {
         });
         
         const url = `${API_ENDPOINTS.PROFILES}?${params}`;
+        console.log('[Profiles] Fetching profiles from:', url);
         const response = await fetchWithAuth(url, {
           signal: controller.signal
         });
         
         clearTimeout(timeoutId);
+        
+        console.log('[Profiles] Response status:', response.status);
         
         if (!isMounted) {
           setLoading(false);
@@ -342,7 +342,9 @@ const Profiles = () => {
           let data;
           try {
             data = await response.json();
+            console.log('[Profiles] Received data:', data);
           } catch (parseError) {
+            console.error('[Profiles] Failed to parse JSON:', parseError);
             if (!isMounted) return;
             setAllProfiles([]);
             setLoading(false);
@@ -352,8 +354,10 @@ const Profiles = () => {
           if (!isMounted) return;
           
           const profiles = Array.isArray(data.content) ? data.content : (Array.isArray(data) ? data : []);
+          console.log('[Profiles] Processed profiles count:', profiles.length);
           
           if (profiles.length === 0) {
+            console.log('[Profiles] No profiles found');
             if (isMounted) {
               setAllProfiles([]);
             }
@@ -408,20 +412,23 @@ const Profiles = () => {
                 };
               }
             });
+            console.log('[Profiles] Setting profiles:', processedProfiles.length);
             if (isMounted) {
               setAllProfiles(processedProfiles);
             }
           }
         } else {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          console.error('[Profiles] API error:', response.status, errorText);
           if (!isMounted) return;
           setAllProfiles([]);
         }
       } catch (error) {
         if (!isMounted) return;
         if (error.name === 'AbortError') {
-          console.warn('Profiles request timeout');
+          console.warn('[Profiles] Request timeout');
         } else {
-          console.error('Error fetching profiles:', error);
+          console.error('[Profiles] Error fetching profiles:', error);
         }
         setAllProfiles([]);
       } finally {
@@ -439,7 +446,7 @@ const Profiles = () => {
         controller.abort();
       }
     };
-  }, [isReady, userInfo, selectedCity, selectedUniversity, selectedInterests]);
+  }, [isReady, userInfo?.id, activeTab, selectedCity, selectedUniversity, selectedInterests]);
 
   // Фильтрация на фронтенде (для мок данных или дополнительная фильтрация)
   // Оптимизация: мемоизация фильтрации профилей для предотвращения лишних вычислений
@@ -473,6 +480,22 @@ const Profiles = () => {
     ? (loadingIncoming ? [] : incomingLikes) 
     : availableProfiles;
   const currentProfile = currentProfiles[currentIndex];
+  
+  // Отладочное логирование
+  useEffect(() => {
+    console.log('[Profiles] State update:', {
+      activeTab,
+      allProfilesCount: allProfiles.length,
+      filteredProfilesCount: filteredProfiles.length,
+      availableProfilesCount: availableProfiles.length,
+      swipedProfilesCount: swipedProfiles.length,
+      currentIndex,
+      currentProfile: currentProfile ? { id: currentProfile.id, name: currentProfile.name } : null,
+      loading,
+      loadingIncoming,
+      incomingLikesCount: incomingLikes.length
+    });
+  }, [activeTab, allProfiles.length, filteredProfiles.length, availableProfiles.length, currentIndex, currentProfile, loading, loadingIncoming, incomingLikes.length]);
 
   // Сброс индекса и очистка свайпов при изменении фильтров
   useEffect(() => {
@@ -483,7 +506,9 @@ const Profiles = () => {
   // Сброс индекса при изменении списка профилей
   useEffect(() => {
     if (allProfiles.length > 0) {
+      console.log('[Profiles] Resetting index because allProfiles changed:', allProfiles.length);
       setCurrentIndex(0);
+      setSwipedProfiles([]); // Очищаем свайпы при загрузке новых профилей
     }
   }, [allProfiles.length]);
 
@@ -980,7 +1005,7 @@ const Profiles = () => {
         {/* GLOW-АНИМАЦИЯ: после завершения эффекта карточка появляется с неоновой подсветкой */}
         <AnimatePresence mode="wait">
           {currentProfile && (
-            activeTab === 'all' || 
+            (activeTab === 'all' && !loading) || 
             (activeTab === 'incoming' && !loadingIncoming && incomingLikes.length > 0 && !incomingError)
           ) && (
             <motion.div
