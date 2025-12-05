@@ -44,13 +44,18 @@ def pass_profile(
     db: Session = Depends(get_db)
 ):
     try:
+        print(f"[pass_profile] user_id={request.user_id}, target_profile_id={profile_id}")
         match_service.pass_profile(
             db=db,
             user_id=request.user_id,
             target_profile_id=profile_id
         )
-        return PassResponse()
+        print(f"[pass_profile] Pass saved successfully")
+        return PassResponse(message="Пропущено")
     except Exception as e:
+        print(f"[pass_profile] Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка при обработке пропуска: {str(e)}")
 
 @router.post("/likes/respond", response_model=LikeResponse)

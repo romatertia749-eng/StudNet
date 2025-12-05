@@ -506,12 +506,11 @@ const Profiles = () => {
   // Это предотвращает двойную фильтрацию и проблемы с отображением профилей
   const filteredProfiles = allProfiles;
 
-  // ВРЕМЕННО: отключаем фильтрацию по swipedProfiles для отладки
-  // const availableProfiles = useMemo(() => 
-  //   filteredProfiles.filter(profile => !swipedProfiles.includes(profile.id)),
-  //   [filteredProfiles, swipedProfiles]
-  // );
-  const availableProfiles = filteredProfiles; // ПОКАЗЫВАЕМ ВСЕ ПРОФИЛИ БЕЗ ИСКЛЮЧЕНИЙ
+  // Фильтруем профили - исключаем свайпнутые
+  const availableProfiles = useMemo(() => 
+    filteredProfiles.filter(profile => !swipedProfiles.includes(profile.id)),
+    [filteredProfiles, swipedProfiles]
+  );
 
   // Профили для текущей вкладки
   // Для входящих показываем только после загрузки, чтобы избежать двойного рендера
@@ -641,15 +640,21 @@ const Profiles = () => {
           }
         } else {
           // Обычный лайк
-          const response = await fetch(API_ENDPOINTS.LIKE_PROFILE(currentProfile.id), {
+          console.log('[Profiles] Liking profile:', currentProfile.id, 'user_id:', userInfo.id);
+          const response = await fetchWithAuth(API_ENDPOINTS.LIKE_PROFILE(currentProfile.id), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userInfo.id }),
           });
           
+          console.log('[Profiles] Like response status:', response.status);
           if (response.ok) {
             const data = await response.json();
+            console.log('[Profiles] Like response data:', data);
             if (data.matched) isMatched = true;
+          } else {
+            const errorText = await response.text().catch(() => 'Unknown error');
+            console.error('[Profiles] Like error:', response.status, errorText);
           }
         }
       } catch (error) {
@@ -664,21 +669,30 @@ const Profiles = () => {
       addMatch(currentProfile);
     }
     
+    // Добавляем профиль в список свайпнутых ПЕРЕД обновлением индекса
     if (activeTab !== 'incoming') {
-      setSwipedProfiles(prev => [...prev, currentProfile.id]);
+      setSwipedProfiles(prev => {
+        const newList = [...prev, currentProfile.id];
+        console.log('[Profiles] Added to swipedProfiles:', currentProfile.id, 'Total swiped:', newList.length);
+        return newList;
+      });
     }
     
+    // Вычисляем длину с учетом того, что текущий профиль будет удален
     const profilesLength = activeTab === 'incoming' 
       ? incomingLikes.length - 1 
-      : availableProfiles.length;
+      : availableProfiles.length - 1; // -1 потому что текущий профиль будет удален
     
     setCurrentIndex(prevIndex => {
-      const nextIndex = prevIndex < profilesLength - 1 ? prevIndex + 1 : 0;
+      // Если это последний профиль, остаемся на том же индексе (но он будет пустым)
+      const nextIndex = prevIndex < profilesLength ? prevIndex + 1 : prevIndex;
+      
+      console.log('[Profiles] Updating index:', prevIndex, '->', nextIndex, 'profilesLength:', profilesLength);
       
       setIsEffectActive(true);
       setEffectDirection('right');
       setLastSwipeDirection('right');
-      setPendingIndexChange(activeTab === 'incoming' ? Math.min(prevIndex, Math.max(0, profilesLength - 2)) : nextIndex);
+      setPendingIndexChange(activeTab === 'incoming' ? Math.min(prevIndex, Math.max(0, profilesLength - 1)) : nextIndex);
       
       return prevIndex;
     });
@@ -703,32 +717,49 @@ const Profiles = () => {
           // Удаляем из входящих
           setIncomingLikes(prev => prev.filter(p => p.id !== currentProfile.id));
         } else {
-          await fetch(API_ENDPOINTS.PASS_PROFILE(currentProfile.id), {
+          // Обычный пасс
+          console.log('[Profiles] Passing profile:', currentProfile.id, 'user_id:', userInfo.id);
+          const response = await fetchWithAuth(API_ENDPOINTS.PASS_PROFILE(currentProfile.id), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userInfo.id }),
           });
+          
+          console.log('[Profiles] Pass response status:', response.status);
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => 'Unknown error');
+            console.error('[Profiles] Pass error:', response.status, errorText);
+          }
         }
       } catch (error) {
         console.error('Error passing profile:', error);
       }
     }
     
+    // Добавляем профиль в список свайпнутых ПЕРЕД обновлением индекса
     if (activeTab !== 'incoming') {
-      setSwipedProfiles(prev => [...prev, currentProfile.id]);
+      setSwipedProfiles(prev => {
+        const newList = [...prev, currentProfile.id];
+        console.log('[Profiles] Added to swipedProfiles (pass):', currentProfile.id, 'Total swiped:', newList.length);
+        return newList;
+      });
     }
     
+    // Вычисляем длину с учетом того, что текущий профиль будет удален
     const profilesLength = activeTab === 'incoming' 
       ? incomingLikes.length - 1 
-      : availableProfiles.length;
+      : availableProfiles.length - 1; // -1 потому что текущий профиль будет удален
     
     setCurrentIndex(prevIndex => {
-      const nextIndex = prevIndex < profilesLength - 1 ? prevIndex + 1 : 0;
+      // Если это последний профиль, остаемся на том же индексе (но он будет пустым)
+      const nextIndex = prevIndex < profilesLength ? prevIndex + 1 : prevIndex;
+      
+      console.log('[Profiles] Updating index (pass):', prevIndex, '->', nextIndex, 'profilesLength:', profilesLength);
       
       setIsEffectActive(true);
       setEffectDirection('left');
       setLastSwipeDirection('left');
-      setPendingIndexChange(activeTab === 'incoming' ? Math.min(prevIndex, Math.max(0, profilesLength - 2)) : nextIndex);
+      setPendingIndexChange(activeTab === 'incoming' ? Math.min(prevIndex, Math.max(0, profilesLength - 1)) : nextIndex);
       
       return prevIndex;
     });
