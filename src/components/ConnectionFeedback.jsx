@@ -209,15 +209,15 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
       {showSuccess && (
         <SuccessNotification onClose={() => setShowSuccess(false)} />
       )}
-      <Card>
-        <h3 className="text-lg font-bold text-gray-800 mb-4">
+      <Card className="p-4">
+        <h3 className="text-base font-bold text-gray-800 mb-3">
           Чем было полезно это знакомство?
         </h3>
-        <p className="text-sm text-gray-600 mb-4">
+        <p className="text-xs text-gray-600 mb-3">
           Отметьте, что произошло в результате этого коннекта
         </p>
         
-        <div className="space-y-2 mb-4">
+        <div className="space-y-2 mb-3">
           {Object.entries(FEEDBACK_TYPES).map(([type, info]) => {
             const isSelected = selectedTypes.includes(type) && !existingFeedbacks.includes(type);
             const isExisting = existingFeedbacks.includes(type);
@@ -248,13 +248,13 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
           })}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-4">
           <Button
             type="button"
             variant="primary"
             onClick={handleSubmit}
             disabled={submitting || selectedTypes.length === 0 || selectedTypes.every(t => existingFeedbacks.includes(t))}
-            className="flex-1"
+            className="flex-1 min-h-[36px] px-3 py-1.5 text-xs"
           >
             {submitting ? 'Сохранение...' : 'Сохранить'}
           </Button>
@@ -263,7 +263,7 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
               type="button"
               variant="outline"
               onClick={onClose}
-              className="flex-1"
+              className="flex-1 min-h-[36px] px-3 py-1.5 text-xs"
               style={{
                 background: 'white',
                 borderColor: 'rgb(229, 231, 235)',

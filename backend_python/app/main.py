@@ -117,6 +117,31 @@ async def create_profile_slash_fallback(
         bio, username, first_name, last_name, photo, db
     )
 
+# Fallback роуты для connection-feedback
+from app.schemas import ConnectionFeedbackCreate, ConnectionFeedbackResponse
+from app.services import connection_feedback_service
+
+@app.post("/api/connection-feedback", response_model=ConnectionFeedbackResponse, include_in_schema=True, tags=["connection-feedback"])
+@app.post("/api/connection-feedback/", response_model=ConnectionFeedbackResponse, include_in_schema=True, tags=["connection-feedback"])
+async def create_feedback_fallback(
+    feedback: ConnectionFeedbackCreate,
+    db: Session = Depends(get_db)
+):
+    """Fallback роут для POST /api/connection-feedback - обрабатывается первым"""
+    try:
+        result = connection_feedback_service.create_feedback(
+            db=db,
+            match_id=feedback.match_id,
+            from_user_id=feedback.from_user_id,
+            to_user_id=feedback.to_user_id,
+            feedback_type=feedback.feedback_type
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при создании отметки: {str(e)}")
+
 # Регистрируем роутеры
 app.include_router(auth.router)
 app.include_router(profiles.router)
