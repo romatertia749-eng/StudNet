@@ -130,7 +130,13 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
       
       for (const type of newTypes) {
         try {
-          const response = await fetch(API_ENDPOINTS.CONNECTION_FEEDBACK, {
+          const url = API_ENDPOINTS.CONNECTION_FEEDBACK.endsWith('/') 
+            ? API_ENDPOINTS.CONNECTION_FEEDBACK 
+            : API_ENDPOINTS.CONNECTION_FEEDBACK;
+          
+          console.log('Sending POST to:', url, { match_id: matchId, from_user_id: fromUserId, to_user_id: toUserId, feedback_type: type });
+          
+          const response = await fetch(url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -143,12 +149,20 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
             }),
           });
           
+          console.log('Response status:', response.status, response.statusText);
+          
           if (response.ok) {
             successfulTypes.push(type);
           } else {
-            const errorData = await response.json().catch(() => ({}));
-            errors.push({ type, error: errorData.detail || 'Ошибка сервера' });
-            console.error(`Failed to submit ${type}:`, errorData);
+            const errorText = await response.text();
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { detail: errorText || `HTTP ${response.status}: ${response.statusText}` };
+            }
+            errors.push({ type, error: errorData.detail || `HTTP ${response.status}` });
+            console.error(`Failed to submit ${type}:`, errorData, 'Response:', errorText);
           }
         } catch (err) {
           errors.push({ type, error: err.message });
@@ -234,24 +248,30 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
           })}
         </div>
 
-        <div className="flex gap-2 items-stretch">
+        <div className="flex gap-2">
           <Button
             type="button"
             variant="primary"
             onClick={handleSubmit}
             disabled={submitting || selectedTypes.length === 0 || selectedTypes.every(t => existingFeedbacks.includes(t))}
-            className="flex-1 flex-shrink-0"
+            className="flex-1"
           >
             {submitting ? 'Сохранение...' : 'Сохранить'}
           </Button>
           {onClose && (
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
-              className="flex-1 flex-shrink-0 min-h-[48px] px-5 py-3 rounded-xl font-medium text-base transition-all duration-200 active:scale-[0.97] active:opacity-90 bg-white text-gray-800 border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center"
+              className="flex-1"
+              style={{
+                background: 'white',
+                borderColor: 'rgb(229, 231, 235)',
+                color: 'rgb(31, 41, 55)',
+              }}
             >
               Отмена
-            </button>
+            </Button>
           )}
         </div>
       </Card>

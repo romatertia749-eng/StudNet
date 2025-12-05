@@ -11,7 +11,7 @@ from app.services import connection_feedback_service
 
 router = APIRouter(prefix="/api/connection-feedback", tags=["connection-feedback"])
 
-@router.post("", response_model=ConnectionFeedbackResponse)
+@router.post("", response_model=ConnectionFeedbackResponse, include_in_schema=True)
 def create_feedback(
     feedback: ConnectionFeedbackCreate,
     db: Session = Depends(get_db)
@@ -30,6 +30,14 @@ def create_feedback(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при создании отметки: {str(e)}")
+
+@router.post("/", response_model=ConnectionFeedbackResponse, include_in_schema=True)
+def create_feedback_with_slash(
+    feedback: ConnectionFeedbackCreate,
+    db: Session = Depends(get_db)
+):
+    """Создает отметку полезности для мэтча (со слэшем)"""
+    return create_feedback(feedback, db)
 
 @router.get("/match/{match_id}", response_model=List[ConnectionFeedbackResponse])
 def get_feedbacks_for_match(
