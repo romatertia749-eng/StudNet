@@ -210,12 +210,17 @@ const Profiles = () => {
       });
       
       clearTimeout(timeoutId);
-      console.log('Incoming likes response status:', response.status);
-      
+        console.log('[IncomingLikes] Response status:', response.status);
+        
       if (response.ok) {
         const data = await response.json();
-        console.log('Incoming likes data:', data);
+        console.log('[IncomingLikes] Received data:', data);
+        console.log('[IncomingLikes] Data type:', typeof data);
+        console.log('[IncomingLikes] Data.content type:', Array.isArray(data.content) ? 'array' : typeof data.content);
+        console.log('[IncomingLikes] Data.content length:', Array.isArray(data.content) ? data.content.length : 'not array');
+        
         const profiles = Array.isArray(data.content) ? data.content : (Array.isArray(data) ? data : []);
+        console.log('[IncomingLikes] Processed profiles count:', profiles.length);
         
         const processedProfiles = profiles.map(profile => {
           let interestsArray = [];
@@ -245,8 +250,10 @@ const Profiles = () => {
         });
         
         // Устанавливаем данные и сбрасываем индекс только после загрузки
+        console.log('[IncomingLikes] Setting profiles:', processedProfiles.length);
         setIncomingLikes(processedProfiles);
         setCurrentIndex(0); // Сбрасываем индекс только когда данные загружены
+        console.log('[IncomingLikes] ✅ Profiles set, count:', processedProfiles.length);
         
         // Показываем подсказку только первый раз
         const hasSeenIncomingTip = localStorage.getItem('maxnet_incoming_tip_seen');
@@ -544,9 +551,11 @@ const Profiles = () => {
       currentProfile: currentProfile ? { id: currentProfile.id, name: currentProfile.name } : null,
       loading,
       loadingIncoming,
-      incomingLikesCount: incomingLikes.length
+      incomingLikesCount: incomingLikes.length,
+      currentProfilesLength: currentProfiles.length,
+      safeIndex
     });
-  }, [activeTab, allProfiles.length, filteredProfiles.length, availableProfiles.length, currentIndex, currentProfile, loading, loadingIncoming, incomingLikes.length]);
+  }, [activeTab, allProfiles.length, filteredProfiles.length, availableProfiles.length, currentIndex, currentProfile, loading, loadingIncoming, incomingLikes.length, currentProfiles.length, safeIndex]);
 
   // Сброс индекса и очистка свайпов при изменении фильтров
   useEffect(() => {
@@ -1102,7 +1111,10 @@ const Profiles = () => {
         {/* Карточка профиля с плавной анимацией появления через Framer Motion */}
         {/* GLOW-АНИМАЦИЯ: после завершения эффекта карточка появляется с неоновой подсветкой */}
         <AnimatePresence mode="wait">
-          {currentProfile && activeTab === 'all' && !loading && (
+          {currentProfile && (
+            (activeTab === 'all' && !loading) || 
+            (activeTab === 'incoming' && !loadingIncoming && incomingLikes.length > 0)
+          ) && (
             <motion.div
               key={currentProfile.id}
               ref={cardRef}
