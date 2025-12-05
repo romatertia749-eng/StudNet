@@ -272,6 +272,38 @@ def get_all_profiles_debug(
         "number": 0
     }
 
+@router.get("/debug/simple", include_in_schema=False)
+def get_profiles_simple(
+    user_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """УПРОЩЕННЫЙ endpoint БЕЗ фильтров - возвращает ВСЕ профили кроме текущего"""
+    if user_id is None:
+        return {"error": "user_id required", "profiles": []}
+    
+    # ВСЕ профили кроме текущего пользователя, БЕЗ фильтров
+    profiles = db.query(Profile).filter(Profile.user_id != user_id).all()
+    
+    # Простая сериализация
+    result = []
+    for p in profiles:
+        result.append({
+            "id": p.id,
+            "user_id": p.user_id,
+            "name": p.name,
+            "gender": p.gender,
+            "age": p.age,
+            "city": p.city,
+            "university": p.university,
+            "interests": p.interests,
+            "goals": p.goals,
+            "bio": p.bio,
+            "photo_url": p.photo_url
+        })
+    
+    print(f"[DEBUG SIMPLE] Returning {len(result)} profiles for user {user_id}")
+    return {"content": result, "total": len(result)}
+
 @router.get("/{profile_id}", response_model=ProfileResponse)
 def get_profile(profile_id: int, db: Session = Depends(get_db)):
     """Получает профиль по ID"""

@@ -323,8 +323,11 @@ const Profiles = () => {
           size: 50
         });
         
+        // ВРЕМЕННО: используем упрощенный endpoint для отладки
+        const debugUrl = `${API_ENDPOINTS.PROFILES.replace('/api/profiles/', '/api/profiles/debug/simple')}?user_id=${userInfo.id}`;
         const url = `${API_ENDPOINTS.PROFILES}?${params}`;
         console.log('[Profiles] Fetching profiles from:', url);
+        console.log('[Profiles] DEBUG URL:', debugUrl);
         const response = await fetchWithAuth(url, {
           signal: controller.signal
         });
@@ -343,6 +346,9 @@ const Profiles = () => {
           try {
             data = await response.json();
             console.log('[Profiles] Received data:', data);
+            console.log('[Profiles] Data type:', typeof data);
+            console.log('[Profiles] Data.content type:', Array.isArray(data.content) ? 'array' : typeof data.content);
+            console.log('[Profiles] Data.content length:', Array.isArray(data.content) ? data.content.length : 'not array');
           } catch (parseError) {
             console.error('[Profiles] Failed to parse JSON:', parseError);
             if (!isMounted) return;
@@ -355,6 +361,7 @@ const Profiles = () => {
           
           const profiles = Array.isArray(data.content) ? data.content : (Array.isArray(data) ? data : []);
           console.log('[Profiles] Processed profiles count:', profiles.length);
+          console.log('[Profiles] First profile sample:', profiles.length > 0 ? profiles[0] : 'no profiles');
           
           if (profiles.length === 0) {
             console.log('[Profiles] No profiles found');
@@ -415,6 +422,14 @@ const Profiles = () => {
             console.log('[Profiles] Setting profiles:', processedProfiles.length);
             if (isMounted) {
               setAllProfiles(processedProfiles);
+              setLoading(false); // УБЕДИТЕЛЬНО сбрасываем loading после установки профилей
+              console.log('[Profiles] Profiles set, loading set to false, profiles count:', processedProfiles.length);
+            }
+          } else {
+            console.log('[Profiles] No profiles in response');
+            if (isMounted) {
+              setAllProfiles([]);
+              setLoading(false);
             }
           }
         } else {
@@ -422,6 +437,7 @@ const Profiles = () => {
           console.error('[Profiles] API error:', response.status, errorText);
           if (!isMounted) return;
           setAllProfiles([]);
+          setLoading(false);
         }
       } catch (error) {
         if (!isMounted) return;
@@ -452,18 +468,32 @@ const Profiles = () => {
   // Это предотвращает двойную фильтрацию и проблемы с отображением профилей
   const filteredProfiles = allProfiles;
 
-  // Оптимизация: мемоизация списка доступных профилей для предотвращения лишних ре-рендеров
-  const availableProfiles = useMemo(() => 
-    filteredProfiles.filter(profile => !swipedProfiles.includes(profile.id)),
-    [filteredProfiles, swipedProfiles]
-  );
+  // ВРЕМЕННО: отключаем фильтрацию по swipedProfiles для отладки
+  // const availableProfiles = useMemo(() => 
+  //   filteredProfiles.filter(profile => !swipedProfiles.includes(profile.id)),
+  //   [filteredProfiles, swipedProfiles]
+  // );
+  const availableProfiles = filteredProfiles; // ПОКАЗЫВАЕМ ВСЕ ПРОФИЛИ БЕЗ ИСКЛЮЧЕНИЙ
 
   // Профили для текущей вкладки
   // Для входящих показываем только после загрузки, чтобы избежать двойного рендера
   const currentProfiles = activeTab === 'incoming' 
     ? (loadingIncoming ? [] : incomingLikes) 
     : availableProfiles;
-  const currentProfile = currentProfiles[currentIndex];
+  
+  // УБЕДИТЕЛЬНАЯ проверка индекса
+  const safeIndex = currentIndex >= 0 && currentIndex < currentProfiles.length ? currentIndex : 0;
+  const currentProfile = currentProfiles[safeIndex];
+  
+  // Логируем состояние для отладки
+  if (currentProfiles.length > 0 && !currentProfile) {
+    console.warn('[Profiles] WARNING: currentProfiles.length > 0 but currentProfile is null!', {
+      currentIndex,
+      safeIndex,
+      currentProfilesLength: currentProfiles.length,
+      currentProfiles: currentProfiles.map(p => ({ id: p.id, name: p.name }))
+    });
+  }
   
   // Отладочное логирование
   useEffect(() => {
@@ -497,7 +527,13 @@ const Profiles = () => {
   }, [allProfiles.length]);
 
   useEffect(() => {
-    if (currentIndex >= availableProfiles.length && availableProfiles.length > 0) {
+    // Исправляем индекс, если он выходит за границы
+    if (availableProfiles.length > 0 && (currentIndex < 0 || currentIndex >= availableProfiles.length)) {
+      console.log('[Profiles] Fixing index:', { currentIndex, availableProfilesLength: availableProfiles.length });
+      setCurrentIndex(0);
+    }
+    // Если профили загружены, но индекс не установлен, устанавливаем 0
+    if (availableProfiles.length > 0 && (currentIndex === undefined || currentIndex === null)) {
       setCurrentIndex(0);
     }
   }, [currentIndex, availableProfiles.length]);
@@ -967,7 +1003,7 @@ const Profiles = () => {
         )}
 
         {/* Пустой стейт для всех анкет */}
-        {activeTab === 'all' && availableProfiles.length === 0 && (
+        {activeTab === 'all' && !loading && availableProfiles.length === 0 && allProfiles.length === 0 && (
           <Card>
             <p className="text-gray-800 text-center py-8 font-medium">
               {selectedCity || selectedUniversity || selectedInterests.length > 0
@@ -975,6 +1011,15 @@ const Profiles = () => {
                 : 'Пока нет анкет'}
             </p>
           </Card>
+        )}
+        
+        {/* Отладочная информация */}
+        {activeTab === 'all' && (
+          <div className="fixed bottom-0 left-0 right-0 bg-black/80 text-white text-xs p-2 z-50">
+            DEBUG: allProfiles={allProfiles.length}, availableProfiles={availableProfiles.length}, 
+            currentIndex={currentIndex}, currentProfile={currentProfile ? currentProfile.name : 'null'}, 
+            loading={loading ? 'true' : 'false'}
+          </div>
         )}
 
         {/* Эффект-оверлей: отображается поверх карточки во время анимации */}
@@ -989,7 +1034,7 @@ const Profiles = () => {
         {/* GLOW-АНИМАЦИЯ: после завершения эффекта карточка появляется с неоновой подсветкой */}
         <AnimatePresence mode="wait">
           {currentProfile && (
-            (activeTab === 'all' && !loading) || 
+            activeTab === 'all' || 
             (activeTab === 'incoming' && !loadingIncoming && incomingLikes.length > 0 && !incomingError)
           ) && (
             <motion.div
