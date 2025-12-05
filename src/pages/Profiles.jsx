@@ -283,24 +283,25 @@ const Profiles = () => {
   useEffect(() => {
     // Не загружаем профили, пока WebApp не готов
     if (!isReady) {
+      setLoading(false); // Сбрасываем loading если не готов
       return;
     }
+    
+    let isMounted = true; // Флаг для проверки, что компонент еще смонтирован
     
     const fetchProfiles = async () => {
       setLoading(true);
       
       // Если нет userInfo, используем моковые данные
       if (!userInfo?.id) {
-        setAllProfiles(getMockProfiles());
-        setLoading(false);
+        if (isMounted) {
+          setAllProfiles(getMockProfiles());
+          setLoading(false);
+        }
         return;
       }
       
       try {
-        // Используем AbortController для таймаута
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд таймаут
-        
         const params = new URLSearchParams({
           user_id: userInfo.id,
           ...(selectedCity && { city: selectedCity }),
@@ -311,50 +312,30 @@ const Profiles = () => {
         });
         
         const url = `${API_ENDPOINTS.PROFILES}?${params}`;
-        let response;
-        try {
-          response = await fetchWithAuth(url, { signal: controller.signal });
-          clearTimeout(timeoutId);
-        } catch (fetchError) {
-          clearTimeout(timeoutId);
-          if (fetchError.name === 'AbortError') {
-            console.warn('Request timeout');
-          } else {
-            console.error('Error in fetchWithAuth for profiles:', fetchError);
-          }
-          setAllProfiles([]);
-          setLoading(false);
-          return;
-        }
+        const response = await fetchWithAuth(url);
+        
+        if (!isMounted) return; // Компонент размонтирован, не обновляем состояние
+        
         if (response.ok) {
           let data;
           try {
             data = await response.json();
           } catch (parseError) {
-            console.error('Error parsing response JSON:', parseError);
-            // НЕ используем мок данные при ошибке парсинга - показываем пустой список
-            console.warn('Parse error, showing empty list instead of mocks');
+            if (!isMounted) return;
             setAllProfiles([]);
             setLoading(false);
             return;
           }
-          console.log('Received data:', data);
+          
+          if (!isMounted) return;
+          
           const profiles = Array.isArray(data.content) ? data.content : (Array.isArray(data) ? data : []);
           
-          // Если список пустой, возможно профиля пользователя нет
-          // Но это может быть и потому, что нет других профилей
-          // Проверяем через get_available_profiles - если профиля нет, он вернет пустой список
-          // Но это не надежно, поэтому лучше проверить отдельно
-          
           if (profiles.length === 0) {
-            // Может быть пусто потому что нет других профилей или нет профиля пользователя
-            // Проверяем через отдельный запрос
-            console.log('Empty response, checking if user has profile...');
-            // Если это первый запрос и список пустой, возможно профиля нет
-            // Но для надежности лучше проверить отдельно
-            setAllProfiles([]);
+            if (isMounted) {
+              setAllProfiles([]);
+            }
           } else {
-            console.log('Using backend data, profiles count:', profiles.length);
             // Преобразуем photo_url в массив photos с правильным URL
             const processedProfiles = profiles.map(profile => {
               try {
@@ -405,35 +386,31 @@ const Profiles = () => {
                 };
               }
             });
-            setAllProfiles(processedProfiles);
+            if (isMounted) {
+              setAllProfiles(processedProfiles);
+            }
           }
         } else {
-          console.error('Response not OK, status:', response.status);
-          const errorText = await response.text().catch(() => 'Unknown error');
-          console.error('Error response:', errorText);
-          
-          // НЕ используем мок данные при ошибке - показываем пустой список
-          // Моки только для разработки без бэкенда
-          if (response.status === 401 || response.status === 403) {
-            console.warn('Authentication error, showing empty list');
-            setAllProfiles([]);
-          } else {
-            console.warn('Backend error, showing empty list instead of mocks');
-            setAllProfiles([]);
-          }
+          if (!isMounted) return;
+          setAllProfiles([]);
         }
       } catch (error) {
+        if (!isMounted) return;
         console.error('Error fetching profiles:', error);
-        // НЕ используем мок данные при ошибке - показываем пустой список
-        // Моки только для разработки без бэкенда
-        console.warn('Error fetching, showing empty list instead of mocks');
         setAllProfiles([]);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     
     fetchProfiles();
+    
+    // Cleanup функция для отмены запроса при размонтировании
+    return () => {
+      isMounted = false;
+    };
   }, [isReady, userInfo, selectedCity, selectedUniversity, selectedInterests]);
 
   // Фильтрация на фронтенде (для мок данных или дополнительная фильтрация)

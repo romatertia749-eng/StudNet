@@ -91,17 +91,16 @@ const NetworkList = () => {
       return;
     }
 
+    let isMounted = true; // Флаг для проверки, что компонент еще смонтирован
+
     const fetchMatches = async () => {
       setLoading(true);
       
       try {
-        // Используем AbortController для таймаута
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд таймаут
-        
         const url = `${API_ENDPOINTS.MATCHES}?user_id=${userInfo.id}`;
-        const response = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
+        const response = await fetch(url);
+        
+        if (!isMounted) return; // Компонент размонтирован, не обновляем состояние
         if (response.ok) {
           const data = await response.json();
           
@@ -165,27 +164,35 @@ const NetworkList = () => {
             return formatted;
           }).filter(match => match !== null);
           
-          setMatchedProfiles(formattedMatches);
-          // Обновляем контекст с мэтчами - это единственный источник данных
-          if (formattedMatches.length > 0) {
-            setContextMatchedProfiles(formattedMatches);
+          if (isMounted) {
+            setMatchedProfiles(formattedMatches);
+            // Обновляем контекст с мэтчами - это единственный источник данных
+            if (formattedMatches.length > 0) {
+              setContextMatchedProfiles(formattedMatches);
+            }
           }
         } else {
-          // Бэкенд недоступен — показываем пустой список локально
-          setMatchedProfiles([]);
+          if (isMounted) {
+            setMatchedProfiles([]);
+          }
         }
       } catch (error) {
-        // При ошибке показываем пустой список локально
-        if (error.name !== 'AbortError') {
-          console.error('[NetworkList] Error fetching matches:', error);
-        }
+        if (!isMounted) return;
+        console.error('[NetworkList] Error fetching matches:', error);
         setMatchedProfiles([]);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     
     fetchMatches();
+    
+    // Cleanup функция для отмены запроса при размонтировании
+    return () => {
+      isMounted = false;
+    };
   }, [userInfo, isReady, setContextMatchedProfiles]);
 
   // Мемоизированные обработчики для предотвращения пересоздания при каждом рендере
