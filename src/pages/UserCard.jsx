@@ -145,21 +145,20 @@ const UserCard = () => {
       <div className="space-y-4 mt-4">
         {/* Фото профиля */}
         {profile.photos && profile.photos.length > 0 && profile.photos[0] ? (
-          <div className="grid grid-cols-3 gap-2">
-            {profile.photos.map((photo, index) => (
-              <img
-                key={index}
-                src={photo}
-                alt={`${index + 1}`}
-                className="w-full h-32 object-cover rounded-xl"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                }}
-              />
-            ))}
+          <div className="w-full mb-4">
+            <img
+              src={profile.photos[0]}
+              alt={profile.name || 'Profile'}
+              className="w-full h-64 md:h-80 object-cover rounded-xl"
+              loading="lazy"
+              decoding="async"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
           </div>
         ) : (
-          <div className="w-full h-48 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/40">
+          <div className="w-full h-48 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/40 mb-4">
             <span className="text-gray-400 text-lg">📷</span>
           </div>
         )}

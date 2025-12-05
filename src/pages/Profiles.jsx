@@ -1233,22 +1233,20 @@ const Profiles = () => {
                     : (currentProfile.photo_url ? [getPhotoUrl(currentProfile.photo_url)] : []);
                   
                   if (photos.length > 0) {
+                    // Показываем первую фотографию на всю ширину
                     return (
-                      <div className="grid grid-cols-3 gap-1.5 mb-3">
-                        {photos.map((photo, index) => (
-                          <img
-                            key={index}
-                            src={photo}
-                            alt={`${index + 1}`}
-                            className="w-full h-20 md:h-32 object-cover rounded-lg"
-                            loading="lazy"
-                            decoding="async"
-                            style={{ willChange: 'auto' }}
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        ))}
+                      <div className="w-full mb-3">
+                        <img
+                          src={photos[0]}
+                          alt={currentProfile.name || 'Profile'}
+                          className="w-full h-64 md:h-80 object-cover rounded-xl"
+                          loading="lazy"
+                          decoding="async"
+                          style={{ willChange: 'auto' }}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
                       </div>
                     );
                   }
