@@ -141,6 +141,7 @@ def create_profile(
     )
 
 # POST /api/profiles/ - создание/обновление профиля (со слэшем)
+# Этот роут обрабатывается fallback роутом в main.py, но оставляем для совместимости
 @router.post("/", response_model=ProfileResponse, include_in_schema=True)
 def create_profile_with_slash(
     user_id: int = Form(...),

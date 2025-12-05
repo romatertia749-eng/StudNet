@@ -1,12 +1,19 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status, Depends, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 from app.routers import profiles, matches, auth
+from app.routers.profiles import _create_profile_impl
+from app.database import get_db
+from app.schemas import ProfileResponse
+from sqlalchemy.orm import Session
+from typing import Optional
 import os
 from pathlib import Path
 
-app = FastAPI(title="Networking App API", version="1.0.0")
+app = FastAPI(title="Networking App API", version="1.0.0", redirect_slashes=False)
 
 # CORS
 allowed_origins = [
@@ -53,6 +60,25 @@ if is_production:
         if domain not in allowed_origins:
             allowed_origins.append(domain)
 
+# Middleware для логирования и обработки trailing slash
+class TrailingSlashMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        method = request.method
+        
+        # Логируем все POST запросы к /api/profiles
+        if path.startswith("/api/profiles") and method == "POST":
+            print(f"[TrailingSlashMiddleware] POST request to: {path}")
+        
+        response = await call_next(request)
+        
+        # Если получили 405 для POST /api/profiles/, логируем
+        if path == "/api/profiles/" and method == "POST" and response.status_code == 405:
+            print(f"[TrailingSlashMiddleware] Got 405 for POST /api/profiles/, trying to handle...")
+        
+        return response
+
+app.add_middleware(TrailingSlashMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -68,6 +94,31 @@ app.add_middleware(
 # Роутеры - ВАЖНО: регистрируем в правильном порядке
 # Сначала более специфичные, потом общие
 # API роуты должны быть зарегистрированы ДО catch-all роута
+
+# Дополнительный роут для POST /api/profiles/ (со слэшем) - регистрируем ПЕРЕД роутером
+# чтобы он обрабатывался первым
+@app.post("/api/profiles/", response_model=ProfileResponse, include_in_schema=True, tags=["profiles"])
+async def create_profile_slash_fallback(
+    user_id: int = Form(...),
+    name: str = Form(...),
+    gender: str = Form(...),
+    age: int = Form(...),
+    city: str = Form(...),
+    university: str = Form(...),
+    interests: str = Form(...),
+    goals: str = Form(...),
+    bio: Optional[str] = Form(None),
+    username: Optional[str] = Form(None),
+    first_name: Optional[str] = Form(None),
+    last_name: Optional[str] = Form(None),
+    photo: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    """Fallback роут для POST /api/profiles/ со слэшем - обрабатывается первым"""
+    return _create_profile_impl(
+        user_id, name, gender, age, city, university, interests, goals,
+        bio, username, first_name, last_name, photo, db
+    )
 
 # Регистрируем роутеры
 app.include_router(auth.router)
