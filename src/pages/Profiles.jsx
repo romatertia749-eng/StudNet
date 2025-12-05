@@ -314,22 +314,20 @@ const Profiles = () => {
         controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
         
-        const params = new URLSearchParams({
-          user_id: userInfo.id,
-          ...(selectedCity && { city: selectedCity }),
-          ...(selectedUniversity && { university: selectedUniversity }),
-          ...(selectedInterests.length > 0 && { interests: selectedInterests.join(',') }),
-          page: 0,
-          size: 50
-        });
-        
-        // ВРЕМЕННО: используем упрощенный endpoint для отладки
-        const debugUrl = `${API_ENDPOINTS.PROFILES.replace('/api/profiles/', '/api/profiles/debug/simple')}?user_id=${userInfo.id}`;
-        const url = `${API_ENDPOINTS.PROFILES}?${params}`;
+        // УПРОЩЕННЫЙ ЗАПРОС БЕЗ ФИЛЬТРОВ
+        const url = `${API_ENDPOINTS.PROFILES}?user_id=${userInfo.id}&page=0&size=50`;
         console.log('[Profiles] Fetching profiles from:', url);
-        console.log('[Profiles] DEBUG URL:', debugUrl);
+        console.log('[Profiles] userInfo.id:', userInfo.id);
+        
         const response = await fetchWithAuth(url, {
           signal: controller.signal
+        });
+        
+        console.log('[Profiles] Response received:', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
+          headers: Object.fromEntries(response.headers.entries())
         });
         
         clearTimeout(timeoutId);
@@ -359,18 +357,25 @@ const Profiles = () => {
           
           if (!isMounted) return;
           
-          const profiles = Array.isArray(data.content) ? data.content : (Array.isArray(data) ? data : []);
+          // УПРОЩЕННАЯ ОБРАБОТКА - принимаем любой формат
+          let profiles = [];
+          if (Array.isArray(data)) {
+            profiles = data;
+          } else if (Array.isArray(data.content)) {
+            profiles = data.content;
+          } else if (data.content && typeof data.content === 'object') {
+            profiles = [data.content];
+          }
+          
           console.log('[Profiles] Processed profiles count:', profiles.length);
+          console.log('[Profiles] Full data object:', JSON.stringify(data, null, 2));
           console.log('[Profiles] First profile sample:', profiles.length > 0 ? profiles[0] : 'no profiles');
           
-          if (profiles.length === 0) {
-            console.log('[Profiles] No profiles found');
-            if (isMounted) {
-              setAllProfiles([]);
-            }
-          } else {
-            // Преобразуем photo_url в массив photos с правильным URL
-            const processedProfiles = profiles.map(profile => {
+          // ПРИНУДИТЕЛЬНО устанавливаем профили, даже если их 0
+          if (isMounted) {
+            if (profiles.length > 0) {
+              // Преобразуем photo_url в массив photos с правильным URL
+              const processedProfiles = profiles.map(profile => {
               try {
                 // Безопасная обработка interests
                 let interestsArray = [];
@@ -419,15 +424,14 @@ const Profiles = () => {
                 };
               }
             });
-            console.log('[Profiles] Setting profiles:', processedProfiles.length);
-            if (isMounted) {
+              console.log('[Profiles] Setting profiles:', processedProfiles.length);
               setAllProfiles(processedProfiles);
-              setLoading(false); // УБЕДИТЕЛЬНО сбрасываем loading после установки профилей
-              console.log('[Profiles] Profiles set, loading set to false, profiles count:', processedProfiles.length);
-            }
-          } else {
-            console.log('[Profiles] No profiles in response');
-            if (isMounted) {
+              setCurrentIndex(0); // СБРАСЫВАЕМ ИНДЕКС
+              setSwipedProfiles([]); // ОЧИЩАЕМ СВАЙПЫ
+              setLoading(false);
+              console.log('[Profiles] ✅ PROFILES SET! Count:', processedProfiles.length);
+            } else {
+              console.log('[Profiles] ⚠️ No profiles in response, setting empty array');
               setAllProfiles([]);
               setLoading(false);
             }
@@ -1013,12 +1017,12 @@ const Profiles = () => {
           </Card>
         )}
         
-        {/* Отладочная информация */}
+        {/* Отладочная информация - ВСЕГДА ВИДНА */}
         {activeTab === 'all' && (
-          <div className="fixed bottom-0 left-0 right-0 bg-black/80 text-white text-xs p-2 z-50">
-            DEBUG: allProfiles={allProfiles.length}, availableProfiles={availableProfiles.length}, 
-            currentIndex={currentIndex}, currentProfile={currentProfile ? currentProfile.name : 'null'}, 
-            loading={loading ? 'true' : 'false'}
+          <div className="fixed bottom-0 left-0 right-0 bg-black/90 text-white text-xs p-2 z-50 font-mono">
+            DEBUG: allProfiles={allProfiles.length} | availableProfiles={availableProfiles.length} | 
+            currentIndex={currentIndex} | currentProfile={currentProfile ? currentProfile.name : 'NULL'} | 
+            loading={loading ? 'Y' : 'N'} | user_id={userInfo?.id}
           </div>
         )}
 
@@ -1033,10 +1037,7 @@ const Profiles = () => {
         {/* Карточка профиля с плавной анимацией появления через Framer Motion */}
         {/* GLOW-АНИМАЦИЯ: после завершения эффекта карточка появляется с неоновой подсветкой */}
         <AnimatePresence mode="wait">
-          {currentProfile && (
-            activeTab === 'all' || 
-            (activeTab === 'incoming' && !loadingIncoming && incomingLikes.length > 0 && !incomingError)
-          ) && (
+          {currentProfile && activeTab === 'all' && !loading && (
             <motion.div
               key={currentProfile.id}
               ref={cardRef}
