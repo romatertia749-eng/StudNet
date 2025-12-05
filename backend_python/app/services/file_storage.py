@@ -76,6 +76,17 @@ def store_file(file: UploadFile) -> str:
         # Проверяем, что это действительно изображение
         try:
             image = Image.open(io.BytesIO(content))
+            
+            # ИСПРАВЛЕНИЕ ОРИЕНТАЦИИ: учитываем EXIF данные
+            # Многие камеры/телефоны сохраняют ориентацию в EXIF, а не поворачивают само изображение
+            try:
+                # ImageOps.exif_transpose автоматически поворачивает изображение согласно EXIF
+                from PIL import ImageOps
+                image = ImageOps.exif_transpose(image)
+            except Exception as exif_error:
+                # Если EXIF данные отсутствуют или повреждены, продолжаем без поворота
+                print(f"Note: Could not apply EXIF orientation: {exif_error}")
+            
             # Конвертируем в RGB если нужно (для PNG с прозрачностью)
             if image.mode in ("RGBA", "LA", "P"):
                 image = image.convert("RGB")
