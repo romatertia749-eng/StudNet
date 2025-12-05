@@ -207,7 +207,7 @@ def get_profile_by_user_id(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Профиль не найден")
     return profile
 
-# GET /api/profiles/ - получение списка профилей (должен быть ПОСЛЕ специфичных роутов)
+# GET /api/profiles - получение списка профилей (должен быть ПОСЛЕ специфичных роутов)
 @router.get("", response_model=PageResponse, include_in_schema=True)
 def get_profiles(
     user_id: Optional[int] = None,
@@ -239,6 +239,20 @@ def get_profiles(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка при получении профилей: {str(e)}")
+
+# GET /api/profiles/ - получение списка профилей СО СЛЭШЕМ (для совместимости)
+@router.get("/", response_model=PageResponse, include_in_schema=True)
+def get_profiles_with_slash(
+    user_id: Optional[int] = None,
+    city: Optional[str] = None,
+    university: Optional[str] = None,
+    interests: Optional[str] = None,
+    page: int = 0,
+    size: int = 20,
+    db: Session = Depends(get_db)
+):
+    """Тот же endpoint, но со слэшем - вызывает ту же функцию"""
+    return get_profiles(user_id, city, university, interests, page, size, db)
 
 @router.get("/debug/all", response_model=PageResponse, include_in_schema=False)
 def get_all_profiles_debug(
