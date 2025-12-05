@@ -7,8 +7,6 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
-      - key: CLOUDINARY_URL
-        sync: false
       - key: CORS_ORIGINS
         value: https://web.telegram.org,https://telegram.org
       - key: FRONTEND_URL

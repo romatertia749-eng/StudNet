@@ -88,8 +88,10 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Статические файлы больше не нужны, используем Cloudinary
-# Но оставляем для обратной совместимости, если кто-то использует локальное хранилище
+# Статические файлы для загруженных фотографий
+upload_dir = Path("./uploads/photos")
+upload_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Роутеры - ВАЖНО: регистрируем в правильном порядке
 # Сначала более специфичные, потом общие

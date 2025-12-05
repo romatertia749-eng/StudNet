@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo, useCallback } from 'react';
+import { useState, useEffect, useMemo, memo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -84,10 +84,21 @@ const NetworkList = () => {
 
   // Убрана блокирующая проверка профиля - загрузка происходит сразу
 
+  // Используем useRef для отслеживания, загружались ли уже данные
+  const hasLoadedRef = useRef(false);
+  const lastUserIdRef = useRef(null);
+
   useEffect(() => {
     // Загружаем мэтчи сразу, не ждем проверку профиля
     if (!isReady || !userInfo?.id) {
       setLoading(false);
+      return;
+    }
+
+    // Проверяем, нужно ли загружать данные
+    const userId = userInfo.id;
+    if (hasLoadedRef.current && lastUserIdRef.current === userId) {
+      // Данные уже загружены для этого пользователя
       return;
     }
 
@@ -102,7 +113,7 @@ const NetworkList = () => {
         controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
         
-        const url = `${API_ENDPOINTS.MATCHES}?user_id=${userInfo.id}`;
+        const url = `${API_ENDPOINTS.MATCHES}?user_id=${userId}`;
         const response = await fetch(url, {
           signal: controller.signal
         });
@@ -116,6 +127,8 @@ const NetworkList = () => {
           if (!Array.isArray(data)) {
             setMatchedProfiles([]);
             setLoading(false);
+            hasLoadedRef.current = true;
+            lastUserIdRef.current = userId;
             return;
           }
           
@@ -179,10 +192,14 @@ const NetworkList = () => {
             if (formattedMatches.length > 0) {
               setContextMatchedProfiles(formattedMatches);
             }
+            hasLoadedRef.current = true;
+            lastUserIdRef.current = userId;
           }
         } else {
           if (isMounted) {
             setMatchedProfiles([]);
+            hasLoadedRef.current = true;
+            lastUserIdRef.current = userId;
           }
         }
       } catch (error) {
@@ -193,6 +210,8 @@ const NetworkList = () => {
           console.error('[NetworkList] Error fetching matches:', error);
         }
         setMatchedProfiles([]);
+        hasLoadedRef.current = true;
+        lastUserIdRef.current = userId;
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -208,7 +227,7 @@ const NetworkList = () => {
         controller.abort();
       }
     };
-  }, [userInfo, isReady, setContextMatchedProfiles]);
+  }, [isReady, userInfo?.id]); // Убрали setContextMatchedProfiles и используем только userInfo?.id
 
   // Мемоизированные обработчики для предотвращения пересоздания при каждом рендере
   const handleViewProfile = useCallback((id) => {

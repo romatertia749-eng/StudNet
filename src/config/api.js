@@ -20,7 +20,6 @@ export const API_ENDPOINTS = {
 export const getPhotoUrl = (photoPath) => {
   if (!photoPath) return null;
   // Если уже полный URL (начинается с http), возвращаем как есть
-  // Это работает для Cloudinary и других облачных хранилищ
   if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
     return photoPath;
   }
