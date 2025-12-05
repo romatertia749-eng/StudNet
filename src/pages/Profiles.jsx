@@ -448,25 +448,9 @@ const Profiles = () => {
     };
   }, [isReady, userInfo?.id, activeTab, selectedCity, selectedUniversity, selectedInterests]);
 
-  // Фильтрация на фронтенде (для мок данных или дополнительная фильтрация)
-  // Оптимизация: мемоизация фильтрации профилей для предотвращения лишних вычислений
-  const filteredProfiles = useMemo(() => allProfiles.filter(profile => {
-    try {
-      if (selectedCity && profile.city !== selectedCity) return false;
-      if (selectedUniversity && profile.university !== selectedUniversity) return false;
-      if (selectedInterests.length > 0) {
-        const interests = Array.isArray(profile.interests) ? profile.interests : [];
-        const hasInterest = selectedInterests.some(interest =>
-          interests.includes(interest)
-        );
-        if (!hasInterest) return false;
-      }
-      return true;
-    } catch (error) {
-      console.error('Error filtering profile:', profile, error);
-      return false;
-    }
-  }), [allProfiles, selectedCity, selectedUniversity, selectedInterests]);
+  // УБРАНА фильтрация на фронтенде - фильтры применяются только на бэкенде
+  // Это предотвращает двойную фильтрацию и проблемы с отображением профилей
+  const filteredProfiles = allProfiles;
 
   // Оптимизация: мемоизация списка доступных профилей для предотвращения лишних ре-рендеров
   const availableProfiles = useMemo(() => 

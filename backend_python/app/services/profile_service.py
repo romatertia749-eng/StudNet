@@ -56,10 +56,11 @@ def get_available_profiles(
     user_id: int,
     city: Optional[str] = None,
     university: Optional[str] = None,
+    interests: Optional[str] = None,
     page: int = 0,
     size: int = 20
 ) -> dict:
-    print(f"[get_available_profiles] Request for user_id={user_id}, city={city}, university={university}, page={page}, size={size}")
+    print(f"[get_available_profiles] Request for user_id={user_id}, city={city}, university={university}, interests={interests}, page={page}, size={size}")
     
     # Находим текущий профиль
     current_profile = db.query(Profile).filter(Profile.user_id == user_id).first()
@@ -79,15 +80,23 @@ def get_available_profiles(
     # (лайк, пасс, любой свайп - все действия создают запись в Swipe)
     # ВАЖНО: учитываем только свайпы, которые сделал ТЕКУЩИЙ пользователь
     # НЕ учитываем свайпы, которые сделали ДРУГИЕ пользователи на текущего
-    swiped_profile_ids = db.query(Swipe.target_profile_id).filter(
+    swiped_records = db.query(Swipe.target_profile_id, Swipe.action).filter(
         Swipe.user_id == user_id
     ).distinct().all()
-    swiped_profile_ids = [row[0] for row in swiped_profile_ids]
+    swiped_profile_ids = [row[0] for row in swiped_records]
     print(f"[get_available_profiles] Swiped profile IDs (swipes made by user {user_id}): {swiped_profile_ids}")
+    if swiped_records:
+        print(f"[get_available_profiles] Swipe details:")
+        for target_id, action in swiped_records:
+            target_profile = db.query(Profile).filter(Profile.id == target_id).first()
+            if target_profile:
+                print(f"  - Swiped profile id={target_id}, user_id={target_profile.user_id}, name={target_profile.name}, action={action}")
     
-    # Проверяем, есть ли профиль брата в базе
+    # Проверяем, есть ли профиль брата в базе (для отладки)
     all_other_profiles = db.query(Profile).filter(Profile.user_id != user_id).all()
-    print(f"[get_available_profiles] All other profiles in DB: {[(p.id, p.user_id, p.name) for p in all_other_profiles]}")
+    print(f"[get_available_profiles] All other profiles in DB ({len(all_other_profiles)} total):")
+    for p in all_other_profiles:
+        print(f"  - Profile id={p.id}, user_id={p.user_id}, name={p.name}, city={p.city}, university={p.university}")
     
     # Получаем user_id пользователей, с которыми уже есть мэтч
     matched_user_ids = set()
@@ -130,6 +139,26 @@ def get_available_profiles(
         query = query.filter(Profile.university == university)
         print(f"[get_available_profiles] Filtering by university: {university}")
     
+    # Фильтр по интересам (если передан)
+    # ВАЖНО: фильтр по интересам временно отключен, чтобы не блокировать профили
+    # TODO: реализовать правильную фильтрацию по интересам
+    if interests:
+        # interests приходит как строка через запятую: "IT,Дизайн"
+        interest_list = [i.strip() for i in interests.split(',') if i.strip()]
+        if interest_list:
+            print(f"[get_available_profiles] WARNING: Interests filter requested but NOT APPLIED to avoid blocking profiles: {interest_list}")
+            print(f"[get_available_profiles] This is a temporary fix - interests filtering will be implemented properly later")
+            # ВРЕМЕННО ОТКЛЮЧЕНО: фильтр по интересам
+            # conditions = []
+            # for interest in interest_list:
+            #     conditions.append(
+            #         Profile.interests.contains(f'"{interest}"') |
+            #         Profile.interests.contains(f"'{interest}'") |
+            #         Profile.interests.ilike(f'%{interest}%')
+            #     )
+            # if conditions:
+            #     query = query.filter(or_(*conditions))
+    
     # Подсчет общего количества
     total = query.count()
     print(f"[get_available_profiles] Total profiles before pagination: {total}")
@@ -138,9 +167,40 @@ def get_available_profiles(
     profiles = query.offset(page * size).limit(size).all()
     
     # Логируем найденные профили
-    print(f"[get_available_profiles] Found {len(profiles)} profiles:")
+    print(f"[get_available_profiles] Found {len(profiles)} profiles after all filters:")
     for profile in profiles:
-        print(f"  - Profile id={profile.id}, user_id={profile.user_id}, name={profile.name}, city={profile.city}, university={profile.university}")
+        print(f"  - Profile id={profile.id}, user_id={profile.user_id}, name={profile.name}, city={profile.city}, university={profile.university}, interests={profile.interests}")
+    
+    # Проверяем, какие профили были исключены и почему
+    excluded_profiles = []
+    for p in all_other_profiles:
+        if p.id in excluded_profile_ids:
+            excluded_profiles.append((p.id, p.user_id, p.name, "excluded (swiped or matched)"))
+        elif p.id not in [pr.id for pr in profiles]:
+            # Проверяем, почему профиль был отфильтрован
+            reason_parts = []
+            if city and p.city != city:
+                reason_parts.append(f"city mismatch ({p.city} != {city})")
+            if university and p.university != university:
+                reason_parts.append(f"university mismatch ({p.university} != {university})")
+            if interests:
+                interest_list = [i.strip() for i in interests.split(',') if i.strip()]
+                if interest_list:
+                    # Проверяем, есть ли совпадение интересов
+                    profile_interests_str = p.interests or "[]"
+                    has_match = False
+                    for interest in interest_list:
+                        if f'"{interest}"' in profile_interests_str or f"'{interest}'" in profile_interests_str or interest.lower() in profile_interests_str.lower():
+                            has_match = True
+                            break
+                    if not has_match:
+                        reason_parts.append(f"interests mismatch (profile: {profile_interests_str}, filter: {interest_list})")
+            reason = "filtered out: " + (", ".join(reason_parts) if reason_parts else "unknown reason")
+            excluded_profiles.append((p.id, p.user_id, p.name, reason))
+    if excluded_profiles:
+        print(f"[get_available_profiles] Excluded/filtered profiles ({len(excluded_profiles)}):")
+        for p_id, u_id, name, reason in excluded_profiles:
+            print(f"  - Profile id={p_id}, user_id={u_id}, name={name}, reason={reason}")
     
     total_pages = math.ceil(total / size) if total > 0 else 0
     

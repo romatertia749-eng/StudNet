@@ -228,6 +228,7 @@ def get_profiles(
             user_id=user_id,
             city=city,
             university=university,
+            interests=interests,
             page=page,
             size=size
         )
@@ -251,9 +252,17 @@ def get_all_profiles_debug(
     # Простой запрос - все профили кроме текущего пользователя
     profiles = db.query(Profile).filter(Profile.user_id != user_id).all()
     
+    # Проверяем Swipe записи
+    from app.models import Swipe
+    swipes = db.query(Swipe).filter(Swipe.user_id == user_id).all()
+    
     print(f"[DEBUG] All profiles for user {user_id}:")
     for p in profiles:
-        print(f"  - id={p.id}, user_id={p.user_id}, name={p.name}, city={p.city}, university={p.university}")
+        print(f"  - id={p.id}, user_id={p.user_id}, name={p.name}, city={p.city}, university={p.university}, interests={p.interests}")
+    
+    print(f"[DEBUG] Swipes made by user {user_id}:")
+    for s in swipes:
+        print(f"  - Swipe: user_id={s.user_id}, target_profile_id={s.target_profile_id}, action={s.action}")
     
     return {
         "content": profiles,
