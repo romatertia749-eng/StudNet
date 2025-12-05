@@ -1051,8 +1051,8 @@ const Profiles = () => {
           </Card>
         )}
         
-        {/* Отладочная информация - ВСЕГДА ВИДНА */}
-        {activeTab === 'all' && (
+        {/* Отладочная информация - ОТКЛЮЧЕНА */}
+        {false && activeTab === 'all' && (
           <div className="fixed bottom-0 left-0 right-0 bg-black/90 text-white text-xs p-2 z-50 font-mono">
             DEBUG: allProfiles={allProfiles.length} | availableProfiles={availableProfiles.length} | 
             currentIndex={currentIndex} | currentProfile={currentProfile ? currentProfile.name : 'NULL'} | 
