@@ -106,32 +106,53 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
     }
   };
 
-  const handleSubmit = async () => {
-    if (selectedTypes.length === 0) {
+  const handleSubmit = async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    // Фильтруем только те типы, которых еще нет в existingFeedbacks
+    const newTypes = selectedTypes.filter(t => !existingFeedbacks.includes(t));
+    
+    console.log('handleSubmit called', { selectedTypes, existingFeedbacks, newTypes });
+    
+    if (newTypes.length === 0) {
+      console.log('No new types to submit');
       return;
     }
 
     setSubmitting(true);
+    console.log('Submitting feedbacks:', newTypes);
     try {
-      const newTypes = selectedTypes.filter(t => !existingFeedbacks.includes(t));
       const successfulTypes = [];
+      const errors = [];
       
       for (const type of newTypes) {
-        const response = await fetch(API_ENDPOINTS.CONNECTION_FEEDBACK, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            match_id: matchId,
-            from_user_id: fromUserId,
-            to_user_id: toUserId,
-            feedback_type: type,
-          }),
-        });
-        
-        if (response.ok) {
-          successfulTypes.push(type);
+        try {
+          const response = await fetch(API_ENDPOINTS.CONNECTION_FEEDBACK, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              match_id: matchId,
+              from_user_id: fromUserId,
+              to_user_id: toUserId,
+              feedback_type: type,
+            }),
+          });
+          
+          if (response.ok) {
+            successfulTypes.push(type);
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            errors.push({ type, error: errorData.detail || 'Ошибка сервера' });
+            console.error(`Failed to submit ${type}:`, errorData);
+          }
+        } catch (err) {
+          errors.push({ type, error: err.message });
+          console.error(`Error submitting ${type}:`, err);
         }
       }
 
@@ -147,9 +168,15 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
         // Перезагружаем список отметок для синхронизации
         await loadExistingFeedbacks();
       }
+      
+      if (errors.length > 0 && successfulTypes.length === 0) {
+        alert(`Ошибка при сохранении отметок: ${errors.map(e => e.error).join(', ')}`);
+      } else if (errors.length > 0) {
+        console.warn('Some feedbacks failed to submit:', errors);
+      }
     } catch (error) {
       console.error('Error submitting feedback:', error);
-      alert('Ошибка при сохранении отметок');
+      alert('Ошибка при сохранении отметок: ' + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -207,19 +234,21 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
           })}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-stretch">
           <Button
+            type="button"
             variant="primary"
             onClick={handleSubmit}
             disabled={submitting || selectedTypes.length === 0 || selectedTypes.every(t => existingFeedbacks.includes(t))}
-            className="flex-1"
+            className="flex-1 flex-shrink-0"
           >
             {submitting ? 'Сохранение...' : 'Сохранить'}
           </Button>
           {onClose && (
             <button
+              type="button"
               onClick={onClose}
-              className="flex-1 min-h-[48px] px-5 py-3 rounded-xl font-medium text-base transition-all duration-200 active:scale-[0.97] active:opacity-90 bg-white text-gray-800 border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+              className="flex-1 flex-shrink-0 min-h-[48px] px-5 py-3 rounded-xl font-medium text-base transition-all duration-200 active:scale-[0.97] active:opacity-90 bg-white text-gray-800 border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center"
             >
               Отмена
             </button>
