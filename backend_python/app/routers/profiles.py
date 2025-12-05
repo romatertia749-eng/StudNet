@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/profiles", tags=["profiles"])
 # Иначе FastAPI может неправильно их обработать
 
 # POST /api/profiles - создание/обновление профиля
-@router.post("", response_model=ProfileResponse, include_in_schema=True)
+@router.post("/", response_model=ProfileResponse, include_in_schema=True)
 def create_profile(
     user_id: int = Form(...),
     name: str = Form(...),
