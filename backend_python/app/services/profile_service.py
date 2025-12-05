@@ -59,9 +59,12 @@ def get_available_profiles(
     page: int = 0,
     size: int = 20
 ) -> dict:
+    print(f"[get_available_profiles] Request for user_id={user_id}, city={city}, university={university}, page={page}, size={size}")
+    
     # Находим текущий профиль
     current_profile = db.query(Profile).filter(Profile.user_id == user_id).first()
     if not current_profile:
+        print(f"[get_available_profiles] Current user {user_id} has no profile")
         return {
             "content": [],
             "total_elements": 0,
@@ -70,12 +73,21 @@ def get_available_profiles(
             "number": page
         }
     
+    print(f"[get_available_profiles] Current profile: id={current_profile.id}, name={current_profile.name}")
+    
     # Получаем ID всех профилей, с которыми уже взаимодействовали
     # (лайк, пасс, любой свайп - все действия создают запись в Swipe)
+    # ВАЖНО: учитываем только свайпы, которые сделал ТЕКУЩИЙ пользователь
+    # НЕ учитываем свайпы, которые сделали ДРУГИЕ пользователи на текущего
     swiped_profile_ids = db.query(Swipe.target_profile_id).filter(
         Swipe.user_id == user_id
     ).distinct().all()
     swiped_profile_ids = [row[0] for row in swiped_profile_ids]
+    print(f"[get_available_profiles] Swiped profile IDs (swipes made by user {user_id}): {swiped_profile_ids}")
+    
+    # Проверяем, есть ли профиль брата в базе
+    all_other_profiles = db.query(Profile).filter(Profile.user_id != user_id).all()
+    print(f"[get_available_profiles] All other profiles in DB: {[(p.id, p.user_id, p.name) for p in all_other_profiles]}")
     
     # Получаем user_id пользователей, с которыми уже есть мэтч
     matched_user_ids = set()
@@ -85,6 +97,7 @@ def get_available_profiles(
         matched_user_ids.add(row[0])
     for row in matches_as_user2:
         matched_user_ids.add(row[0])
+    print(f"[get_available_profiles] Matched user IDs: {matched_user_ids}")
     
     # Получаем ID профилей, с которыми уже есть мэтч
     matched_profile_ids = []
@@ -94,9 +107,11 @@ def get_available_profiles(
                 Profile.user_id.in_(matched_user_ids)
             ).all()
         ]
+    print(f"[get_available_profiles] Matched profile IDs: {matched_profile_ids}")
     
     # Объединяем все исключаемые ID профилей
     excluded_profile_ids = set(swiped_profile_ids) | set(matched_profile_ids)
+    print(f"[get_available_profiles] Excluded profile IDs: {excluded_profile_ids}")
     
     # Базовый запрос: исключаем свой профиль и все просмотренные
     query = db.query(Profile).filter(
@@ -110,14 +125,22 @@ def get_available_profiles(
     # Фильтры по городу и университету
     if city:
         query = query.filter(Profile.city == city)
+        print(f"[get_available_profiles] Filtering by city: {city}")
     if university:
         query = query.filter(Profile.university == university)
+        print(f"[get_available_profiles] Filtering by university: {university}")
     
     # Подсчет общего количества
     total = query.count()
+    print(f"[get_available_profiles] Total profiles before pagination: {total}")
     
     # Пагинация
     profiles = query.offset(page * size).limit(size).all()
+    
+    # Логируем найденные профили
+    print(f"[get_available_profiles] Found {len(profiles)} profiles:")
+    for profile in profiles:
+        print(f"  - Profile id={profile.id}, user_id={profile.user_id}, name={profile.name}, city={profile.city}, university={profile.university}")
     
     total_pages = math.ceil(total / size) if total > 0 else 0
     

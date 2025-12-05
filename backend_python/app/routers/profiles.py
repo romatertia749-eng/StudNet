@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from typing import Optional
 from pydantic import ValidationError
 from app.database import get_db
+from app.models import Profile
 from app.schemas import ProfileCreate, ProfileResponse, PageResponse
 from app.services import profile_service
 import json
@@ -212,10 +213,12 @@ def get_profiles(
     user_id: Optional[int] = None,
     city: Optional[str] = None,
     university: Optional[str] = None,
+    interests: Optional[str] = None,  # Добавляем параметр, но пока не используем
     page: int = 0,
     size: int = 20,
     db: Session = Depends(get_db)
 ):
+    print(f"[get_profiles] Request: user_id={user_id}, city={city}, university={university}, interests={interests}, page={page}, size={size}")
     if user_id is None:
         raise HTTPException(status_code=400, detail="Параметр userId обязателен")
     
@@ -228,9 +231,37 @@ def get_profiles(
             page=page,
             size=size
         )
+        print(f"[get_profiles] Returning {len(result.get('content', []))} profiles, total={result.get('total_elements', 0)}")
         return result
     except Exception as e:
+        print(f"[get_profiles] Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка при получении профилей: {str(e)}")
+
+@router.get("/debug/all", response_model=PageResponse, include_in_schema=False)
+def get_all_profiles_debug(
+    user_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """Отладочный endpoint - возвращает ВСЕ профили кроме текущего пользователя"""
+    if user_id is None:
+        raise HTTPException(status_code=400, detail="Параметр user_id обязателен")
+    
+    # Простой запрос - все профили кроме текущего пользователя
+    profiles = db.query(Profile).filter(Profile.user_id != user_id).all()
+    
+    print(f"[DEBUG] All profiles for user {user_id}:")
+    for p in profiles:
+        print(f"  - id={p.id}, user_id={p.user_id}, name={p.name}, city={p.city}, university={p.university}")
+    
+    return {
+        "content": profiles,
+        "total_elements": len(profiles),
+        "total_pages": 1,
+        "size": len(profiles),
+        "number": 0
+    }
 
 @router.get("/{profile_id}", response_model=ProfileResponse)
 def get_profile(profile_id: int, db: Session = Depends(get_db)):
