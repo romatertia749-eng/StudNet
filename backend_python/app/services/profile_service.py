@@ -60,12 +60,12 @@ def get_available_profiles(
     page: int = 0,
     size: int = 20
 ) -> dict:
-    print(f"[get_available_profiles] Request for user_id={user_id}, city={city}, university={university}, interests={interests}, page={page}, size={size}")
+    print(f"[get_available_profiles] ===== START ===== user_id={user_id}, city={city}, university={university}, interests={interests}, page={page}, size={size}")
     
     # Находим текущий профиль
     current_profile = db.query(Profile).filter(Profile.user_id == user_id).first()
     if not current_profile:
-        print(f"[get_available_profiles] Current user {user_id} has no profile")
+        print(f"[get_available_profiles] ❌ Current user {user_id} has no profile")
         return {
             "content": [],
             "total_elements": 0,
@@ -73,6 +73,7 @@ def get_available_profiles(
             "size": size,
             "number": page
         }
+    print(f"[get_available_profiles] ✅ Current profile found: id={current_profile.id}, name={current_profile.name}")
     
     print(f"[get_available_profiles] Current profile: id={current_profile.id}, name={current_profile.name}")
     
@@ -163,11 +164,15 @@ def get_available_profiles(
     total = query.count()
     print(f"[get_available_profiles] Total profiles before pagination: {total}")
     
+    if total == 0:
+        print(f"[get_available_profiles] ⚠️ WARNING: Total is 0! No profiles match the query.")
+        print(f"[get_available_profiles] Query filters applied: user_id!={user_id}, excluded_ids={excluded_profile_ids}, city={city}, university={university}")
+    
     # Пагинация
     profiles = query.offset(page * size).limit(size).all()
     
     # Логируем найденные профили
-    print(f"[get_available_profiles] Found {len(profiles)} profiles after all filters:")
+    print(f"[get_available_profiles] ===== RESULT ===== Found {len(profiles)} profiles after all filters:")
     for profile in profiles:
         print(f"  - Profile id={profile.id}, user_id={profile.user_id}, name={profile.name}, city={profile.city}, university={profile.university}, interests={profile.interests}")
     
@@ -204,13 +209,16 @@ def get_available_profiles(
     
     total_pages = math.ceil(total / size) if total > 0 else 0
     
-    return {
+    result = {
         "content": profiles,
         "total_elements": total,
         "total_pages": total_pages,
         "size": size,
         "number": page
     }
+    
+    print(f"[get_available_profiles] ===== RETURNING ===== content.length={len(profiles)}, total_elements={total}")
+    return result
 
 def get_profile_by_id(db: Session, profile_id: int) -> Optional[Profile]:
     return db.query(Profile).filter(Profile.id == profile_id).first()

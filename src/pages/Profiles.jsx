@@ -310,6 +310,11 @@ const Profiles = () => {
       if (!isMounted) return;
       setLoading(true);
       
+      console.log('[Profiles] ===== STARTING FETCH =====');
+      console.log('[Profiles] isReady:', isReady);
+      console.log('[Profiles] userInfo:', userInfo);
+      console.log('[Profiles] userInfo.id:', userInfo?.id);
+      
       try {
         controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -317,11 +322,13 @@ const Profiles = () => {
         // УПРОЩЕННЫЙ ЗАПРОС БЕЗ ФИЛЬТРОВ
         const url = `${API_ENDPOINTS.PROFILES}?user_id=${userInfo.id}&page=0&size=50`;
         console.log('[Profiles] Fetching profiles from:', url);
-        console.log('[Profiles] userInfo.id:', userInfo.id);
+        console.log('[Profiles] API_ENDPOINTS.PROFILES:', API_ENDPOINTS.PROFILES);
         
         const response = await fetchWithAuth(url, {
           signal: controller.signal
         });
+        
+        console.log('[Profiles] ===== RESPONSE RECEIVED =====');
         
         console.log('[Profiles] Response received:', {
           status: response.status,
@@ -367,9 +374,19 @@ const Profiles = () => {
             profiles = [data.content];
           }
           
+          console.log('[Profiles] ===== PROCESSING DATA =====');
           console.log('[Profiles] Processed profiles count:', profiles.length);
           console.log('[Profiles] Full data object:', JSON.stringify(data, null, 2));
+          console.log('[Profiles] Data keys:', Object.keys(data));
           console.log('[Profiles] First profile sample:', profiles.length > 0 ? profiles[0] : 'no profiles');
+          
+          // КРИТИЧЕСКАЯ ПРОВЕРКА: если profiles пустой, но data.content существует
+          if (profiles.length === 0 && data.content) {
+            console.warn('[Profiles] ⚠️ WARNING: profiles.length === 0 but data.content exists!');
+            console.warn('[Profiles] data.content:', data.content);
+            console.warn('[Profiles] typeof data.content:', typeof data.content);
+            console.warn('[Profiles] Array.isArray(data.content):', Array.isArray(data.content));
+          }
           
           // ПРИНУДИТЕЛЬНО устанавливаем профили, даже если их 0
           if (isMounted) {
@@ -437,21 +454,33 @@ const Profiles = () => {
             }
           }
         } else {
+          console.error('[Profiles] ===== API ERROR =====');
           const errorText = await response.text().catch(() => 'Unknown error');
-          console.error('[Profiles] API error:', response.status, errorText);
+          console.error('[Profiles] Status:', response.status);
+          console.error('[Profiles] StatusText:', response.statusText);
+          console.error('[Profiles] Error text:', errorText);
+          console.error('[Profiles] Response headers:', Object.fromEntries(response.headers.entries()));
           if (!isMounted) return;
           setAllProfiles([]);
           setLoading(false);
+          // Показываем ошибку пользователю
+          alert(`Ошибка загрузки анкет: ${response.status}\n${errorText.substring(0, 200)}`);
         }
       } catch (error) {
+        console.error('[Profiles] ===== FETCH ERROR =====');
+        console.error('[Profiles] Error name:', error.name);
+        console.error('[Profiles] Error message:', error.message);
+        console.error('[Profiles] Error stack:', error.stack);
         if (!isMounted) return;
         if (error.name === 'AbortError') {
           console.warn('[Profiles] Request timeout');
         } else {
-          console.error('[Profiles] Error fetching profiles:', error);
+          console.error('[Profiles] Full error:', error);
         }
         setAllProfiles([]);
+        alert(`Ошибка сети: ${error.message}`);
       } finally {
+        console.log('[Profiles] ===== FETCH COMPLETE =====');
         if (isMounted) {
           setLoading(false);
         }
