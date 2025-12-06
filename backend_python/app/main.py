@@ -131,27 +131,31 @@ class FlexibleCORSMiddleware(BaseHTTPMiddleware):
         # КРИТИЧЕСКИ ВАЖНО: Не логируем каждый запрос - это замедляет работу
         # Логируем только при ошибках CORS
         
+        # КРИТИЧЕСКИ ВАЖНО: Для Telegram Web Apps origin может быть null или пустым
         # В production разрешаем все origins для Telegram Web Apps
-        if is_production and origin:
+        if is_production:
+            # Для OPTIONS запросов (preflight) всегда отвечаем успешно
+            if request.method == "OPTIONS":
+                return Response(
+                    status_code=200,
+                    headers={
+                        "Access-Control-Allow-Origin": origin or "*",
+                        "Access-Control-Allow-Credentials": "true",
+                        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+                        "Access-Control-Allow-Headers": "*",
+                        "Access-Control-Max-Age": "86400",  # Кэшируем preflight на 24 часа
+                    }
+                )
+            
+            # Для всех остальных запросов добавляем CORS заголовки
             response = await call_next(request)
-            response.headers["Access-Control-Allow-Origin"] = origin
+            # Используем origin из запроса или * если origin отсутствует (для Telegram Web Apps)
+            response.headers["Access-Control-Allow-Origin"] = origin or "*"
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
             response.headers["Access-Control-Allow-Headers"] = "*"
             response.headers["Access-Control-Expose-Headers"] = "*"
             return response
-        
-        # Для OPTIONS запросов в production
-        if is_production and request.method == "OPTIONS":
-            return Response(
-                status_code=200,
-                headers={
-                    "Access-Control-Allow-Origin": origin or "*",
-                    "Access-Control-Allow-Credentials": "true",
-                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-                    "Access-Control-Allow-Headers": "*",
-                }
-            )
         
         return await call_next(request)
 

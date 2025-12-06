@@ -126,7 +126,18 @@ export const fetchWithRetry = async (
         return response;
       }
       
+      // Для 5xx ошибок делаем retry
       lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+      if (attempt < maxRetries) {
+        const baseDelay = isMobile ? 1500 : 1000;
+        const maxDelay = isMobile ? 10000 : 5000;
+        const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[fetchWithRetry] Retrying after ${response.status} error in ${delay}ms...`);
+        }
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
     } catch (error) {
       if (typeof clearTimeout !== 'undefined') {
         clearTimeout(timeoutId);
@@ -149,7 +160,7 @@ export const fetchWithRetry = async (
           continue;
         }
       } else {
-        // Для других ошибок тоже retry
+        // Для других ошибок (включая "Failed to fetch") тоже retry
         if (attempt < maxRetries) {
           const baseDelay = isMobile ? 1500 : 1000;
           const maxDelay = isMobile ? 10000 : 5000;
@@ -164,7 +175,18 @@ export const fetchWithRetry = async (
     }
   }
   
-  throw lastError || new Error('All retry attempts failed');
+  // Улучшаем сообщение об ошибке для пользователя
+  if (lastError) {
+    // "Failed to fetch" обычно означает проблемы с CORS или недоступность сервера
+    if (lastError.message === 'Failed to fetch' || lastError.message.includes('fetch')) {
+      const friendlyError = new Error('Не удалось подключиться к серверу. Проверьте подключение к интернету.');
+      friendlyError.originalError = lastError;
+      throw friendlyError;
+    }
+    throw lastError;
+  }
+  
+  throw new Error('Все попытки подключения не удались');
 };
 
 // Обертка для fetch с автоматической авторизацией и retry

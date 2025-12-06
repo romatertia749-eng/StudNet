@@ -479,15 +479,24 @@ const Profiles = () => {
         console.error('[Profiles] ===== FETCH ERROR =====');
         console.error('[Profiles] Error name:', error.name);
         console.error('[Profiles] Error message:', error.message);
-        console.error('[Profiles] Error stack:', error.stack);
         if (!isMounted) return;
+        
+        let errorMessage = 'Не удалось загрузить анкеты.';
+        
         if (error.name === 'AbortError') {
-          console.warn('[Profiles] Request timeout after all retries');
-          alert('Сервер долго не отвечает. Возможно, он "просыпается". Попробуйте обновить страницу через несколько секунд.');
-        } else {
-          console.error('[Profiles] Full error:', error);
-          alert(`Ошибка сети: ${error.message}\n\nЕсли проблема повторяется, сервер может быть недоступен. Попробуйте обновить страницу.`);
+          errorMessage = 'Сервер долго не отвечает. Возможно, он "просыпается". Попробуйте обновить страницу через несколько секунд.';
+        } else if (error.message?.includes('Не удалось подключиться') || error.message?.includes('Failed to fetch')) {
+          errorMessage = 'Не удалось подключиться к серверу. Проверьте подключение к интернету и попробуйте снова.';
+        } else if (error.message) {
+          errorMessage = `Ошибка: ${error.message}`;
         }
+        
+        // Показываем ошибку только если это не первая попытка или если все попытки исчерпаны
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[Profiles] Full error:', error);
+        }
+        
+        alert(errorMessage);
         setAllProfiles([]);
       } finally {
         console.log('[Profiles] ===== FETCH COMPLETE =====');
