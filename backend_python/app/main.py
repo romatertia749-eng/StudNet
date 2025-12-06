@@ -167,6 +167,14 @@ app.include_router(connection_feedback.router)
 def health():
     return {"status": "ok"}
 
+# Раздача загруженных фотографий
+uploads_path = Path(__file__).parent.parent / "uploads" / "photos"
+if uploads_path.exists():
+    app.mount("/uploads/photos", StaticFiles(directory=str(uploads_path)), name="uploads")
+    print(f"[main.py] Mounted /uploads/photos from {uploads_path}")
+else:
+    print(f"[main.py] Warning: uploads/photos directory does not exist at {uploads_path}")
+
 # Обслуживание статических файлов фронтенда
 # Включается только если фронт и бэкенд на одном сервере (монолитный деплой)
 # Если фронт на отдельном домене (Vercel/Netlify), установи FRONTEND_ON_SAME_DOMAIN=false
