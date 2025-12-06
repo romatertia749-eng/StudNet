@@ -167,56 +167,14 @@ async def create_profile_slash_fallback(
         bio, username, first_name, last_name, photo, db
     )
 
-# Регистрируем остальные роутеры ПОСЛЕ connection-feedback роутов
+# Регистрируем остальные роутеры ПОСЛЕ connection-feedback POST роутера
 app.include_router(auth.router)
 app.include_router(profiles.router)
 app.include_router(matches.router)
-# Роутер connection_feedback отключен, все роуты в main.py
-# app.include_router(connection_feedback.router)
 
-# GET роуты для connection-feedback
-@app.get("/api/connection-feedback/match/{match_id}", response_model=List[ConnectionFeedbackResponse], tags=["connection-feedback"])
-def get_feedbacks_for_match(
-    match_id: int,
-    user_id: Optional[int] = Query(None, description="ID пользователя для фильтрации"),
-    db: Session = Depends(get_db)
-):
-    """Получает все отметки для мэтча"""
-    try:
-        feedbacks = connection_feedback_service.get_feedbacks_for_match(
-            db=db,
-            match_id=match_id,
-            user_id=user_id
-        )
-        return feedbacks
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при получении отметок: {str(e)}")
-
-@app.get("/api/connection-feedback/types", response_model=List[str], tags=["connection-feedback"])
-def get_feedback_types():
-    """Получает список доступных типов отметок"""
-    return ConnectionFeedbackType.all_types()
-
-@app.get("/api/connection-feedback/match-id", tags=["connection-feedback"])
-def get_match_id(
-    user1_id: int = Query(..., description="ID первого пользователя"),
-    user2_id: int = Query(..., description="ID второго пользователя"),
-    db: Session = Depends(get_db)
-):
-    """Получает ID мэтча между двумя пользователями"""
-    try:
-        match_id = connection_feedback_service.get_match_id_for_users(
-            db=db,
-            user1_id=user1_id,
-            user2_id=user2_id
-        )
-        if match_id is None:
-            raise HTTPException(status_code=404, detail="Мэтч не найден")
-        return {"match_id": match_id}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при получении мэтча: {str(e)}")
+# Регистрируем GET роуты для connection-feedback через роутер
+# Это лучше, чем дублировать роуты в main.py
+app.include_router(connection_feedback.router)
 
 @app.get("/health")
 def health():

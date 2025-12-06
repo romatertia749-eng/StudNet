@@ -81,16 +81,23 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
   const loadExistingFeedbacks = async () => {
     try {
       setLoading(true);
-      const response = await fetchWithAuth(`${API_ENDPOINTS.CONNECTION_FEEDBACK_MATCH(matchId)}?user_id=${fromUserId}`, { retry: false });
+      // Используем меньшие таймауты для загрузки существующих отметок
+      const response = await fetchWithAuth(
+        `${API_ENDPOINTS.CONNECTION_FEEDBACK_MATCH(matchId)}?user_id=${fromUserId}`, 
+        { retry: false }
+      );
       if (response.ok) {
         const data = await response.json();
         const existing = data.map(f => f.feedback_type);
         setExistingFeedbacks(existing);
         // Убираем из selectedTypes те, что уже отправлены
         setSelectedTypes(prev => prev.filter(t => !existing.includes(t)));
+      } else {
+        console.warn('Failed to load existing feedbacks:', response.status);
       }
     } catch (error) {
       console.error('Error loading feedbacks:', error);
+      // Не показываем ошибку пользователю - просто не блокируем работу
     } finally {
       setLoading(false);
     }
@@ -137,6 +144,7 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
           
           console.log('Sending POST to:', url, { match_id: matchId, from_user_id: fromUserId, to_user_id: toUserId, feedback_type: type });
           
+          // Используем меньшие таймауты для connection-feedback, чтобы не блокировать другие запросы
           const response = await fetchWithRetry(url, {
             method: 'POST',
             headers: {
@@ -148,7 +156,7 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
               to_user_id: toUserId,
               feedback_type: type,
             }),
-          }, 3, 60000, 30000);
+          }, 2, 30000, 15000); // 2 попытки, 30s первый таймаут, 15s повторные
           
           console.log('Response status:', response.status, response.statusText);
           

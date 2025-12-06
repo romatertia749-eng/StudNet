@@ -1,8 +1,11 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 from typing import List, Optional
+import logging
 from app.models import ConnectionFeedback, Match, Profile
 from app.schemas import ConnectionFeedbackType
+
+logger = logging.getLogger(__name__)
 
 def create_feedback(
     db: Session,
@@ -13,43 +16,53 @@ def create_feedback(
 ) -> ConnectionFeedback:
     """Создает отметку полезности для мэтча"""
     
-    # Проверяем, что тип валидный
-    if feedback_type not in ConnectionFeedbackType.all_types():
-        raise ValueError(f"Неверный тип отметки: {feedback_type}")
-    
-    # Проверяем, что мэтч существует
-    match = db.query(Match).filter(Match.id == match_id).first()
-    if not match:
-        raise ValueError("Мэтч не найден")
-    
-    # Проверяем, что пользователи являются участниками мэтча
-    if not ((match.user1_id == from_user_id and match.user2_id == to_user_id) or
-            (match.user1_id == to_user_id and match.user2_id == from_user_id)):
-        raise ValueError("Пользователи не являются участниками этого мэтча")
-    
-    # Проверяем, что не существует уже такой отметки
-    existing = db.query(ConnectionFeedback).filter(
-        and_(
-            ConnectionFeedback.match_id == match_id,
-            ConnectionFeedback.from_user_id == from_user_id,
-            ConnectionFeedback.feedback_type == feedback_type
+    try:
+        # Проверяем, что тип валидный
+        valid_types = ConnectionFeedbackType.all_types()
+        if feedback_type not in valid_types:
+            raise ValueError(f"Неверный тип отметки: {feedback_type}. Допустимые: {valid_types}")
+        
+        # Проверяем, что мэтч существует
+        match = db.query(Match).filter(Match.id == match_id).first()
+        if not match:
+            raise ValueError(f"Мэтч с id={match_id} не найден")
+        
+        # Проверяем, что пользователи являются участниками мэтча
+        if not ((match.user1_id == from_user_id and match.user2_id == to_user_id) or
+                (match.user1_id == to_user_id and match.user2_id == from_user_id)):
+            raise ValueError(f"Пользователи {from_user_id} и {to_user_id} не являются участниками мэтча {match_id}")
+        
+        # Проверяем, что не существует уже такой отметки
+        existing = db.query(ConnectionFeedback).filter(
+            and_(
+                ConnectionFeedback.match_id == match_id,
+                ConnectionFeedback.from_user_id == from_user_id,
+                ConnectionFeedback.feedback_type == feedback_type
+            )
+        ).first()
+        
+        if existing:
+            raise ValueError(f"Отметка типа {feedback_type} уже существует для мэтча {match_id} от пользователя {from_user_id}")
+        
+        # Создаем отметку
+        feedback = ConnectionFeedback(
+            match_id=match_id,
+            from_user_id=from_user_id,
+            to_user_id=to_user_id,
+            feedback_type=feedback_type
         )
-    ).first()
-    
-    if existing:
-        raise ValueError("Такая отметка уже существует")
-    
-    # Создаем отметку
-    feedback = ConnectionFeedback(
-        match_id=match_id,
-        from_user_id=from_user_id,
-        to_user_id=to_user_id,
-        feedback_type=feedback_type
-    )
-    db.add(feedback)
-    db.commit()
-    db.refresh(feedback)
-    return feedback
+        db.add(feedback)
+        db.commit()
+        db.refresh(feedback)
+        logger.info(f"Created feedback: id={feedback.id}, match_id={match_id}, type={feedback_type}")
+        return feedback
+    except ValueError:
+        # Перебрасываем ValueError как есть
+        raise
+    except Exception as e:
+        logger.error(f"Error creating feedback: {str(e)}", exc_info=True)
+        db.rollback()
+        raise ValueError(f"Ошибка при создании отметки: {str(e)}")
 
 def get_feedbacks_for_match(
     db: Session,
