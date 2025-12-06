@@ -230,7 +230,10 @@ export const fetchWithAuth = async (url, options = {}) => {
   if (useRetry) {
     // Для Vercel используем более агрессивные настройки retry, но только для критичных запросов
     // Для обычных запросов используем стандартные настройки
-    const isCriticalRequest = url.includes('/api/auth') || url.includes('/api/profiles/check');
+    const isCriticalRequest = url.includes('/api/auth') || 
+                              url.includes('/api/profiles/check') || 
+                              url.includes('/api/profiles/user/') ||
+                              url.includes('/api/profiles/') && (url.includes('?user_id=') || url.includes('/user/'));
     if (isVercel && isCriticalRequest) {
       return fetchWithRetry(url, options, 3, 60000, 30000); // Уменьшено: 3 попытки, 60s/30s
     }

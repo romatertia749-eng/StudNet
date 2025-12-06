@@ -52,7 +52,8 @@ const ProfileForm = () => {
       try {
         const url = API_ENDPOINTS.PROFILE_BY_USER_ID(userInfo.id);
         console.log('Loading profile from:', url);
-        const response = await fetchWithAuth(url);
+        // Включаем retry для надежной загрузки профиля
+        const response = await fetchWithAuth(url, { retry: true });
         
         if (!isMounted) return;
         console.log('Profile load response status:', response.status);
