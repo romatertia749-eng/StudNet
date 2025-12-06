@@ -27,6 +27,12 @@ const Profiles = () => {
   // Убрана блокирующая проверка профиля
   const [showSwipeTutorial, setShowSwipeTutorial] = useState(false);
   
+  // Кэш для загруженных профилей - предотвращает повторную загрузку
+  const profilesCacheRef = useRef(null);
+  const cacheTimestampRef = useRef(0);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 минут
+  const hasLoadedRef = useRef(false);
+  
   // Состояние для вкладок
   const [activeTab, setActiveTab] = useState('all');
   const [incomingLikes, setIncomingLikes] = useState([]);
@@ -311,6 +317,22 @@ const Profiles = () => {
       return;
     }
     
+    // Проверяем кэш - если данные свежие, используем их
+    const now = Date.now();
+    if (profilesCacheRef.current && (now - cacheTimestampRef.current) < CACHE_DURATION) {
+      if (profilesCacheRef.current.length > 0) {
+        setAllProfiles(profilesCacheRef.current);
+        setLoading(false);
+        hasLoadedRef.current = true;
+        return;
+      }
+    }
+    
+    // Если уже загружаем, не запускаем повторную загрузку
+    if (loading && hasLoadedRef.current) {
+      return;
+    }
+    
     let isMounted = true;
     let controller = null;
     
@@ -452,9 +474,13 @@ const Profiles = () => {
             });
               console.log('[Profiles] Setting profiles:', processedProfiles.length);
               setAllProfiles(processedProfiles);
+              // Обновляем кэш
+              profilesCacheRef.current = processedProfiles;
+              cacheTimestampRef.current = Date.now();
               setCurrentIndex(0); // СБРАСЫВАЕМ ИНДЕКС
               setSwipedProfiles([]); // ОЧИЩАЕМ СВАЙПЫ
               setLoading(false);
+              hasLoadedRef.current = true;
               console.log('[Profiles] ✅ PROFILES SET! Count:', processedProfiles.length);
             } else {
               console.log('[Profiles] ⚠️ No profiles in response, setting empty array');
@@ -511,7 +537,10 @@ const Profiles = () => {
     return () => {
       isMounted = false;
     };
-  }, [isReady, userInfo?.id, activeTab, selectedCity, selectedUniversity, selectedInterests]);
+    // УБРАЛИ selectedCity, selectedUniversity, selectedInterests из зависимостей
+    // Фильтры применяются на бэкенде, но мы не хотим перезагружать при каждом изменении
+    // Загружаем только при изменении user_id или activeTab
+  }, [isReady, userInfo?.id, activeTab]);
 
   // УБРАНА фильтрация на фронтенде - фильтры применяются только на бэкенде
   // Это предотвращает двойную фильтрацию и проблемы с отображением профилей

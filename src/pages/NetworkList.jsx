@@ -119,7 +119,7 @@ MatchCard.displayName = 'MatchCard';
 
 const NetworkList = () => {
   const navigate = useNavigate();
-  const { setMatchedProfiles: setContextMatchedProfiles, updateConnectsCount } = useMatches();
+  const { setMatchedProfiles: setContextMatchedProfiles, updateConnectsCount, shouldFetchProfiles } = useMatches();
   const { userInfo, isReady } = useWebApp();
   const [matchedProfiles, setMatchedProfiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -129,6 +129,11 @@ const NetworkList = () => {
   // Используем useRef для отслеживания, загружались ли уже данные
   const hasLoadedRef = useRef(false);
   const lastUserIdRef = useRef(null);
+  
+  // Кэш для загруженных мэтчей
+  const matchesCacheRef = useRef(null);
+  const matchesCacheTimestampRef = useRef(0);
+  const MATCHES_CACHE_DURATION = 5 * 60 * 1000; // 5 минут
 
   useEffect(() => {
     // Загружаем мэтчи сразу, не ждем проверку профиля
@@ -137,10 +142,24 @@ const NetworkList = () => {
       return;
     }
 
-    // Проверяем, нужно ли загружать данные
     const userId = userInfo.id;
-    if (hasLoadedRef.current && lastUserIdRef.current === userId) {
-      // Данные уже загружены для этого пользователя
+    
+    // Проверяем кэш - если данные свежие, используем их
+    const now = Date.now();
+    if (matchesCacheRef.current && (now - matchesCacheTimestampRef.current) < MATCHES_CACHE_DURATION) {
+      if (matchesCacheRef.current.length > 0) {
+        setMatchedProfiles(matchesCacheRef.current);
+        setContextMatchedProfiles(matchesCacheRef.current);
+        setLoading(false);
+        hasLoadedRef.current = true;
+        lastUserIdRef.current = userId;
+        return;
+      }
+    }
+    
+    // Проверяем, нужно ли загружать данные
+    if (hasLoadedRef.current && lastUserIdRef.current === userId && !shouldFetchProfiles()) {
+      // Данные уже загружены для этого пользователя и кэш актуален
       return;
     }
 
@@ -228,6 +247,9 @@ const NetworkList = () => {
             if (formattedMatches.length > 0) {
               setContextMatchedProfiles(formattedMatches);
             }
+            // Обновляем кэш
+            matchesCacheRef.current = formattedMatches;
+            matchesCacheTimestampRef.current = Date.now();
             hasLoadedRef.current = true;
             lastUserIdRef.current = userId;
           }

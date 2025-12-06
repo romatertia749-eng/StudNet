@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { API_ENDPOINTS } from '../config/api';
 import { fetchWithAuth } from '../utils/api';
 
@@ -16,6 +16,11 @@ export const MatchProvider = ({ children }) => {
   const [matchedProfiles, setMatchedProfiles] = useState([]);
   const [connectsCount, setConnectsCount] = useState(0);
   const [isLoadingCount, setIsLoadingCount] = useState(false);
+  
+  // Кэш для загруженных данных - предотвращает повторную загрузку
+  const profilesCacheRef = useRef(null);
+  const cacheTimestampRef = useRef(0);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 минут
 
   // Убрана загрузка из localStorage - данные загружаются только с API
   // Очищаем старые данные из localStorage при инициализации
@@ -54,10 +59,28 @@ export const MatchProvider = ({ children }) => {
 
   const setMatchedProfilesAndUpdateCount = (profiles) => {
     setMatchedProfiles(profiles);
+    // Обновляем кэш
+    profilesCacheRef.current = profiles;
+    cacheTimestampRef.current = Date.now();
     // connectsCount всегда равен длине profiles
     // Это синхронизирует состояние с реальными данными из NetworkList
     setConnectsCount(profiles.length);
   };
+
+  // Функция для получения кэшированных данных
+  const getCachedProfiles = useCallback(() => {
+    const now = Date.now();
+    if (profilesCacheRef.current && (now - cacheTimestampRef.current) < CACHE_DURATION) {
+      return profilesCacheRef.current;
+    }
+    return null;
+  }, []);
+
+  // Функция для проверки, нужно ли загружать данные
+  const shouldFetchProfiles = useCallback(() => {
+    const now = Date.now();
+    return !profilesCacheRef.current || (now - cacheTimestampRef.current) >= CACHE_DURATION;
+  }, []);
 
   const value = {
     matchedProfiles,
@@ -65,6 +88,8 @@ export const MatchProvider = ({ children }) => {
     addMatch,
     updateConnectsCount,
     setMatchedProfiles: setMatchedProfilesAndUpdateCount,
+    getCachedProfiles,
+    shouldFetchProfiles,
   };
 
   return (

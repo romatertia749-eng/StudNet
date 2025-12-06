@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWebApp } from '../contexts/WebAppContext';
 import Button from '../components/Button';
@@ -68,10 +68,23 @@ const Home = () => {
   const { hasCompletedProfile, hasCompletedOnboarding, mainGoal, userInfo, isReady } = useWebApp();
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [profileExists, setProfileExists] = useState(null);
+  
+  // Кэш для проверки профиля
+  const profileCheckCacheRef = useRef(null);
+  const profileCheckTimestampRef = useRef(0);
+  const PROFILE_CHECK_CACHE_DURATION = 2 * 60 * 1000; // 2 минуты
 
   // Проверяем профиль на сервере при загрузке
   useEffect(() => {
     if (!isReady || !userInfo?.id) {
+      setCheckingProfile(false);
+      return;
+    }
+    
+    // Проверяем кэш
+    const now = Date.now();
+    if (profileCheckCacheRef.current !== null && (now - profileCheckTimestampRef.current) < PROFILE_CHECK_CACHE_DURATION) {
+      setProfileExists(profileCheckCacheRef.current);
       setCheckingProfile(false);
       return;
     }
@@ -91,15 +104,24 @@ const Home = () => {
         
         if (response.ok) {
           const data = await response.json();
-          setProfileExists(data.exists);
+          const exists = data.exists;
+          setProfileExists(exists);
+          // Обновляем кэш
+          profileCheckCacheRef.current = exists;
+          profileCheckTimestampRef.current = Date.now();
         } else {
           // При ошибке считаем, что профиля нет
           setProfileExists(false);
+          profileCheckCacheRef.current = false;
+          profileCheckTimestampRef.current = Date.now();
         }
       } catch (error) {
         console.error('[Home] Error checking profile:', error);
         // При ошибке используем значение из контекста
-        setProfileExists(hasCompletedProfile);
+        const fallback = hasCompletedProfile;
+        setProfileExists(fallback);
+        profileCheckCacheRef.current = fallback;
+        profileCheckTimestampRef.current = Date.now();
       } finally {
         setCheckingProfile(false);
       }
