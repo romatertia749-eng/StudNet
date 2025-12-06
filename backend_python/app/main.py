@@ -221,13 +221,25 @@ def get_match_id(
 @app.get("/health")
 def health():
     """Health check endpoint с проверкой БД"""
+    import time
     from app.database import check_db_connection
     
+    start_time = time.time()
     db_status = check_db_connection()
+    elapsed = time.time() - start_time
+    
     if db_status:
-        return {"status": "ok", "database": "connected"}
+        return {
+            "status": "ok", 
+            "database": "connected",
+            "db_check_time": f"{elapsed:.2f}s"
+        }
     else:
-        return {"status": "degraded", "database": "disconnected"}
+        return {
+            "status": "degraded", 
+            "database": "disconnected",
+            "db_check_time": f"{elapsed:.2f}s"
+        }
 
 # Раздача загруженных фотографий
 uploads_path = Path(__file__).parent.parent / "uploads" / "photos"
