@@ -50,6 +50,7 @@ allowed_origins = list(dict.fromkeys(allowed_origins))
 # Для Render, Koyeb и других платформ добавляем поддержку Telegram доменов
 # Это необходимо для работы Telegram Mini Apps
 # Примечание: FastAPI не поддерживает wildcard в CORS, поэтому добавляем конкретные домены
+# Определяем production режим для различных платформ
 is_production = (
     os.getenv("RENDER") or 
     os.getenv("RENDER_EXTERNAL_URL") or 
@@ -57,8 +58,14 @@ is_production = (
     os.getenv("KOYEB_SERVICE_NAME") or
     os.getenv("RAILWAY_ENVIRONMENT") or
     os.getenv("VERCEL") or
+    os.getenv("VERCEL_ENV") or  # Vercel устанавливает VERCEL_ENV
     os.getenv("PRODUCTION", "").lower() == "true"
 )
+
+# Определяем, используется ли Vercel (для фронтенда)
+is_vercel = bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
+if is_vercel:
+    logger.info("Vercel environment detected")
 
 if is_production:
     # Telegram использует несколько доменов, добавляем основные
@@ -228,7 +235,7 @@ app.include_router(connection_feedback.router)
 
 @app.get("/health")
 def health():
-    """Health check endpoint с проверкой БД"""
+    """Health check endpoint с проверкой БД - используется для warmup на Vercel и других платформах"""
     import time
     from app.database import check_db_connection
     
@@ -236,17 +243,31 @@ def health():
     db_status = check_db_connection()
     elapsed = time.time() - start_time
     
+    # Определяем платформу
+    platform = "unknown"
+    if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
+        platform = "vercel"
+    elif os.getenv("KOYEB") or os.getenv("KOYEB_SERVICE_NAME"):
+        platform = "koyeb"
+    elif os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_URL"):
+        platform = "render"
+    elif os.getenv("RAILWAY_ENVIRONMENT"):
+        platform = "railway"
+    
     if db_status:
         return {
             "status": "ok", 
             "database": "connected",
-            "db_check_time": f"{elapsed:.2f}s"
+            "db_check_time": f"{elapsed:.2f}s",
+            "platform": platform,
+            "cold_start": elapsed > 5.0  # Если проверка заняла > 5 секунд, это был cold start
         }
     else:
         return {
             "status": "degraded", 
             "database": "disconnected",
-            "db_check_time": f"{elapsed:.2f}s"
+            "db_check_time": f"{elapsed:.2f}s",
+            "platform": platform
         }
 
 # Раздача загруженных фотографий

@@ -28,21 +28,34 @@ is_neon = "neon.tech" in DATABASE_URL or "neon" in DATABASE_URL.lower()
 if is_neon:
     logger.info("Neon database detected - using scale-to-zero optimizations")
 
+# Определяем, используется ли Vercel (может влиять на cold start)
+is_vercel = bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
+if is_vercel:
+    logger.info("Vercel environment detected - using Vercel optimizations")
+
 # Настройки пула соединений для облачных платформ
-# ВАЖНО: Для Neon с "scale to zero" нужны увеличенные таймауты
+# ВАЖНО: Для Neon с "scale to zero" и Vercel нужны увеличенные таймауты
+# Для Vercel также важно учитывать cold start serverless функций
+pool_size = 2 if (is_neon or is_vercel) else 3
+max_overflow = 3 if (is_neon or is_vercel) else 5
+pool_recycle = 900 if is_neon else (1200 if is_vercel else 1800)  # 15 мин для Neon, 20 мин для Vercel, 30 для других
+connect_timeout = 30 if (is_neon or is_vercel) else 10  # 30 секунд для Neon/Vercel (cold start), 10 для других
+
+logger.info(f"Database pool config: pool_size={pool_size}, max_overflow={max_overflow}, pool_recycle={pool_recycle}s, connect_timeout={connect_timeout}s")
+
 engine = create_engine(
     DATABASE_URL,
     # Пул соединений - критически важно для стабильности
     poolclass=QueuePool,
-    pool_size=2 if is_neon else 3,  # Меньше для Neon (scale to zero)
-    max_overflow=3 if is_neon else 5,  # Меньше для Neon
-    pool_pre_ping=True,  # Проверка соединений перед использованием (важно для Koyeb и Neon!)
-    pool_recycle=900 if is_neon else 1800,  # 15 минут для Neon (чтобы не засыпать), 30 для других
+    pool_size=pool_size,
+    max_overflow=max_overflow,
+    pool_pre_ping=True,  # Проверка соединений перед использованием (важно для всех платформ!)
+    pool_recycle=pool_recycle,
     
     # Таймауты для подключения
-    # ВАЖНО: Для Neon с scale to zero первый запрос может занимать 10-30 секунд
+    # ВАЖНО: Для Neon и Vercel с cold start первый запрос может занимать 10-30 секунд
     connect_args={
-        "connect_timeout": 30 if is_neon else 10,  # 30 секунд для Neon (cold start), 10 для других
+        "connect_timeout": connect_timeout,
     },
     
     # Дополнительные настройки
@@ -60,14 +73,15 @@ def get_db():
     """Получение сессии БД с обработкой ошибок и retry для Neon scale-to-zero"""
     import time
     
-    # Проверяем, используется ли Neon
+    # Проверяем, используется ли Neon или Vercel
     db_url = os.getenv("DATABASE_URL", "")
     is_neon_db = "neon.tech" in db_url or "neon" in db_url.lower()
+    is_vercel_db = bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
     
-    # Для Neon с scale-to-zero первый запрос может занять время
+    # Для Neon и Vercel с cold start первый запрос может занять время
     # Добавляем retry логику для холодного старта
-    max_retries = 2 if is_neon_db else 1
-    retry_delay = 2
+    max_retries = 2 if (is_neon_db or is_vercel_db) else 1
+    retry_delay = 2 if is_neon_db else 3 if is_vercel_db else 1  # Больше задержка для Vercel
     
     for attempt in range(max_retries + 1):
         try:
@@ -105,12 +119,13 @@ def check_db_connection():
     """Проверка подключения к БД с retry для Neon scale-to-zero"""
     import time
     
-    # Проверяем, используется ли Neon
+    # Проверяем, используется ли Neon или Vercel
     db_url = os.getenv("DATABASE_URL", "")
     is_neon_db = "neon.tech" in db_url or "neon" in db_url.lower()
+    is_vercel_db = bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
     
-    max_retries = 2 if is_neon_db else 1
-    retry_delay = 2
+    max_retries = 2 if (is_neon_db or is_vercel_db) else 1
+    retry_delay = 2 if is_neon_db else 3 if is_vercel_db else 1  # Больше задержка для Vercel
     
     for attempt in range(max_retries + 1):
         try:

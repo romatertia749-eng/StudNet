@@ -25,29 +25,55 @@ export const getAuthHeaders = () => {
   return headers;
 };
 
-// Функция для "разогрева" сервера (cold start на Koyeb)
-export const warmupServer = async (baseUrl) => {
-  try {
-    const healthUrl = `${baseUrl}/health`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    
-    await fetch(healthUrl, {
-      method: 'GET',
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    console.log('[warmupServer] Server warmed up');
-  } catch (error) {
-    console.warn('[warmupServer] Warmup failed, but continuing:', error);
-  }
-};
-
-// Определяем, мобильное ли устройство
+// Определяем, мобильное ли устройство (определяем ДО использования)
 const isMobileDevice = () => {
   if (typeof window === 'undefined') return false;
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
          (window.innerWidth <= 768);
+};
+
+// Функция для "разогрева" сервера (cold start на Koyeb, Vercel и других платформах)
+export const warmupServer = async (baseUrl) => {
+  const isMobile = isMobileDevice();
+  const timeout = isMobile ? 30000 : 20000; // Больше таймаут для мобильных
+  
+  try {
+    const healthUrl = `${baseUrl}/health`;
+    console.log(`[warmupServer] Warming up server at ${healthUrl} (timeout: ${timeout}ms, mobile: ${isMobile})`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const startTime = Date.now();
+    const response = await fetch(healthUrl, {
+      method: 'GET',
+      signal: controller.signal,
+      // Добавляем заголовки для лучшей совместимости
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    });
+    const elapsed = Date.now() - startTime;
+    
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      console.log(`[warmupServer] Server warmed up successfully in ${elapsed}ms`);
+      // Если это заняло много времени (> 5 секунд), это был cold start
+      if (elapsed > 5000) {
+        console.warn(`[warmupServer] Cold start detected (${elapsed}ms) - server was sleeping`);
+      }
+    } else {
+      console.warn(`[warmupServer] Warmup response not OK: ${response.status}`);
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.warn(`[warmupServer] Warmup timeout after ${timeout}ms - server may be cold starting`);
+    } else {
+      console.warn('[warmupServer] Warmup failed, but continuing:', error.message);
+    }
+    // Не блокируем работу приложения, если warmup не удался
+  }
 };
 
 // Функция для выполнения запроса с retry и увеличенными таймаутами
@@ -136,17 +162,42 @@ export const fetchWithRetry = async (
 
 // Обертка для fetch с автоматической авторизацией и retry
 export const fetchWithAuth = async (url, options = {}) => {
+  // Определяем, используется ли Vercel (для фронтенда)
+  const isVercel = typeof window !== 'undefined' && (
+    window.location.hostname.includes('vercel.app') ||
+    window.location.hostname.includes('vercel.com') ||
+    process.env.REACT_APP_VERCEL === 'true'
+  );
+  
   // Если это первый запрос после загрузки страницы, пробуем разогреть сервер
   const isFirstRequest = !window.__apiWarmedUp;
   if (isFirstRequest) {
     window.__apiWarmedUp = true;
     const baseUrl = url.split('/api/')[0] || 'http://localhost:8080';
-    await warmupServer(baseUrl);
+    
+    // Для Vercel делаем более агрессивный warmup
+    if (isVercel) {
+      console.log('[fetchWithAuth] Vercel detected - performing aggressive warmup');
+      // Делаем несколько попыток warmup для Vercel
+      for (let i = 0; i < 2; i++) {
+        await warmupServer(baseUrl);
+        // Небольшая задержка между попытками
+        if (i < 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    } else {
+      await warmupServer(baseUrl);
+    }
   }
   
   // Используем retry для всех запросов
   const useRetry = options.retry !== false; // По умолчанию включен
   if (useRetry) {
+    // Для Vercel используем более агрессивные настройки retry
+    if (isVercel) {
+      return fetchWithRetry(url, options, 4, 90000, 45000); // 4 попытки, 90s/45s таймауты
+    }
     return fetchWithRetry(url, options);
   }
   
