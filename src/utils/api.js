@@ -33,13 +33,17 @@ const isMobileDevice = () => {
 };
 
 // Функция для "разогрева" сервера (cold start на Koyeb, Vercel и других платформах)
+// ВАЖНО: Эта функция НЕ должна блокировать основной поток
 export const warmupServer = async (baseUrl) => {
   const isMobile = isMobileDevice();
-  const timeout = isMobile ? 30000 : 20000; // Больше таймаут для мобильных
+  const timeout = isMobile ? 20000 : 15000; // Уменьшено: 20s/15s вместо 30s/20s
   
   try {
     const healthUrl = `${baseUrl}/health`;
-    console.log(`[warmupServer] Warming up server at ${healthUrl} (timeout: ${timeout}ms, mobile: ${isMobile})`);
+    // Логируем только в dev режиме
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[warmupServer] Warming up (timeout: ${timeout}ms)`);
+    }
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -48,7 +52,6 @@ export const warmupServer = async (baseUrl) => {
     const response = await fetch(healthUrl, {
       method: 'GET',
       signal: controller.signal,
-      // Добавляем заголовки для лучшей совместимости
       headers: {
         'Cache-Control': 'no-cache',
       },
@@ -57,22 +60,15 @@ export const warmupServer = async (baseUrl) => {
     
     clearTimeout(timeoutId);
     
-    if (response.ok) {
-      console.log(`[warmupServer] Server warmed up successfully in ${elapsed}ms`);
-      // Если это заняло много времени (> 5 секунд), это был cold start
-      if (elapsed > 5000) {
-        console.warn(`[warmupServer] Cold start detected (${elapsed}ms) - server was sleeping`);
-      }
-    } else {
-      console.warn(`[warmupServer] Warmup response not OK: ${response.status}`);
+    if (response.ok && process.env.NODE_ENV === 'development') {
+      console.log(`[warmupServer] Warmed up in ${elapsed}ms`);
     }
   } catch (error) {
-    if (error.name === 'AbortError') {
-      console.warn(`[warmupServer] Warmup timeout after ${timeout}ms - server may be cold starting`);
-    } else {
-      console.warn('[warmupServer] Warmup failed, but continuing:', error.message);
+    // Игнорируем ошибки warmup - они не критичны
+    // Логируем только в dev режиме
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[warmupServer] Warmup failed (non-critical):', error.message);
     }
-    // Не блокируем работу приложения, если warmup не удался
   }
 };
 
@@ -80,17 +76,20 @@ export const warmupServer = async (baseUrl) => {
 export const fetchWithRetry = async (
   url,
   options = {},
-  maxRetries = 3,
-  initialTimeout = 60000, // 60 секунд для первого запроса (cold start)
-  retryTimeout = 30000    // 30 секунд для повторных попыток
+  maxRetries = 2, // Уменьшено с 3 до 2 для быстрой работы
+  initialTimeout = 30000, // Уменьшено: 30 секунд для первого запроса (было 60)
+  retryTimeout = 15000    // Уменьшено: 15 секунд для повторных попыток (было 30)
 ) => {
   // Для мобильных устройств увеличиваем таймауты (медленнее интернет)
   const isMobile = isMobileDevice();
   if (isMobile) {
-    initialTimeout = Math.max(initialTimeout, 90000); // Минимум 90 секунд для мобильных
-    retryTimeout = Math.max(retryTimeout, 45000);     // Минимум 45 секунд для мобильных
-    maxRetries = Math.max(maxRetries, 4);             // Больше попыток для мобильных
-    console.log(`[fetchWithRetry] Mobile device detected - using extended timeouts: ${initialTimeout}ms/${retryTimeout}ms, ${maxRetries} retries`);
+    initialTimeout = Math.max(initialTimeout, 45000); // Уменьшено: 45 секунд для мобильных (было 90)
+    retryTimeout = Math.max(retryTimeout, 25000);     // Уменьшено: 25 секунд для мобильных (было 45)
+    maxRetries = Math.max(maxRetries, 3);             // Уменьшено: 3 попытки для мобильных (было 4)
+    // Логируем только в dev режиме
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[fetchWithRetry] Mobile device - timeouts: ${initialTimeout}ms/${retryTimeout}ms, ${maxRetries} retries`);
+    }
   }
   const headers = {
     ...getAuthHeaders(),
@@ -105,7 +104,10 @@ export const fetchWithRetry = async (
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       
-      console.log(`[fetchWithRetry] Attempt ${attempt + 1}/${maxRetries + 1} for ${url} (timeout: ${timeout}ms)`);
+      // Логируем только в dev режиме или при ошибках
+      if (process.env.NODE_ENV === 'development' && attempt === 0) {
+        console.log(`[fetchWithRetry] ${url.substring(0, 50)}... (timeout: ${timeout}ms)`);
+      }
       
       const response = await fetch(url, {
         ...options,
@@ -132,24 +134,29 @@ export const fetchWithRetry = async (
       lastError = error;
       
       if (error.name === 'AbortError') {
-        console.warn(`[fetchWithRetry] Request timeout on attempt ${attempt + 1}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`[fetchWithRetry] Timeout on attempt ${attempt + 1}`);
+        }
         if (attempt < maxRetries) {
-          // Для мобильных устройств увеличиваем задержку
-          const baseDelay = isMobile ? 3000 : 2000;
-          const maxDelay = isMobile ? 20000 : 10000;
+          // Уменьшены задержки для быстрой работы
+          const baseDelay = isMobile ? 1500 : 1000; // Было 3000/2000
+          const maxDelay = isMobile ? 10000 : 5000; // Было 20000/10000
           const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
-          console.log(`[fetchWithRetry] Retrying in ${delay}ms... (mobile: ${isMobile})`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[fetchWithRetry] Retrying in ${delay}ms...`);
+          }
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
       } else {
         // Для других ошибок тоже retry
         if (attempt < maxRetries) {
-          // Для мобильных устройств увеличиваем задержку
-          const baseDelay = isMobile ? 3000 : 2000;
-          const maxDelay = isMobile ? 20000 : 10000;
+          const baseDelay = isMobile ? 1500 : 1000;
+          const maxDelay = isMobile ? 10000 : 5000;
           const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
-          console.log(`[fetchWithRetry] Retrying in ${delay}ms due to: ${error.message} (mobile: ${isMobile})`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[fetchWithRetry] Retrying in ${delay}ms: ${error.message}`);
+          }
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
@@ -169,34 +176,37 @@ export const fetchWithAuth = async (url, options = {}) => {
     process.env.REACT_APP_VERCEL === 'true'
   );
   
-  // Если это первый запрос после загрузки страницы, пробуем разогреть сервер
+  // КРИТИЧЕСКИ ВАЖНО: Warmup делаем НЕБЛОКИРУЮЩИМ (fire and forget)
+  // Это позволяет приложению открываться сразу, не дожидаясь warmup
   const isFirstRequest = !window.__apiWarmedUp;
   if (isFirstRequest) {
     window.__apiWarmedUp = true;
     const baseUrl = url.split('/api/')[0] || 'http://localhost:8080';
     
-    // Для Vercel делаем более агрессивный warmup
-    if (isVercel) {
-      console.log('[fetchWithAuth] Vercel detected - performing aggressive warmup');
-      // Делаем несколько попыток warmup для Vercel
-      for (let i = 0; i < 2; i++) {
-        await warmupServer(baseUrl);
-        // Небольшая задержка между попытками
-        if (i < 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+    // Запускаем warmup в фоне, не блокируя основной запрос
+    warmupServer(baseUrl).catch(err => {
+      // Игнорируем ошибки warmup - они не критичны
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[fetchWithAuth] Warmup failed (non-blocking):', err.message);
       }
-    } else {
-      await warmupServer(baseUrl);
+    });
+    
+    // Для Vercel делаем дополнительный warmup тоже в фоне
+    if (isVercel) {
+      setTimeout(() => {
+        warmupServer(baseUrl).catch(() => {});
+      }, 500);
     }
   }
   
   // Используем retry для всех запросов
   const useRetry = options.retry !== false; // По умолчанию включен
   if (useRetry) {
-    // Для Vercel используем более агрессивные настройки retry
-    if (isVercel) {
-      return fetchWithRetry(url, options, 4, 90000, 45000); // 4 попытки, 90s/45s таймауты
+    // Для Vercel используем более агрессивные настройки retry, но только для критичных запросов
+    // Для обычных запросов используем стандартные настройки
+    const isCriticalRequest = url.includes('/api/auth') || url.includes('/api/profiles/check');
+    if (isVercel && isCriticalRequest) {
+      return fetchWithRetry(url, options, 3, 60000, 30000); // Уменьшено: 3 попытки, 60s/30s
     }
     return fetchWithRetry(url, options);
   }

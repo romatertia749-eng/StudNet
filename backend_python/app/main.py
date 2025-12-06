@@ -97,37 +97,22 @@ class TrailingSlashMiddleware(BaseHTTPMiddleware):
         user_agent = request.headers.get("user-agent", "unknown")
         start_time = time.time()
         
-        # Логируем только важные запросы (не все, чтобы не замедлять)
-        if path.startswith("/api/profiles") or path.startswith("/api/connection-feedback"):
-            logger.info(f"[TrailingSlashMiddleware] {method} {path} from origin={origin}, UA={user_agent[:50]}")
-        
+        # КРИТИЧЕСКИ ВАЖНО: Минимизируем логирование для производительности
+        # Логируем только ошибки и очень медленные запросы
         try:
             response = await call_next(request)
             elapsed_time = time.time() - start_time
             
-            # Логируем медленные запросы (> 5 секунд)
-            if elapsed_time > 5:
-                logger.warning(f"[TrailingSlashMiddleware] Slow request: {method} {path} took {elapsed_time:.2f}s (origin={origin})")
+            # Логируем только медленные запросы (> 10 секунд) или ошибки
+            if elapsed_time > 10:
+                logger.warning(f"[TrailingSlashMiddleware] Very slow request: {method} {path} took {elapsed_time:.2f}s")
             
-            # Логируем CORS ошибки
-            if response.status_code == 403 or (response.status_code == 400 and "CORS" in str(response.headers.get("access-control-allow-origin", ""))):
-                logger.error(f"[TrailingSlashMiddleware] Possible CORS issue: {method} {path} from origin={origin}, status={response.status_code}")
-            
-            # Если получили 405 для POST /api/profiles/, логируем
-            if path == "/api/profiles/" and method == "POST" and response.status_code == 405:
-                logger.warning(f"[TrailingSlashMiddleware] Got 405 for POST /api/profiles/ from origin={origin}")
-            
-            # Если получили 405 для POST /api/connection-feedback, логируем
-            if path.startswith("/api/connection-feedback") and method == "POST" and response.status_code == 405:
-                logger.error(f"[TrailingSlashMiddleware] Got 405 for POST {path} from origin={origin}, status={response.status_code}")
-                try:
-                    routes_info = []
-                    for r in app.routes:
-                        if hasattr(r, 'path'):
-                            routes_info.append(f"{r.methods if hasattr(r, 'methods') else 'N/A'}: {r.path}")
-                    logger.error(f"[TrailingSlashMiddleware] Available routes: {routes_info}")
-                except Exception as e:
-                    logger.error(f"[TrailingSlashMiddleware] Error getting routes: {e}")
+            # Логируем только критические ошибки
+            if response.status_code >= 500:
+                logger.error(f"[TrailingSlashMiddleware] Server error: {method} {path} status={response.status_code}")
+            elif response.status_code == 405 and method == "POST":
+                # Логируем 405 только для POST запросов (критично)
+                logger.error(f"[TrailingSlashMiddleware] Method not allowed: POST {path} status=405")
             
             return response
         except Exception as e:
@@ -142,6 +127,9 @@ app.add_middleware(TrailingSlashMiddleware)
 class FlexibleCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         origin = request.headers.get("origin")
+        
+        # КРИТИЧЕСКИ ВАЖНО: Не логируем каждый запрос - это замедляет работу
+        # Логируем только при ошибках CORS
         
         # В production разрешаем все origins для Telegram Web Apps
         if is_production and origin:
@@ -235,39 +223,32 @@ app.include_router(connection_feedback.router)
 
 @app.get("/health")
 def health():
-    """Health check endpoint с проверкой БД - используется для warmup на Vercel и других платформах"""
+    """Health check endpoint - оптимизирован для быстрого warmup"""
     import time
     from app.database import check_db_connection
     
     start_time = time.time()
-    db_status = check_db_connection()
+    # КРИТИЧЕСКИ ВАЖНО: Делаем быструю проверку БД с таймаутом
+    try:
+        db_status = check_db_connection()
+    except Exception as e:
+        logger.warning(f"[health] DB check failed: {e}")
+        db_status = False
+    
     elapsed = time.time() - start_time
     
-    # Определяем платформу
-    platform = "unknown"
-    if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
-        platform = "vercel"
-    elif os.getenv("KOYEB") or os.getenv("KOYEB_SERVICE_NAME"):
-        platform = "koyeb"
-    elif os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_URL"):
-        platform = "render"
-    elif os.getenv("RAILWAY_ENVIRONMENT"):
-        platform = "railway"
-    
+    # Упрощенный ответ для быстрой работы
     if db_status:
         return {
             "status": "ok", 
             "database": "connected",
-            "db_check_time": f"{elapsed:.2f}s",
-            "platform": platform,
-            "cold_start": elapsed > 5.0  # Если проверка заняла > 5 секунд, это был cold start
+            "time": f"{elapsed:.2f}s"
         }
     else:
         return {
             "status": "degraded", 
             "database": "disconnected",
-            "db_check_time": f"{elapsed:.2f}s",
-            "platform": platform
+            "time": f"{elapsed:.2f}s"
         }
 
 # Раздача загруженных фотографий

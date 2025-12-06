@@ -58,18 +58,22 @@ export const WebAppProvider = ({ children }) => {
     
     try {
       const { fetchWithRetry } = await import('../utils/api');
+      // Уменьшены таймауты для быстрой работы
       const response = await fetchWithRetry(
         `${API_ENDPOINTS.CHECK_PROFILE(userId)}`,
         { retry: true },
         2, // 2 попытки
-        45000, // 45 секунд для первого запроса
-        20000  // 20 секунд для повторных
+        20000, // Уменьшено: 20 секунд для первого запроса (было 45)
+        10000  // Уменьшено: 10 секунд для повторных (было 20)
       );
       
       if (response.ok) {
         const data = await response.json();
         const exists = data.exists === true;
-        console.log(`[WebAppContext] Profile exists on server: ${exists} for user ${userId}`);
+        // Логируем только в dev режиме
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[WebAppContext] Profile exists: ${exists} for user ${userId}`);
+        }
         
         // Синхронизируем с localStorage
         if (exists) {
@@ -83,7 +87,9 @@ export const WebAppProvider = ({ children }) => {
         return exists;
       }
     } catch (error) {
-      console.error('[WebAppContext] Error checking profile on server:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[WebAppContext] Error checking profile:', error);
+      }
       // При ошибке не меняем состояние - оставляем как есть
     }
     
@@ -102,15 +108,17 @@ export const WebAppProvider = ({ children }) => {
         const initData = tg.initData;
         const initDataUnsafe = tg.initDataUnsafe;
         
-        console.log('Telegram WebApp initialized');
-        console.log('initDataUnsafe:', initDataUnsafe);
-        console.log('initDataUnsafe.user:', initDataUnsafe?.user);
+        // Логируем только в dev режиме
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Telegram WebApp initialized');
+        }
         
         if (initDataUnsafe?.user) {
-          console.log('Setting userInfo from Telegram:', initDataUnsafe.user);
           setUserInfo(initDataUnsafe.user);
         } else {
-          console.warn('initDataUnsafe.user is missing, userInfo will be null');
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('initDataUnsafe.user is missing');
+          }
         }
         
         // Показываем приложение сразу, не дожидаясь авторизации
@@ -126,7 +134,7 @@ export const WebAppProvider = ({ children }) => {
                 'Content-Type': 'application/json',
                 'Authorization': `tma ${initData}`
               }
-            }, 2, 30000, 15000); // 2 попытки для auth, 30s первый таймаут
+            }, 2, 20000, 10000); // Уменьшено: 20s/10s вместо 30s/15s
           })
           .then(response => {
             if (response && response.ok) {
@@ -140,14 +148,18 @@ export const WebAppProvider = ({ children }) => {
               setToken(data.token);
               localStorage.setItem('token', data.token);
               localStorage.setItem('user_id', data.user_id);
-              console.log('Authentication successful, token saved');
+              if (process.env.NODE_ENV === 'development') {
+                console.log('Authentication successful');
+              }
               
               // После успешной авторизации проверяем профиль на сервере
               return checkProfileOnServer(initDataUnsafe.user.id);
             }
           })
           .catch(error => {
-            console.error('Error authenticating with backend:', error);
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error authenticating:', error);
+            }
             // Даже при ошибке авторизации пробуем проверить профиль
             if (initDataUnsafe?.user?.id) {
               checkProfileOnServer(initDataUnsafe.user.id);
@@ -159,7 +171,9 @@ export const WebAppProvider = ({ children }) => {
         }
       } else {
         // For development without Telegram - use mock data
-        console.warn('Telegram Web App не обнаружен. Используются моковые данные.');
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Telegram Web App не обнаружен. Используются моковые данные.');
+        }
         const mockUserInfo = {
           id: 123456789,
           first_name: 'Тестовый',
@@ -167,7 +181,9 @@ export const WebAppProvider = ({ children }) => {
           username: 'test_user',
           language_code: 'ru'
         };
-        console.log('Setting mock userInfo:', mockUserInfo);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Setting mock userInfo');
+        }
         setUserInfo(mockUserInfo);
         setIsReady(true);
         
