@@ -82,16 +82,8 @@ class TrailingSlashMiddleware(BaseHTTPMiddleware):
         method = request.method
         start_time = time.time()
         
-        # Логируем все POST запросы к /api/profiles
-        if path.startswith("/api/profiles") and method == "POST":
-            logger.info(f"[TrailingSlashMiddleware] POST request to: {path}")
-        
-        # Логируем все запросы к /api/connection-feedback
-        if path.startswith("/api/connection-feedback"):
-            logger.info(f"[TrailingSlashMiddleware] {method} request to: {path}")
-        
-        # Логируем все API запросы для диагностики
-        if path.startswith("/api/"):
+        # Логируем только важные запросы (не все, чтобы не замедлять)
+        if path.startswith("/api/profiles") or path.startswith("/api/connection-feedback"):
             logger.info(f"[TrailingSlashMiddleware] {method} {path}")
         
         try:
