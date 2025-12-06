@@ -12,9 +12,19 @@ from app.schemas import ProfileResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 import os
+import logging
 from pathlib import Path
 
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="Networking App API", version="1.0.0", redirect_slashes=False)
+logger.info("FastAPI application initialized")
 
 # CORS
 allowed_origins = [
@@ -64,36 +74,55 @@ if is_production:
 # Middleware для логирования и обработки trailing slash
 class TrailingSlashMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        import time
+        import logging
+        logger = logging.getLogger(__name__)
+        
         path = request.url.path
         method = request.method
+        start_time = time.time()
         
         # Логируем все POST запросы к /api/profiles
         if path.startswith("/api/profiles") and method == "POST":
-            print(f"[TrailingSlashMiddleware] POST request to: {path}")
+            logger.info(f"[TrailingSlashMiddleware] POST request to: {path}")
         
         # Логируем все запросы к /api/connection-feedback
         if path.startswith("/api/connection-feedback"):
-            print(f"[TrailingSlashMiddleware] {method} request to: {path}")
+            logger.info(f"[TrailingSlashMiddleware] {method} request to: {path}")
         
-        response = await call_next(request)
+        # Логируем все API запросы для диагностики
+        if path.startswith("/api/"):
+            logger.info(f"[TrailingSlashMiddleware] {method} {path}")
         
-        # Если получили 405 для POST /api/profiles/, логируем
-        if path == "/api/profiles/" and method == "POST" and response.status_code == 405:
-            print(f"[TrailingSlashMiddleware] Got 405 for POST /api/profiles/, trying to handle...")
-        
-        # Если получили 405 для POST /api/connection-feedback, логируем
-        if path.startswith("/api/connection-feedback") and method == "POST" and response.status_code == 405:
-            print(f"[TrailingSlashMiddleware] Got 405 for POST {path}, status={response.status_code}")
-            try:
-                routes_info = []
-                for r in app.routes:
-                    if hasattr(r, 'path'):
-                        routes_info.append(f"{r.methods if hasattr(r, 'methods') else 'N/A'}: {r.path}")
-                print(f"[TrailingSlashMiddleware] Available routes: {routes_info}")
-            except Exception as e:
-                print(f"[TrailingSlashMiddleware] Error getting routes: {e}")
-        
-        return response
+        try:
+            response = await call_next(request)
+            elapsed_time = time.time() - start_time
+            
+            # Логируем медленные запросы (> 5 секунд)
+            if elapsed_time > 5:
+                logger.warning(f"[TrailingSlashMiddleware] Slow request: {method} {path} took {elapsed_time:.2f}s")
+            
+            # Если получили 405 для POST /api/profiles/, логируем
+            if path == "/api/profiles/" and method == "POST" and response.status_code == 405:
+                logger.warning(f"[TrailingSlashMiddleware] Got 405 for POST /api/profiles/")
+            
+            # Если получили 405 для POST /api/connection-feedback, логируем
+            if path.startswith("/api/connection-feedback") and method == "POST" and response.status_code == 405:
+                logger.error(f"[TrailingSlashMiddleware] Got 405 for POST {path}, status={response.status_code}")
+                try:
+                    routes_info = []
+                    for r in app.routes:
+                        if hasattr(r, 'path'):
+                            routes_info.append(f"{r.methods if hasattr(r, 'methods') else 'N/A'}: {r.path}")
+                    logger.error(f"[TrailingSlashMiddleware] Available routes: {routes_info}")
+                except Exception as e:
+                    logger.error(f"[TrailingSlashMiddleware] Error getting routes: {e}")
+            
+            return response
+        except Exception as e:
+            elapsed_time = time.time() - start_time
+            logger.error(f"[TrailingSlashMiddleware] Error in {method} {path} after {elapsed_time:.2f}s: {str(e)}", exc_info=True)
+            raise
 
 app.add_middleware(TrailingSlashMiddleware)
 app.add_middleware(
@@ -199,7 +228,14 @@ def get_match_id(
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    """Health check endpoint с проверкой БД"""
+    from app.database import check_db_connection
+    
+    db_status = check_db_connection()
+    if db_status:
+        return {"status": "ok", "database": "connected"}
+    else:
+        return {"status": "degraded", "database": "disconnected"}
 
 # Раздача загруженных фотографий
 uploads_path = Path(__file__).parent.parent / "uploads" / "photos"

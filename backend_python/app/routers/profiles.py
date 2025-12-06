@@ -169,8 +169,23 @@ def create_profile_with_slash(
 @router.get("/check/{user_id}")
 def check_profile_exists(user_id: int, db: Session = Depends(get_db)):
     """Проверяет наличие профиля у пользователя"""
-    profile = profile_service.get_profile_by_user_id(db, user_id)
-    return {"exists": profile is not None}
+    import logging
+    import time
+    logger = logging.getLogger(__name__)
+    
+    start_time = time.time()
+    try:
+        logger.info(f"[check_profile_exists] Checking profile for user_id={user_id}")
+        profile = profile_service.get_profile_by_user_id(db, user_id)
+        exists = profile is not None
+        elapsed_time = time.time() - start_time
+        logger.info(f"[check_profile_exists] Profile exists={exists} for user_id={user_id}, elapsed={elapsed_time:.2f}s")
+        return {"exists": exists}
+    except Exception as e:
+        elapsed_time = time.time() - start_time
+        logger.error(f"[check_profile_exists] Error after {elapsed_time:.2f}s: {str(e)}", exc_info=True)
+        # При ошибке считаем, что профиля нет (безопасный вариант)
+        return {"exists": False}
 
 @router.get("/incoming-likes", response_model=PageResponse)
 def get_incoming_likes(
@@ -202,10 +217,22 @@ def get_incoming_likes(
 @router.get("/user/{user_id}", response_model=ProfileResponse)
 def get_profile_by_user_id(user_id: int, db: Session = Depends(get_db)):
     """Получает профиль пользователя по user_id"""
-    profile = profile_service.get_profile_by_user_id(db, user_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Профиль не найден")
-    return profile
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"[get_profile_by_user_id] Request for user_id={user_id}")
+        profile = profile_service.get_profile_by_user_id(db, user_id)
+        if not profile:
+            logger.warning(f"[get_profile_by_user_id] Profile not found for user_id={user_id}")
+            raise HTTPException(status_code=404, detail="Профиль не найден")
+        logger.info(f"[get_profile_by_user_id] Profile found for user_id={user_id}")
+        return profile
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[get_profile_by_user_id] Error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении профиля: {str(e)}")
 
 # GET /api/profiles - получение списка профилей (должен быть ПОСЛЕ специфичных роутов)
 @router.get("", response_model=PageResponse, include_in_schema=True)
@@ -218,11 +245,18 @@ def get_profiles(
     size: int = 20,
     db: Session = Depends(get_db)
 ):
-    print(f"[get_profiles] Request: user_id={user_id}, city={city}, university={university}, interests={interests}, page={page}, size={size}")
+    import logging
+    import time
+    logger = logging.getLogger(__name__)
+    
+    start_time = time.time()
+    logger.info(f"[get_profiles] Request: user_id={user_id}, city={city}, university={university}, interests={interests}, page={page}, size={size}")
+    
     if user_id is None:
         raise HTTPException(status_code=400, detail="Параметр userId обязателен")
     
     try:
+        logger.info(f"[get_profiles] Calling profile_service.get_available_profiles...")
         result = profile_service.get_available_profiles(
             db=db,
             user_id=user_id,
@@ -232,10 +266,14 @@ def get_profiles(
             page=page,
             size=size
         )
-        print(f"[get_profiles] Returning {len(result.get('content', []))} profiles, total={result.get('total_elements', 0)}")
+        elapsed_time = time.time() - start_time
+        logger.info(f"[get_profiles] Returning {len(result.get('content', []))} profiles, total={result.get('total_elements', 0)}, elapsed={elapsed_time:.2f}s")
         return result
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"[get_profiles] Error: {str(e)}")
+        elapsed_time = time.time() - start_time
+        logger.error(f"[get_profiles] Error after {elapsed_time:.2f}s: {str(e)}", exc_info=True)
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка при получении профилей: {str(e)}")
