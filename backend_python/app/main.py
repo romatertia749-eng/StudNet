@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from app.routers import profiles, matches, auth, connection_feedback
+from app.routers.connection_feedback_post import router as connection_feedback_post_router
 from app.routers.profiles import _create_profile_impl
 from app.database import get_db
 from app.schemas import ProfileResponse
@@ -83,7 +84,14 @@ class TrailingSlashMiddleware(BaseHTTPMiddleware):
         # Если получили 405 для POST /api/connection-feedback, логируем
         if path.startswith("/api/connection-feedback") and method == "POST" and response.status_code == 405:
             print(f"[TrailingSlashMiddleware] Got 405 for POST {path}, status={response.status_code}")
-            print(f"[TrailingSlashMiddleware] Available routes: {[r.path for r in app.routes if hasattr(r, 'path')]}")
+            try:
+                routes_info = []
+                for r in app.routes:
+                    if hasattr(r, 'path'):
+                        routes_info.append(f"{r.methods if hasattr(r, 'methods') else 'N/A'}: {r.path}")
+                print(f"[TrailingSlashMiddleware] Available routes: {routes_info}")
+            except Exception as e:
+                print(f"[TrailingSlashMiddleware] Error getting routes: {e}")
         
         return response
 
@@ -100,6 +108,18 @@ app.add_middleware(
 # Роутеры - ВАЖНО: регистрируем в правильном порядке
 # Сначала более специфичные, потом общие
 # API роуты должны быть зарегистрированы ДО catch-all роута
+
+# Импортируем все необходимое для connection-feedback
+from app.schemas import ConnectionFeedbackCreate, ConnectionFeedbackResponse, ConnectionFeedbackType
+from app.services import connection_feedback_service
+from typing import List
+
+# КРИТИЧЕСКИ ВАЖНО: Регистрируем POST роутер ПЕРВЫМ
+# до всех остальных роутеров, чтобы он имел максимальный приоритет
+app.include_router(connection_feedback_post_router)
+
+# POST роуты теперь в отдельном роутере connection_feedback_post_router
+# который зарегистрирован выше ПЕРВЫМ
 
 # Дополнительный роут для POST /api/profiles/ (со слэшем) - регистрируем ПЕРЕД роутером
 # чтобы он обрабатывался первым
@@ -126,74 +146,14 @@ async def create_profile_slash_fallback(
         bio, username, first_name, last_name, photo, db
     )
 
-# Регистрируем роутеры ПЕРЕД fallback роутами
+# Регистрируем остальные роутеры ПОСЛЕ connection-feedback роутов
 app.include_router(auth.router)
 app.include_router(profiles.router)
 app.include_router(matches.router)
-# Временно отключаем роутер connection_feedback, чтобы fallback роуты работали
+# Роутер connection_feedback отключен, все роуты в main.py
 # app.include_router(connection_feedback.router)
 
-# Fallback роуты для connection-feedback - регистрируем ПОСЛЕ роутеров
-# чтобы они имели приоритет и обрабатывались первыми
-from app.schemas import ConnectionFeedbackCreate, ConnectionFeedbackResponse, ConnectionFeedbackType
-from app.services import connection_feedback_service
-from typing import List
-
-# Проверяем, что роутер connection_feedback загружен
-try:
-    print(f"[main.py] connection_feedback router: {connection_feedback.router}")
-    print(f"[main.py] connection_feedback router routes: {[r.path for r in connection_feedback.router.routes]}")
-except Exception as e:
-    print(f"[main.py] ERROR loading connection_feedback router: {e}")
-    import traceback
-    traceback.print_exc()
-
-# Явно регистрируем POST роуты для connection-feedback
-# Используем отдельные декораторы для каждого пути
-@app.post("/api/connection-feedback", response_model=ConnectionFeedbackResponse, include_in_schema=True, tags=["connection-feedback"])
-async def create_feedback_no_slash(
-    feedback: ConnectionFeedbackCreate,
-    db: Session = Depends(get_db)
-):
-    """POST /api/connection-feedback (без слэша)"""
-    return await create_feedback_handler(feedback, db)
-
-@app.post("/api/connection-feedback/", response_model=ConnectionFeedbackResponse, include_in_schema=True, tags=["connection-feedback"])
-async def create_feedback_with_slash(
-    feedback: ConnectionFeedbackCreate,
-    db: Session = Depends(get_db)
-):
-    """POST /api/connection-feedback/ (со слэшем)"""
-    return await create_feedback_handler(feedback, db)
-
-async def create_feedback_handler(
-    feedback: ConnectionFeedbackCreate,
-    db: Session
-):
-    """Обработчик для создания отметки полезности"""
-    print(f"[create_feedback_handler] Received request: match_id={feedback.match_id}, from_user_id={feedback.from_user_id}, to_user_id={feedback.to_user_id}, type={feedback.feedback_type}")
-    try:
-        result = connection_feedback_service.create_feedback(
-            db=db,
-            match_id=feedback.match_id,
-            from_user_id=feedback.from_user_id,
-            to_user_id=feedback.to_user_id,
-            feedback_type=feedback.feedback_type
-        )
-        print(f"[create_feedback_handler] Success: feedback_id={result.id}")
-        return result
-    except ValueError as e:
-        print(f"[create_feedback_handler] ValueError: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        print(f"[create_feedback_handler] Exception: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Ошибка при создании отметки: {str(e)}")
-
 # GET роуты для connection-feedback
-from app.schemas import ConnectionFeedbackType
-
 @app.get("/api/connection-feedback/match/{match_id}", response_model=List[ConnectionFeedbackResponse], tags=["connection-feedback"])
 def get_feedbacks_for_match(
     match_id: int,
