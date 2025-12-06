@@ -9,6 +9,7 @@ import { useMatches } from '../contexts/MatchContext';
 import { useWebApp } from '../contexts/WebAppContext';
 import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
 import { fetchWithAuth } from '../utils/api';
+import { fetchWithAuth } from '../utils/api';
 
 const Profiles = () => {
   const navigate = useNavigate();
@@ -323,9 +324,6 @@ const Profiles = () => {
       console.log('[Profiles] userInfo.id:', userInfo?.id);
       
       try {
-        controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-        
         // УПРОЩЕННЫЙ ЗАПРОС БЕЗ ФИЛЬТРОВ
         // Убираем trailing slash для совместимости
         const baseUrl = API_ENDPOINTS.PROFILES.endsWith('/') 
@@ -336,8 +334,9 @@ const Profiles = () => {
         console.log('[Profiles] API_ENDPOINTS.PROFILES:', API_ENDPOINTS.PROFILES);
         console.log('[Profiles] baseUrl (without trailing slash):', baseUrl);
         
+        // Используем fetchWithAuth с автоматическим retry и увеличенными таймаутами
         const response = await fetchWithAuth(url, {
-          signal: controller.signal
+          retry: true // Включен по умолчанию, но явно указываем
         });
         
         console.log('[Profiles] ===== RESPONSE RECEIVED =====');
@@ -348,8 +347,6 @@ const Profiles = () => {
           ok: response.ok,
           headers: Object.fromEntries(response.headers.entries())
         });
-        
-        clearTimeout(timeoutId);
         
         console.log('[Profiles] Response status:', response.status);
         
@@ -485,12 +482,13 @@ const Profiles = () => {
         console.error('[Profiles] Error stack:', error.stack);
         if (!isMounted) return;
         if (error.name === 'AbortError') {
-          console.warn('[Profiles] Request timeout');
+          console.warn('[Profiles] Request timeout after all retries');
+          alert('Сервер долго не отвечает. Возможно, он "просыпается". Попробуйте обновить страницу через несколько секунд.');
         } else {
           console.error('[Profiles] Full error:', error);
+          alert(`Ошибка сети: ${error.message}\n\nЕсли проблема повторяется, сервер может быть недоступен. Попробуйте обновить страницу.`);
         }
         setAllProfiles([]);
-        alert(`Ошибка сети: ${error.message}`);
       } finally {
         console.log('[Profiles] ===== FETCH COMPLETE =====');
         if (isMounted) {
@@ -503,9 +501,6 @@ const Profiles = () => {
     
     return () => {
       isMounted = false;
-      if (controller) {
-        controller.abort();
-      }
     };
   }, [isReady, userInfo?.id, activeTab, selectedCity, selectedUniversity, selectedInterests]);
 

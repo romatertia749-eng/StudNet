@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config/api';
+import { fetchWithAuth } from '../utils/api';
 
 const MatchContext = createContext(null);
 
@@ -29,14 +30,7 @@ export const MatchProvider = ({ children }) => {
     
     setIsLoadingCount(true);
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch(`${API_ENDPOINTS.MATCHES}?user_id=${userId}`, {
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
+      const response = await fetchWithAuth(`${API_ENDPOINTS.MATCHES}?user_id=${userId}`, { retry: false });
       
       if (response.ok) {
         const data = await response.json();

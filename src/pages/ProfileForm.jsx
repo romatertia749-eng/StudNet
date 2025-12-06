@@ -7,6 +7,7 @@ import Autocomplete from '../components/Autocomplete';
 import MultiSelect from '../components/MultiSelect';
 import { russianCities, universities, interests, goals } from '../data/formData';
 import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
+import { fetchWithAuth, fetchWithRetry } from '../utils/api';
 
 const ProfileForm = () => {
   const { userInfo, isReady, setHasCompletedProfile } = useWebApp();
@@ -49,16 +50,9 @@ const ProfileForm = () => {
       setLoadingProfile(true);
 
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-        
         const url = API_ENDPOINTS.PROFILE_BY_USER_ID(userInfo.id);
         console.log('Loading profile from:', url);
-        const response = await fetch(url, {
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
+        const response = await fetchWithAuth(url);
         
         if (!isMounted) return;
         console.log('Profile load response status:', response.status);
@@ -360,10 +354,6 @@ const ProfileForm = () => {
       };
       console.log('Required fields check:', requiredFields);
 
-      // Создаем AbortController для таймаута
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
-
       let response;
       try {
         const apiUrl = API_ENDPOINTS.PROFILES;
@@ -374,18 +364,15 @@ const ProfileForm = () => {
         console.log('Is editing:', isEditing);
         
         const startTime = Date.now();
-        response = await fetch(apiUrl, {
-          method: 'POST',  // POST используется и для создания, и для обновления
+        // Для FormData используем fetchWithRetry напрямую, но без авторизации
+        response = await fetchWithRetry(apiUrl, {
+          method: 'POST',
           body: formDataToSend,
-          signal: controller.signal,
-          // НЕ добавляем Content-Type для FormData - браузер сам установит multipart/form-data с boundary
-          // НЕ добавляем Authorization здесь - это FormData, токен не нужен для создания/обновления профиля
-        });
+          headers: {}, // Не добавляем Content-Type для FormData - браузер сам установит
+        }, 3, 60000, 30000); // 3 попытки, 60s первый таймаут, 30s повторные
         const endTime = Date.now();
         console.log(`Fetch completed in ${endTime - startTime}ms`);
-        clearTimeout(timeoutId);
       } catch (fetchError) {
-        clearTimeout(timeoutId);
         console.error('Fetch error details:', {
           name: fetchError.name,
           message: fetchError.message,

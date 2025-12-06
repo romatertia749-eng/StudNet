@@ -6,6 +6,7 @@ import ConnectionFeedback from '../components/ConnectionFeedback';
 import { useMatches } from '../contexts/MatchContext';
 import { useWebApp } from '../contexts/WebAppContext';
 import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
+import { fetchWithAuth } from '../utils/api';
 
 // Мемоизированная карточка профиля для предотвращения лишних ре-рендеров при скролле
 const MatchCard = memo(({ person, onViewProfile, onMessage, onFeedback, currentUserId }) => {
@@ -14,7 +15,7 @@ const MatchCard = memo(({ person, onViewProfile, onMessage, onFeedback, currentU
   
   useEffect(() => {
     if (person.userId) {
-      fetch(API_ENDPOINTS.USER_STATS(person.userId))
+      fetchWithAuth(API_ENDPOINTS.USER_STATS(person.userId), { retry: false })
         .then(res => res.ok ? res.json() : null)
         .then(data => data && setStats(data))
         .catch(() => {});
@@ -151,15 +152,8 @@ const NetworkList = () => {
       setLoading(true);
       
       try {
-        controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-        
         const url = `${API_ENDPOINTS.MATCHES}?user_id=${userId}`;
-        const response = await fetch(url, {
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
+        const response = await fetchWithAuth(url);
         
         if (!isMounted) return;
         if (response.ok) {
@@ -247,7 +241,7 @@ const NetworkList = () => {
       } catch (error) {
         if (!isMounted) return;
         if (error.name === 'AbortError') {
-          console.warn('[NetworkList] Request timeout');
+          console.warn('[NetworkList] Request timeout after all retries');
         } else {
           console.error('[NetworkList] Error fetching matches:', error);
         }
@@ -265,9 +259,6 @@ const NetworkList = () => {
     
     return () => {
       isMounted = false;
-      if (controller) {
-        controller.abort();
-      }
     };
   }, [isReady, userInfo?.id]); // Убрали setContextMatchedProfiles и используем только userInfo?.id
 

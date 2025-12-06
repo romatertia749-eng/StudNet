@@ -4,6 +4,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import { useWebApp } from '../contexts/WebAppContext';
 import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
+import { fetchWithAuth } from '../utils/api';
 
 const UserCard = () => {
   const { id } = useParams();
@@ -27,14 +28,7 @@ const UserCard = () => {
       setLoading(true);
 
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-        
-        const response = await fetch(API_ENDPOINTS.PROFILE_BY_ID(id), {
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
+        const response = await fetchWithAuth(API_ENDPOINTS.PROFILE_BY_ID(id));
         
         if (!isMounted) return;
         if (response.ok) {
@@ -57,7 +51,7 @@ const UserCard = () => {
           // Загружаем статистику
           if (data.user_id) {
             try {
-              const statsResponse = await fetch(API_ENDPOINTS.USER_STATS(data.user_id));
+              const statsResponse = await fetchWithAuth(API_ENDPOINTS.USER_STATS(data.user_id), { retry: false });
               if (statsResponse.ok) {
                 const statsData = await statsResponse.json();
                 setStats(statsData);
@@ -85,7 +79,7 @@ const UserCard = () => {
       } catch (error) {
         if (!isMounted) return;
         if (error.name === 'AbortError') {
-          console.warn('Request timeout');
+          console.warn('Request timeout after all retries');
         } else {
           console.error('Error fetching profile:', error);
         }

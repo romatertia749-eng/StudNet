@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Card from './Card';
 import Button from './Button';
 import { API_ENDPOINTS } from '../config/api';
+import { fetchWithAuth, fetchWithRetry } from '../utils/api';
 
 const FEEDBACK_TYPES = {
   HELPED_ME: { label: 'Мне помогли с навыком/задачей', icon: '🤝' },
@@ -80,7 +81,7 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
   const loadExistingFeedbacks = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_ENDPOINTS.CONNECTION_FEEDBACK_MATCH(matchId)}?user_id=${fromUserId}`);
+      const response = await fetchWithAuth(`${API_ENDPOINTS.CONNECTION_FEEDBACK_MATCH(matchId)}?user_id=${fromUserId}`, { retry: false });
       if (response.ok) {
         const data = await response.json();
         const existing = data.map(f => f.feedback_type);
@@ -136,7 +137,7 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
           
           console.log('Sending POST to:', url, { match_id: matchId, from_user_id: fromUserId, to_user_id: toUserId, feedback_type: type });
           
-          const response = await fetch(url, {
+          const response = await fetchWithRetry(url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -147,7 +148,7 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
               to_user_id: toUserId,
               feedback_type: type,
             }),
-          });
+          }, 3, 60000, 30000);
           
           console.log('Response status:', response.status, response.statusText);
           

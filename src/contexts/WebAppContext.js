@@ -80,25 +80,30 @@ export const WebAppProvider = ({ children }) => {
         
         // Авторизация выполняется асинхронно в фоне
         if (initData) {
-          fetch(`${API_ENDPOINTS.AUTH || 'http://localhost:8080/api/auth'}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `tma ${initData}`
-            }
+          // Используем fetchWithRetry для auth запроса с retry
+          import('../utils/api').then(({ fetchWithRetry }) => {
+            return fetchWithRetry(`${API_ENDPOINTS.AUTH || 'http://localhost:8080/api/auth'}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `tma ${initData}`
+              }
+            }, 2, 30000, 15000); // 2 попытки для auth, 30s первый таймаут
           })
           .then(response => {
-            if (response.ok) {
+            if (response && response.ok) {
               return response.json();
             } else {
               throw new Error('Authentication failed');
             }
           })
           .then(data => {
-            setToken(data.token);
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user_id', data.user_id);
-            console.log('Authentication successful, token saved');
+            if (data) {
+              setToken(data.token);
+              localStorage.setItem('token', data.token);
+              localStorage.setItem('user_id', data.user_id);
+              console.log('Authentication successful, token saved');
+            }
           })
           .catch(error => {
             console.error('Error authenticating with backend:', error);
