@@ -43,6 +43,13 @@ export const warmupServer = async (baseUrl) => {
   }
 };
 
+// Определяем, мобильное ли устройство
+const isMobileDevice = () => {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+         (window.innerWidth <= 768);
+};
+
 // Функция для выполнения запроса с retry и увеличенными таймаутами
 export const fetchWithRetry = async (
   url,
@@ -51,6 +58,14 @@ export const fetchWithRetry = async (
   initialTimeout = 60000, // 60 секунд для первого запроса (cold start)
   retryTimeout = 30000    // 30 секунд для повторных попыток
 ) => {
+  // Для мобильных устройств увеличиваем таймауты (медленнее интернет)
+  const isMobile = isMobileDevice();
+  if (isMobile) {
+    initialTimeout = Math.max(initialTimeout, 90000); // Минимум 90 секунд для мобильных
+    retryTimeout = Math.max(retryTimeout, 45000);     // Минимум 45 секунд для мобильных
+    maxRetries = Math.max(maxRetries, 4);             // Больше попыток для мобильных
+    console.log(`[fetchWithRetry] Mobile device detected - using extended timeouts: ${initialTimeout}ms/${retryTimeout}ms, ${maxRetries} retries`);
+  }
   const headers = {
     ...getAuthHeaders(),
     ...(options.headers || {}),
@@ -93,17 +108,22 @@ export const fetchWithRetry = async (
       if (error.name === 'AbortError') {
         console.warn(`[fetchWithRetry] Request timeout on attempt ${attempt + 1}`);
         if (attempt < maxRetries) {
-          // Экспоненциальная задержка: 2s, 4s, 8s
-          const delay = Math.min(2000 * Math.pow(2, attempt), 10000);
-          console.log(`[fetchWithRetry] Retrying in ${delay}ms...`);
+          // Для мобильных устройств увеличиваем задержку
+          const baseDelay = isMobile ? 3000 : 2000;
+          const maxDelay = isMobile ? 20000 : 10000;
+          const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+          console.log(`[fetchWithRetry] Retrying in ${delay}ms... (mobile: ${isMobile})`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
       } else {
         // Для других ошибок тоже retry
         if (attempt < maxRetries) {
-          const delay = Math.min(2000 * Math.pow(2, attempt), 10000);
-          console.log(`[fetchWithRetry] Retrying in ${delay}ms due to: ${error.message}`);
+          // Для мобильных устройств увеличиваем задержку
+          const baseDelay = isMobile ? 3000 : 2000;
+          const maxDelay = isMobile ? 20000 : 10000;
+          const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+          console.log(`[fetchWithRetry] Retrying in ${delay}ms due to: ${error.message} (mobile: ${isMobile})`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }

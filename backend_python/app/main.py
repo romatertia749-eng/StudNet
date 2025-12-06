@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, status, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from app.routers import profiles, matches, auth, connection_feedback
@@ -66,10 +66,16 @@ if is_production:
         "https://web.telegram.org",
         "https://telegram.org",
         "https://desktop.telegram.org",
+        "https://telegram.me",  # Для мобильных приложений
+        "https://t.me",  # Для мобильных приложений
     ]
     for domain in telegram_domains:
         if domain not in allowed_origins:
             allowed_origins.append(domain)
+    
+    # ВАЖНО: Для мобильных Telegram Web Apps может использоваться null origin или разные поддомены
+    # Добавляем все возможные варианты
+    logger.info(f"Production mode: Allowed origins: {allowed_origins}")
 
 # Middleware для логирования и обработки trailing slash
 class TrailingSlashMiddleware(BaseHTTPMiddleware):
@@ -80,11 +86,13 @@ class TrailingSlashMiddleware(BaseHTTPMiddleware):
         
         path = request.url.path
         method = request.method
+        origin = request.headers.get("origin", "no-origin")
+        user_agent = request.headers.get("user-agent", "unknown")
         start_time = time.time()
         
         # Логируем только важные запросы (не все, чтобы не замедлять)
         if path.startswith("/api/profiles") or path.startswith("/api/connection-feedback"):
-            logger.info(f"[TrailingSlashMiddleware] {method} {path}")
+            logger.info(f"[TrailingSlashMiddleware] {method} {path} from origin={origin}, UA={user_agent[:50]}")
         
         try:
             response = await call_next(request)
@@ -92,15 +100,19 @@ class TrailingSlashMiddleware(BaseHTTPMiddleware):
             
             # Логируем медленные запросы (> 5 секунд)
             if elapsed_time > 5:
-                logger.warning(f"[TrailingSlashMiddleware] Slow request: {method} {path} took {elapsed_time:.2f}s")
+                logger.warning(f"[TrailingSlashMiddleware] Slow request: {method} {path} took {elapsed_time:.2f}s (origin={origin})")
+            
+            # Логируем CORS ошибки
+            if response.status_code == 403 or (response.status_code == 400 and "CORS" in str(response.headers.get("access-control-allow-origin", ""))):
+                logger.error(f"[TrailingSlashMiddleware] Possible CORS issue: {method} {path} from origin={origin}, status={response.status_code}")
             
             # Если получили 405 для POST /api/profiles/, логируем
             if path == "/api/profiles/" and method == "POST" and response.status_code == 405:
-                logger.warning(f"[TrailingSlashMiddleware] Got 405 for POST /api/profiles/")
+                logger.warning(f"[TrailingSlashMiddleware] Got 405 for POST /api/profiles/ from origin={origin}")
             
             # Если получили 405 для POST /api/connection-feedback, логируем
             if path.startswith("/api/connection-feedback") and method == "POST" and response.status_code == 405:
-                logger.error(f"[TrailingSlashMiddleware] Got 405 for POST {path}, status={response.status_code}")
+                logger.error(f"[TrailingSlashMiddleware] Got 405 for POST {path} from origin={origin}, status={response.status_code}")
                 try:
                     routes_info = []
                     for r in app.routes:
@@ -113,18 +125,56 @@ class TrailingSlashMiddleware(BaseHTTPMiddleware):
             return response
         except Exception as e:
             elapsed_time = time.time() - start_time
-            logger.error(f"[TrailingSlashMiddleware] Error in {method} {path} after {elapsed_time:.2f}s: {str(e)}", exc_info=True)
+            logger.error(f"[TrailingSlashMiddleware] Error in {method} {path} from origin={origin} after {elapsed_time:.2f}s: {str(e)}", exc_info=True)
             raise
 
 app.add_middleware(TrailingSlashMiddleware)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Явно указываем все методы
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
+
+# CORS Middleware - ВАЖНО: для мобильных Telegram Web Apps
+# Используем специальный middleware для обработки всех origins в production
+class FlexibleCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin")
+        
+        # В production разрешаем все origins для Telegram Web Apps
+        if is_production and origin:
+            response = await call_next(request)
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            response.headers["Access-Control-Expose-Headers"] = "*"
+            return response
+        
+        # Для OPTIONS запросов в production
+        if is_production and request.method == "OPTIONS":
+            return Response(
+                status_code=200,
+                headers={
+                    "Access-Control-Allow-Origin": origin or "*",
+                    "Access-Control-Allow-Credentials": "true",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+                    "Access-Control-Allow-Headers": "*",
+                }
+            )
+        
+        return await call_next(request)
+
+if is_production:
+    # В production используем гибкий CORS для мобильных устройств
+    app.add_middleware(FlexibleCORSMiddleware)
+    logger.info("CORS configured: flexible mode for production (allows all origins for Telegram Web Apps)")
+else:
+    # В development используем стандартный CORS
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
+    logger.info(f"CORS configured: allowed origins: {allowed_origins}")
 
 # Роутеры - ВАЖНО: регистрируем в правильном порядке
 # Сначала более специфичные, потом общие
