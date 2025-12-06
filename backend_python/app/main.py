@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, status, Depends, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, Request, status, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
@@ -70,11 +70,20 @@ class TrailingSlashMiddleware(BaseHTTPMiddleware):
         if path.startswith("/api/profiles") and method == "POST":
             print(f"[TrailingSlashMiddleware] POST request to: {path}")
         
+        # Логируем все запросы к /api/connection-feedback
+        if path.startswith("/api/connection-feedback"):
+            print(f"[TrailingSlashMiddleware] {method} request to: {path}")
+        
         response = await call_next(request)
         
         # Если получили 405 для POST /api/profiles/, логируем
         if path == "/api/profiles/" and method == "POST" and response.status_code == 405:
             print(f"[TrailingSlashMiddleware] Got 405 for POST /api/profiles/, trying to handle...")
+        
+        # Если получили 405 для POST /api/connection-feedback, логируем
+        if path.startswith("/api/connection-feedback") and method == "POST" and response.status_code == 405:
+            print(f"[TrailingSlashMiddleware] Got 405 for POST {path}, status={response.status_code}")
+            print(f"[TrailingSlashMiddleware] Available routes: {[r.path for r in app.routes if hasattr(r, 'path')]}")
         
         return response
 
@@ -117,9 +126,18 @@ async def create_profile_slash_fallback(
         bio, username, first_name, last_name, photo, db
     )
 
-# Fallback роуты для connection-feedback
-from app.schemas import ConnectionFeedbackCreate, ConnectionFeedbackResponse
+# Регистрируем роутеры ПЕРЕД fallback роутами
+app.include_router(auth.router)
+app.include_router(profiles.router)
+app.include_router(matches.router)
+# Временно отключаем роутер connection_feedback, чтобы fallback роуты работали
+# app.include_router(connection_feedback.router)
+
+# Fallback роуты для connection-feedback - регистрируем ПОСЛЕ роутеров
+# чтобы они имели приоритет и обрабатывались первыми
+from app.schemas import ConnectionFeedbackCreate, ConnectionFeedbackResponse, ConnectionFeedbackType
 from app.services import connection_feedback_service
+from typing import List
 
 # Проверяем, что роутер connection_feedback загружен
 try:
@@ -130,14 +148,30 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+# Явно регистрируем POST роуты для connection-feedback
+# Используем отдельные декораторы для каждого пути
 @app.post("/api/connection-feedback", response_model=ConnectionFeedbackResponse, include_in_schema=True, tags=["connection-feedback"])
-@app.post("/api/connection-feedback/", response_model=ConnectionFeedbackResponse, include_in_schema=True, tags=["connection-feedback"])
-async def create_feedback_fallback(
+async def create_feedback_no_slash(
     feedback: ConnectionFeedbackCreate,
     db: Session = Depends(get_db)
 ):
-    """Fallback роут для POST /api/connection-feedback - обрабатывается первым"""
-    print(f"[create_feedback_fallback] Received request: match_id={feedback.match_id}, from_user_id={feedback.from_user_id}, to_user_id={feedback.to_user_id}, type={feedback.feedback_type}")
+    """POST /api/connection-feedback (без слэша)"""
+    return await create_feedback_handler(feedback, db)
+
+@app.post("/api/connection-feedback/", response_model=ConnectionFeedbackResponse, include_in_schema=True, tags=["connection-feedback"])
+async def create_feedback_with_slash(
+    feedback: ConnectionFeedbackCreate,
+    db: Session = Depends(get_db)
+):
+    """POST /api/connection-feedback/ (со слэшем)"""
+    return await create_feedback_handler(feedback, db)
+
+async def create_feedback_handler(
+    feedback: ConnectionFeedbackCreate,
+    db: Session
+):
+    """Обработчик для создания отметки полезности"""
+    print(f"[create_feedback_handler] Received request: match_id={feedback.match_id}, from_user_id={feedback.from_user_id}, to_user_id={feedback.to_user_id}, type={feedback.feedback_type}")
     try:
         result = connection_feedback_service.create_feedback(
             db=db,
@@ -146,22 +180,62 @@ async def create_feedback_fallback(
             to_user_id=feedback.to_user_id,
             feedback_type=feedback.feedback_type
         )
-        print(f"[create_feedback_fallback] Success: feedback_id={result.id}")
+        print(f"[create_feedback_handler] Success: feedback_id={result.id}")
         return result
     except ValueError as e:
-        print(f"[create_feedback_fallback] ValueError: {str(e)}")
+        print(f"[create_feedback_handler] ValueError: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        print(f"[create_feedback_fallback] Exception: {str(e)}")
+        print(f"[create_feedback_handler] Exception: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка при создании отметки: {str(e)}")
 
-# Регистрируем роутеры
-app.include_router(auth.router)
-app.include_router(profiles.router)
-app.include_router(matches.router)
-app.include_router(connection_feedback.router)
+# GET роуты для connection-feedback
+from app.schemas import ConnectionFeedbackType
+
+@app.get("/api/connection-feedback/match/{match_id}", response_model=List[ConnectionFeedbackResponse], tags=["connection-feedback"])
+def get_feedbacks_for_match(
+    match_id: int,
+    user_id: Optional[int] = Query(None, description="ID пользователя для фильтрации"),
+    db: Session = Depends(get_db)
+):
+    """Получает все отметки для мэтча"""
+    try:
+        feedbacks = connection_feedback_service.get_feedbacks_for_match(
+            db=db,
+            match_id=match_id,
+            user_id=user_id
+        )
+        return feedbacks
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении отметок: {str(e)}")
+
+@app.get("/api/connection-feedback/types", response_model=List[str], tags=["connection-feedback"])
+def get_feedback_types():
+    """Получает список доступных типов отметок"""
+    return ConnectionFeedbackType.all_types()
+
+@app.get("/api/connection-feedback/match-id", tags=["connection-feedback"])
+def get_match_id(
+    user1_id: int = Query(..., description="ID первого пользователя"),
+    user2_id: int = Query(..., description="ID второго пользователя"),
+    db: Session = Depends(get_db)
+):
+    """Получает ID мэтча между двумя пользователями"""
+    try:
+        match_id = connection_feedback_service.get_match_id_for_users(
+            db=db,
+            user1_id=user1_id,
+            user2_id=user2_id
+        )
+        if match_id is None:
+            raise HTTPException(status_code=404, detail="Мэтч не найден")
+        return {"match_id": match_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении мэтча: {str(e)}")
 
 @app.get("/health")
 def health():

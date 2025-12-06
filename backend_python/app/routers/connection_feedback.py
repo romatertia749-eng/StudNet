@@ -11,33 +11,7 @@ from app.services import connection_feedback_service
 
 router = APIRouter(prefix="/api/connection-feedback", tags=["connection-feedback"])
 
-@router.post("", response_model=ConnectionFeedbackResponse, include_in_schema=True)
-def create_feedback(
-    feedback: ConnectionFeedbackCreate,
-    db: Session = Depends(get_db)
-):
-    """Создает отметку полезности для мэтча"""
-    try:
-        result = connection_feedback_service.create_feedback(
-            db=db,
-            match_id=feedback.match_id,
-            from_user_id=feedback.from_user_id,
-            to_user_id=feedback.to_user_id,
-            feedback_type=feedback.feedback_type
-        )
-        return result
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при создании отметки: {str(e)}")
-
-@router.post("/", response_model=ConnectionFeedbackResponse, include_in_schema=True)
-def create_feedback_with_slash(
-    feedback: ConnectionFeedbackCreate,
-    db: Session = Depends(get_db)
-):
-    """Создает отметку полезности для мэтча (со слэшем)"""
-    return create_feedback(feedback, db)
+# POST роут удален отсюда - он обрабатывается в main.py как fallback
 
 @router.get("/match/{match_id}", response_model=List[ConnectionFeedbackResponse])
 def get_feedbacks_for_match(
