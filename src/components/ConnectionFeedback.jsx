@@ -248,13 +248,13 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
           })}
         </div>
 
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-4 w-full">
           <Button
             type="button"
             variant="primary"
             onClick={handleSubmit}
             disabled={submitting || selectedTypes.length === 0 || selectedTypes.every(t => existingFeedbacks.includes(t))}
-            className="flex-1 min-h-[36px] px-3 py-1.5 text-xs"
+            className="flex-1 min-h-[36px] px-3 py-1.5 text-xs flex-shrink"
           >
             {submitting ? 'Сохранение...' : 'Сохранить'}
           </Button>
@@ -263,11 +263,12 @@ const ConnectionFeedback = ({ matchId, fromUserId, toUserId, onClose }) => {
               type="button"
               variant="outline"
               onClick={onClose}
-              className="flex-1 min-h-[36px] px-3 py-1.5 text-xs"
+              className="flex-1 min-h-[36px] px-3 py-1.5 text-xs flex-shrink"
               style={{
                 background: 'white',
                 borderColor: 'rgb(229, 231, 235)',
                 color: 'rgb(31, 41, 55)',
+                minWidth: '0',
               }}
             >
               Отмена
