@@ -78,10 +78,10 @@ API будет доступен на `http://localhost:8080`
 npm install
 
 # Создайте .env файл
-echo "REACT_APP_API_BASE_URL=http://localhost:8080" > .env
+echo "VITE_API_BASE_URL=http://localhost:8080" > .env
 
 # Запустите в режиме разработки
-npm start
+npm run dev
 ```
 
 Приложение откроется на `http://localhost:3000`
@@ -136,7 +136,7 @@ function MyComponent() {
 
 3. Обновите `.env`:
    ```env
-   REACT_APP_API_BASE_URL=https://your-backend.ngrok.io
+   VITE_API_BASE_URL=https://your-backend.ngrok.io
    ```
 
 4. Обновите URL в BotFather (команда `/myapps` → `Edit Web App URL`)

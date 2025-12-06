@@ -68,7 +68,7 @@ function App() {
   }
 
   return (
-    <Router basename={process.env.PUBLIC_URL || ""}>
+    <Router basename={import.meta.env.BASE_URL || ""}>
       <div 
         className="flex flex-col relative overflow-hidden"
         style={{

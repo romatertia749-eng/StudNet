@@ -536,7 +536,7 @@ FRONTEND_ON_SAME_DOMAIN=false
 ### Frontend (.env)
 
 ```env
-REACT_APP_API_BASE_URL=http://localhost:8080
+VITE_API_BASE_URL=http://localhost:8080
 ```
 
 ## Деплой
@@ -563,7 +563,7 @@ REACT_APP_API_BASE_URL=http://localhost:8080
 
 Требования:
 - Node.js 16+
-- Переменная окружения REACT_APP_API_BASE_URL
+- Переменная окружения VITE_API_BASE_URL
 
 ## Известные проблемы и решения
 

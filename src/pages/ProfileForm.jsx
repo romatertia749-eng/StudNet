@@ -176,7 +176,7 @@ const ProfileForm = () => {
         }
         if (error.name === 'AbortError') {
           console.warn('Request timeout');
-        } else if (process.env.NODE_ENV === 'development') {
+        } else if (import.meta.env.DEV === 'development') {
           console.error('Error loading profile:', error);
         }
         setIsEditing(false);

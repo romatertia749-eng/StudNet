@@ -1,7 +1,7 @@
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 console.log('API_BASE_URL:', API_BASE_URL);
-console.log('REACT_APP_API_BASE_URL from env:', process.env.REACT_APP_API_BASE_URL);
+console.log('VITE_API_BASE_URL from env:', import.meta.env.VITE_API_BASE_URL);
 
 export const API_ENDPOINTS = {
   AUTH: `${API_BASE_URL}/api/auth/`, // Со слэшем для надежности

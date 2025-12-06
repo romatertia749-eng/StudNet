@@ -71,7 +71,7 @@ export const WebAppProvider = ({ children }) => {
         const data = await response.json();
         const exists = data.exists === true;
         // Логируем только в dev режиме
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV === 'development') {
           console.log(`[WebAppContext] Profile exists: ${exists} for user ${userId}`);
         }
         
@@ -87,7 +87,7 @@ export const WebAppProvider = ({ children }) => {
         return exists;
       }
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.DEV === 'development') {
         console.error('[WebAppContext] Error checking profile:', error);
       }
       // При ошибке не меняем состояние - оставляем как есть
@@ -109,14 +109,14 @@ export const WebAppProvider = ({ children }) => {
         const initDataUnsafe = tg.initDataUnsafe;
         
         // Логируем только в dev режиме
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV === 'development') {
           console.log('Telegram WebApp initialized');
         }
         
         if (initDataUnsafe?.user) {
           setUserInfo(initDataUnsafe.user);
         } else {
-          if (process.env.NODE_ENV === 'development') {
+          if (import.meta.env.DEV === 'development') {
             console.warn('initDataUnsafe.user is missing');
           }
         }
@@ -148,7 +148,7 @@ export const WebAppProvider = ({ children }) => {
               setToken(data.token);
               localStorage.setItem('token', data.token);
               localStorage.setItem('user_id', data.user_id);
-              if (process.env.NODE_ENV === 'development') {
+              if (import.meta.env.DEV === 'development') {
                 console.log('Authentication successful');
               }
               
@@ -157,7 +157,7 @@ export const WebAppProvider = ({ children }) => {
             }
           })
           .catch(error => {
-            if (process.env.NODE_ENV === 'development') {
+            if (import.meta.env.DEV === 'development') {
               console.error('Error authenticating:', error);
             }
             // Даже при ошибке авторизации пробуем проверить профиль
@@ -171,7 +171,7 @@ export const WebAppProvider = ({ children }) => {
         }
       } else {
         // For development without Telegram - use mock data
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV === 'development') {
           console.warn('Telegram Web App не обнаружен. Используются моковые данные.');
         }
         const mockUserInfo = {
@@ -181,7 +181,7 @@ export const WebAppProvider = ({ children }) => {
           username: 'test_user',
           language_code: 'ru'
         };
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV === 'development') {
           console.log('Setting mock userInfo');
         }
         setUserInfo(mockUserInfo);

@@ -9,7 +9,6 @@ import { useMatches } from '../contexts/MatchContext';
 import { useWebApp } from '../contexts/WebAppContext';
 import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
 import { fetchWithAuth } from '../utils/api';
-import { fetchWithAuth } from '../utils/api';
 
 const Profiles = () => {
   const navigate = useNavigate();
@@ -518,7 +517,7 @@ const Profiles = () => {
         }
         
         // Показываем ошибку только если это не первая попытка или если все попытки исчерпаны
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV === 'development') {
           console.error('[Profiles] Full error:', error);
         }
         

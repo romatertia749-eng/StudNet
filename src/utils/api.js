@@ -41,7 +41,7 @@ export const warmupServer = async (baseUrl) => {
   try {
     const healthUrl = `${baseUrl}/health`;
     // Логируем только в dev режиме
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV === 'development') {
       console.log(`[warmupServer] Warming up (timeout: ${timeout}ms)`);
     }
     
@@ -60,13 +60,13 @@ export const warmupServer = async (baseUrl) => {
     
     clearTimeout(timeoutId);
     
-    if (response.ok && process.env.NODE_ENV === 'development') {
+    if (response.ok && import.meta.env.DEV === 'development') {
       console.log(`[warmupServer] Warmed up in ${elapsed}ms`);
     }
   } catch (error) {
     // Игнорируем ошибки warmup - они не критичны
     // Логируем только в dev режиме
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV === 'development') {
       console.warn('[warmupServer] Warmup failed (non-critical):', error.message);
     }
   }
@@ -87,7 +87,7 @@ export const fetchWithRetry = async (
     retryTimeout = Math.max(retryTimeout, 25000);     // Уменьшено: 25 секунд для мобильных (было 45)
     maxRetries = Math.max(maxRetries, 3);             // Уменьшено: 3 попытки для мобильных (было 4)
     // Логируем только в dev режиме
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV === 'development') {
       console.log(`[fetchWithRetry] Mobile device - timeouts: ${initialTimeout}ms/${retryTimeout}ms, ${maxRetries} retries`);
     }
   }
@@ -99,13 +99,14 @@ export const fetchWithRetry = async (
   let lastError;
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    let timeoutId = null;
     try {
       const timeout = attempt === 0 ? initialTimeout : retryTimeout;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      timeoutId = setTimeout(() => controller.abort(), timeout);
       
       // Логируем только в dev режиме или при ошибках
-      if (process.env.NODE_ENV === 'development' && attempt === 0) {
+      if (import.meta.env.DEV === 'development' && attempt === 0) {
         console.log(`[fetchWithRetry] ${url.substring(0, 50)}... (timeout: ${timeout}ms)`);
       }
       
@@ -115,7 +116,10 @@ export const fetchWithRetry = async (
         signal: controller.signal,
       });
       
-      clearTimeout(timeoutId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
       
       if (response.ok) {
         return response;
@@ -132,20 +136,20 @@ export const fetchWithRetry = async (
         const baseDelay = isMobile ? 1500 : 1000;
         const maxDelay = isMobile ? 10000 : 5000;
         const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV === 'development') {
           console.log(`[fetchWithRetry] Retrying after ${response.status} error in ${delay}ms...`);
         }
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
     } catch (error) {
-      if (typeof clearTimeout !== 'undefined') {
+      if (timeoutId) {
         clearTimeout(timeoutId);
       }
       lastError = error;
       
       if (error.name === 'AbortError') {
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV === 'development') {
           console.warn(`[fetchWithRetry] Timeout on attempt ${attempt + 1}`);
         }
         if (attempt < maxRetries) {
@@ -153,7 +157,7 @@ export const fetchWithRetry = async (
           const baseDelay = isMobile ? 1500 : 1000; // Было 3000/2000
           const maxDelay = isMobile ? 10000 : 5000; // Было 20000/10000
           const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
-          if (process.env.NODE_ENV === 'development') {
+          if (import.meta.env.DEV === 'development') {
             console.log(`[fetchWithRetry] Retrying in ${delay}ms...`);
           }
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -165,7 +169,7 @@ export const fetchWithRetry = async (
           const baseDelay = isMobile ? 1500 : 1000;
           const maxDelay = isMobile ? 10000 : 5000;
           const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
-          if (process.env.NODE_ENV === 'development') {
+          if (import.meta.env.DEV === 'development') {
             console.log(`[fetchWithRetry] Retrying in ${delay}ms: ${error.message}`);
           }
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -195,7 +199,7 @@ export const fetchWithAuth = async (url, options = {}) => {
   const isVercel = typeof window !== 'undefined' && (
     window.location.hostname.includes('vercel.app') ||
     window.location.hostname.includes('vercel.com') ||
-    process.env.REACT_APP_VERCEL === 'true'
+    import.meta.env.VITE_VERCEL === 'true'
   );
   
   // КРИТИЧЕСКИ ВАЖНО: Warmup делаем НЕБЛОКИРУЮЩИМ (fire and forget)
@@ -208,7 +212,7 @@ export const fetchWithAuth = async (url, options = {}) => {
     // Запускаем warmup в фоне, не блокируя основной запрос
     warmupServer(baseUrl).catch(err => {
       // Игнорируем ошибки warmup - они не критичны
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.DEV === 'development') {
         console.warn('[fetchWithAuth] Warmup failed (non-blocking):', err.message);
       }
     });
