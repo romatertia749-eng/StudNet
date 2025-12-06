@@ -44,6 +44,7 @@ const ProfileForm = () => {
     }
 
     let isMounted = true;
+    let retryTimeoutId = null;
 
     const loadProfile = async () => {
       if (!isMounted) return;
@@ -51,12 +52,16 @@ const ProfileForm = () => {
 
       try {
         const url = API_ENDPOINTS.PROFILE_BY_USER_ID(userInfo.id);
-        console.log('Loading profile from:', url);
+        if (import.meta.env.DEV) {
+          console.log('Loading profile from:', url);
+        }
         // Включаем retry для надежной загрузки профиля
         const response = await fetchWithAuth(url, { retry: true });
         
         if (!isMounted) return;
-        console.log('Profile load response status:', response.status);
+        if (import.meta.env.DEV) {
+          console.log('Profile load response status:', response.status);
+        }
         
         if (response.ok) {
           const data = await response.json();
@@ -116,12 +121,12 @@ const ProfileForm = () => {
           });
         } else if (response.status === 404) {
           // Профиля нет - это нормально, оставляем форму пустой для создания
-          console.log('[ProfileForm] Profile not found (404) - showing empty form for creation');
+          if (import.meta.env.DEV) {
+            console.log('[ProfileForm] Profile not found (404) - showing empty form for creation');
+          }
           setIsEditing(false);
           // Обновляем состояние в контексте
-          if (setHasCompletedProfile) {
-            setHasCompletedProfile(false);
-          }
+          setHasCompletedProfile(false);
         } else {
           if (!isMounted) return;
           // Другая ошибка - возможно сервер спит или недоступен
@@ -134,9 +139,11 @@ const ProfileForm = () => {
               const checkData = await checkResponse.json();
               if (checkData.exists) {
                 // Профиль существует, но не загрузился - показываем сообщение
-                console.log('[ProfileForm] Profile exists but failed to load - retrying...');
+                if (import.meta.env.DEV) {
+                  console.log('[ProfileForm] Profile exists but failed to load - retrying...');
+                }
                 // Повторная попытка загрузки через небольшую задержку
-                setTimeout(() => {
+                retryTimeoutId = setTimeout(() => {
                   if (isMounted) {
                     loadProfile();
                   }
@@ -162,8 +169,10 @@ const ProfileForm = () => {
               const checkData = await checkResponse.json();
               if (checkData.exists) {
                 // Профиль существует, но не загрузился - повторяем попытку
-                console.log('[ProfileForm] Profile exists but failed to load due to network error - retrying...');
-                setTimeout(() => {
+                if (import.meta.env.DEV) {
+                  console.log('[ProfileForm] Profile exists but failed to load due to network error - retrying...');
+                }
+                retryTimeoutId = setTimeout(() => {
                   if (isMounted) {
                     loadProfile();
                   }
@@ -192,6 +201,9 @@ const ProfileForm = () => {
     
     return () => {
       isMounted = false;
+      if (retryTimeoutId) {
+        clearTimeout(retryTimeoutId);
+      }
     };
   }, [isReady, userInfo]);
 
@@ -313,14 +325,18 @@ const ProfileForm = () => {
     
     // Защита от повторной отправки
     if (loading) {
-      console.log('Form is already submitting, ignoring duplicate submit');
+      if (import.meta.env.DEV) {
+        console.log('Form is already submitting, ignoring duplicate submit');
+      }
       return;
     }
     
-    console.log('=== PROFILE SUBMIT START ===');
-    console.log('userInfo:', userInfo);
-    console.log('isReady:', isReady);
-    console.log('formData:', formData);
+    if (import.meta.env.DEV) {
+      console.log('=== PROFILE SUBMIT START ===');
+      console.log('userInfo:', userInfo);
+      console.log('isReady:', isReady);
+      console.log('formData:', formData);
+    }
     
     if (!userInfo) {
       alert('Ошибка: данные пользователя не загружены. Пожалуйста, обновите страницу.');
@@ -335,15 +351,21 @@ const ProfileForm = () => {
     }
     
     const isValid = validateForm();
-    console.log('Form validation result:', isValid);
-    console.log('Form errors:', errors);
+    if (import.meta.env.DEV) {
+      console.log('Form validation result:', isValid);
+      console.log('Form errors:', errors);
+    }
     
     if (!isValid) {
-      console.log('Form validation failed, not submitting');
+      if (import.meta.env.DEV) {
+        console.log('Form validation failed, not submitting');
+      }
       return;
     }
 
-    console.log('Starting form submission...');
+    if (import.meta.env.DEV) {
+      console.log('Starting form submission...');
+    }
     setLoading(true);
     
     // Проверяем доступность API перед отправкой

@@ -535,6 +535,10 @@ const Profiles = () => {
     
     return () => {
       isMounted = false;
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current);
+        rafId.current = null;
+      }
     };
     // УБРАЛИ selectedCity, selectedUniversity, selectedInterests из зависимостей
     // Фильтры применяются на бэкенде, но мы не хотим перезагружать при каждом изменении
@@ -571,22 +575,24 @@ const Profiles = () => {
     });
   }
   
-  // Отладочное логирование
+  // Отладочное логирование (только в dev режиме)
   useEffect(() => {
-    console.log('[Profiles] State update:', {
-      activeTab,
-      allProfilesCount: allProfiles.length,
-      filteredProfilesCount: filteredProfiles.length,
-      availableProfilesCount: availableProfiles.length,
-      swipedProfilesCount: swipedProfiles.length,
-      currentIndex,
-      currentProfile: currentProfile ? { id: currentProfile.id, name: currentProfile.name } : null,
-      loading,
-      loadingIncoming,
-      incomingLikesCount: incomingLikes.length,
-      currentProfilesLength: currentProfiles.length,
-      safeIndex
-    });
+    if (import.meta.env.DEV) {
+      console.log('[Profiles] State update:', {
+        activeTab,
+        allProfilesCount: allProfiles.length,
+        filteredProfilesCount: filteredProfiles.length,
+        availableProfilesCount: availableProfiles.length,
+        swipedProfilesCount: swipedProfiles.length,
+        currentIndex,
+        currentProfile: currentProfile ? { id: currentProfile.id, name: currentProfile.name } : null,
+        loading,
+        loadingIncoming,
+        incomingLikesCount: incomingLikes.length,
+        currentProfilesLength: currentProfiles.length,
+        safeIndex
+      });
+    }
   }, [activeTab, allProfiles.length, filteredProfiles.length, availableProfiles.length, currentIndex, currentProfile, loading, loadingIncoming, incomingLikes.length, currentProfiles.length, safeIndex]);
 
   // Сброс индекса и очистка свайпов при изменении фильтров
@@ -1121,15 +1127,6 @@ const Profiles = () => {
                 : 'Пока нет анкет'}
             </p>
           </Card>
-        )}
-        
-        {/* Отладочная информация - ОТКЛЮЧЕНА */}
-        {false && activeTab === 'all' && (
-          <div className="fixed bottom-0 left-0 right-0 bg-black/90 text-white text-xs p-2 z-50 font-mono">
-            DEBUG: allProfiles={allProfiles.length} | availableProfiles={availableProfiles.length} | 
-            currentIndex={currentIndex} | currentProfile={currentProfile ? currentProfile.name : 'NULL'} | 
-            loading={loading ? 'Y' : 'N'} | user_id={userInfo?.id}
-          </div>
         )}
 
         {/* Эффект-оверлей: отображается поверх карточки во время анимации */}

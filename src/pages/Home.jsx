@@ -61,7 +61,7 @@ const ExistingHomeContent = () => {
 };
 
 const Home = () => {
-  const { hasCompletedProfile, hasCompletedOnboarding, mainGoal, userInfo, isReady } = useWebApp();
+  const { hasCompletedProfile, isReady } = useWebApp();
 
   // Если не готово, показываем загрузку
   if (!isReady) {

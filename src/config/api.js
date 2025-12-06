@@ -1,7 +1,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-console.log('API_BASE_URL:', API_BASE_URL);
-console.log('VITE_API_BASE_URL from env:', import.meta.env.VITE_API_BASE_URL);
+if (import.meta.env.DEV) {
+  console.log('API_BASE_URL:', API_BASE_URL);
+  console.log('VITE_API_BASE_URL from env:', import.meta.env.VITE_API_BASE_URL);
+}
 
 export const API_ENDPOINTS = {
   AUTH: `${API_BASE_URL}/api/auth/`, // Со слэшем для надежности
@@ -36,7 +38,9 @@ export const getPhotoUrl = (photoPath) => {
   return `${API_BASE_URL}/uploads/photos/${photoPath}`;
 };
 
-console.log('API_ENDPOINTS.PROFILES:', API_ENDPOINTS.PROFILES);
+if (import.meta.env.DEV) {
+  console.log('API_ENDPOINTS.PROFILES:', API_ENDPOINTS.PROFILES);
+}
 
 export default API_BASE_URL;
 
