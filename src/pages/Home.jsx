@@ -68,26 +68,70 @@ const Home = () => {
   const { hasCompletedProfile, hasCompletedOnboarding, mainGoal, userInfo, isReady } = useWebApp();
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [profileExists, setProfileExists] = useState(null);
+  const [showLoaderTimeout, setShowLoaderTimeout] = useState(true);
   
   // Кэш для проверки профиля
   const profileCheckCacheRef = useRef(null);
   const profileCheckTimestampRef = useRef(0);
   const PROFILE_CHECK_CACHE_DURATION = 2 * 60 * 1000; // 2 минуты
 
+  // Таймаут для показа контента после 3 секунд ожидания
+  useEffect(() => {
+    if (checkingProfile) {
+      const timer = setTimeout(() => {
+        setShowLoaderTimeout(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowLoaderTimeout(true);
+    }
+  }, [checkingProfile]);
+
   // Проверяем профиль на сервере при загрузке
   useEffect(() => {
+    let isMounted = true;
+    let timeoutId = null;
+
+    const cleanup = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      if (isMounted) {
+        setCheckingProfile(false);
+      }
+    };
+
     if (!isReady || !userInfo?.id) {
-      setCheckingProfile(false);
-      return;
+      // Если не готово, используем значение из контекста
+      if (isMounted) {
+        setProfileExists(hasCompletedProfile);
+        setCheckingProfile(false);
+      }
+      return cleanup;
     }
     
     // Проверяем кэш
     const now = Date.now();
     if (profileCheckCacheRef.current !== null && (now - profileCheckTimestampRef.current) < PROFILE_CHECK_CACHE_DURATION) {
-      setProfileExists(profileCheckCacheRef.current);
-      setCheckingProfile(false);
-      return;
+      if (isMounted) {
+        setProfileExists(profileCheckCacheRef.current);
+        setCheckingProfile(false);
+      }
+      return cleanup;
     }
+
+    // Таймаут для всей проверки - максимум 5 секунд
+    timeoutId = setTimeout(() => {
+      if (isMounted) {
+        console.warn('[Home] Profile check timeout, using fallback');
+        const fallback = hasCompletedProfile;
+        setProfileExists(fallback);
+        profileCheckCacheRef.current = fallback;
+        profileCheckTimestampRef.current = Date.now();
+        setCheckingProfile(false);
+      }
+    }, 5000);
 
     const checkProfile = async () => {
       try {
@@ -96,11 +140,18 @@ const Home = () => {
         
         const response = await fetchWithRetry(
           API_ENDPOINTS.CHECK_PROFILE(userInfo.id),
-          { retry: true },
-          2,
-          45000,
-          20000
+          { retry: false }, // Отключаем retry, чтобы не ждать долго
+          1, // Только 1 попытка
+          4000, // 4 секунды таймаут
+          3000  // 3 секунды для retry (не используется)
         );
+        
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+
+        if (!isMounted) return;
         
         if (response.ok) {
           const data = await response.json();
@@ -116,6 +167,13 @@ const Home = () => {
           profileCheckTimestampRef.current = Date.now();
         }
       } catch (error) {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        
+        if (!isMounted) return;
+        
         console.error('[Home] Error checking profile:', error);
         // При ошибке используем значение из контекста
         const fallback = hasCompletedProfile;
@@ -123,16 +181,38 @@ const Home = () => {
         profileCheckCacheRef.current = fallback;
         profileCheckTimestampRef.current = Date.now();
       } finally {
-        setCheckingProfile(false);
+        if (isMounted) {
+          setCheckingProfile(false);
+        }
       }
     };
 
     checkProfile();
+
+    return () => {
+      isMounted = false;
+      cleanup();
+    };
   }, [isReady, userInfo?.id, hasCompletedProfile]);
 
-  // Пока проверяем, показываем загрузку
-  if (checkingProfile) {
+  // Если не готово, показываем загрузку
+  if (!isReady) {
+    return <Loader message="Загрузка..." />;
+  }
+
+  // Пока проверяем профиль, но не более 3 секунд - показываем загрузку
+  // После 3 секунд показываем контент на основе контекста
+  if (checkingProfile && showLoaderTimeout) {
     return <Loader message="Проверка профиля..." />;
+  }
+  
+  // Если проверка затянулась (больше 3 секунд), используем значение из контекста
+  if (checkingProfile && !showLoaderTimeout) {
+    const shouldShowWelcome = !hasCompletedProfile;
+    if (shouldShowWelcome) {
+      return <WelcomeCreateProfileScreen />;
+    }
+    return <OnboardingMainGoal />;
   }
 
   // Используем реальное состояние с сервера, если доступно, иначе из контекста
