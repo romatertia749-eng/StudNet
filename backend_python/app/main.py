@@ -121,6 +121,15 @@ async def create_profile_slash_fallback(
 from app.schemas import ConnectionFeedbackCreate, ConnectionFeedbackResponse
 from app.services import connection_feedback_service
 
+# Проверяем, что роутер connection_feedback загружен
+try:
+    print(f"[main.py] connection_feedback router: {connection_feedback.router}")
+    print(f"[main.py] connection_feedback router routes: {[r.path for r in connection_feedback.router.routes]}")
+except Exception as e:
+    print(f"[main.py] ERROR loading connection_feedback router: {e}")
+    import traceback
+    traceback.print_exc()
+
 @app.post("/api/connection-feedback", response_model=ConnectionFeedbackResponse, include_in_schema=True, tags=["connection-feedback"])
 @app.post("/api/connection-feedback/", response_model=ConnectionFeedbackResponse, include_in_schema=True, tags=["connection-feedback"])
 async def create_feedback_fallback(
@@ -128,6 +137,7 @@ async def create_feedback_fallback(
     db: Session = Depends(get_db)
 ):
     """Fallback роут для POST /api/connection-feedback - обрабатывается первым"""
+    print(f"[create_feedback_fallback] Received request: match_id={feedback.match_id}, from_user_id={feedback.from_user_id}, to_user_id={feedback.to_user_id}, type={feedback.feedback_type}")
     try:
         result = connection_feedback_service.create_feedback(
             db=db,
@@ -136,10 +146,15 @@ async def create_feedback_fallback(
             to_user_id=feedback.to_user_id,
             feedback_type=feedback.feedback_type
         )
+        print(f"[create_feedback_fallback] Success: feedback_id={result.id}")
         return result
     except ValueError as e:
+        print(f"[create_feedback_fallback] ValueError: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        print(f"[create_feedback_fallback] Exception: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка при создании отметки: {str(e)}")
 
 # Регистрируем роутеры
