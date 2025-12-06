@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWebApp } from '../contexts/WebAppContext';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import Loader from '../components/Loader';
 import OnboardingMainGoal from '../components/OnboardingMainGoal';
 import WelcomeCreateProfileScreen from '../components/WelcomeCreateProfileScreen';
 
@@ -63,10 +65,59 @@ const ExistingHomeContent = () => {
 };
 
 const Home = () => {
-  const { hasCompletedProfile, hasCompletedOnboarding, mainGoal } = useWebApp();
+  const { hasCompletedProfile, hasCompletedOnboarding, mainGoal, userInfo, isReady } = useWebApp();
+  const [checkingProfile, setCheckingProfile] = useState(true);
+  const [profileExists, setProfileExists] = useState(null);
+
+  // Проверяем профиль на сервере при загрузке
+  useEffect(() => {
+    if (!isReady || !userInfo?.id) {
+      setCheckingProfile(false);
+      return;
+    }
+
+    const checkProfile = async () => {
+      try {
+        const { fetchWithRetry } = await import('../utils/api');
+        const { API_ENDPOINTS } = await import('../config/api');
+        
+        const response = await fetchWithRetry(
+          API_ENDPOINTS.CHECK_PROFILE(userInfo.id),
+          { retry: true },
+          2,
+          45000,
+          20000
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          setProfileExists(data.exists);
+        } else {
+          // При ошибке считаем, что профиля нет
+          setProfileExists(false);
+        }
+      } catch (error) {
+        console.error('[Home] Error checking profile:', error);
+        // При ошибке используем значение из контекста
+        setProfileExists(hasCompletedProfile);
+      } finally {
+        setCheckingProfile(false);
+      }
+    };
+
+    checkProfile();
+  }, [isReady, userInfo?.id, hasCompletedProfile]);
+
+  // Пока проверяем, показываем загрузку
+  if (checkingProfile) {
+    return <Loader message="Проверка профиля..." />;
+  }
+
+  // Используем реальное состояние с сервера, если доступно, иначе из контекста
+  const shouldShowWelcome = profileExists !== null ? !profileExists : !hasCompletedProfile;
 
   // Если профиль не создан, показываем экран приветствия
-  if (!hasCompletedProfile) {
+  if (shouldShowWelcome) {
     return <WelcomeCreateProfileScreen />;
   }
 

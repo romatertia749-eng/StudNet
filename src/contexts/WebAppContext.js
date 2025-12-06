@@ -52,6 +52,44 @@ export const WebAppProvider = ({ children }) => {
     localStorage.setItem('mn_hasCompletedProfile', value.toString());
   };
 
+  // Функция для проверки существования профиля на сервере
+  const checkProfileOnServer = async (userId) => {
+    if (!userId) return false;
+    
+    try {
+      const { fetchWithRetry } = await import('../utils/api');
+      const response = await fetchWithRetry(
+        `${API_ENDPOINTS.CHECK_PROFILE(userId)}`,
+        { retry: true },
+        2, // 2 попытки
+        45000, // 45 секунд для первого запроса
+        20000  // 20 секунд для повторных
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        const exists = data.exists === true;
+        console.log(`[WebAppContext] Profile exists on server: ${exists} for user ${userId}`);
+        
+        // Синхронизируем с localStorage
+        if (exists) {
+          setHasCompletedProfileState(true);
+          localStorage.setItem('mn_hasCompletedProfile', 'true');
+        } else {
+          setHasCompletedProfileState(false);
+          localStorage.setItem('mn_hasCompletedProfile', 'false');
+        }
+        
+        return exists;
+      }
+    } catch (error) {
+      console.error('[WebAppContext] Error checking profile on server:', error);
+      // При ошибке не меняем состояние - оставляем как есть
+    }
+    
+    return null; // null означает, что проверка не удалась
+  };
+
   useEffect(() => {
     const initTelegram = async () => {
       // Проверяем наличие Telegram Web App API
@@ -78,8 +116,8 @@ export const WebAppProvider = ({ children }) => {
         // Показываем приложение сразу, не дожидаясь авторизации
         setIsReady(true);
         
-        // Авторизация выполняется асинхронно в фоне
-        if (initData) {
+        // Авторизация и проверка профиля выполняются асинхронно в фоне
+        if (initData && initDataUnsafe?.user?.id) {
           // Используем fetchWithRetry для auth запроса с retry
           import('../utils/api').then(({ fetchWithRetry }) => {
             return fetchWithRetry(`${API_ENDPOINTS.AUTH || 'http://localhost:8080/api/auth'}`, {
@@ -103,11 +141,21 @@ export const WebAppProvider = ({ children }) => {
               localStorage.setItem('token', data.token);
               localStorage.setItem('user_id', data.user_id);
               console.log('Authentication successful, token saved');
+              
+              // После успешной авторизации проверяем профиль на сервере
+              return checkProfileOnServer(initDataUnsafe.user.id);
             }
           })
           .catch(error => {
             console.error('Error authenticating with backend:', error);
+            // Даже при ошибке авторизации пробуем проверить профиль
+            if (initDataUnsafe?.user?.id) {
+              checkProfileOnServer(initDataUnsafe.user.id);
+            }
           });
+        } else if (initDataUnsafe?.user?.id) {
+          // Если нет initData, но есть user, все равно проверяем профиль
+          checkProfileOnServer(initDataUnsafe.user.id);
         }
       } else {
         // For development without Telegram - use mock data
@@ -122,6 +170,9 @@ export const WebAppProvider = ({ children }) => {
         console.log('Setting mock userInfo:', mockUserInfo);
         setUserInfo(mockUserInfo);
         setIsReady(true);
+        
+        // Проверяем профиль для мокового пользователя
+        checkProfileOnServer(mockUserInfo.id);
       }
     };
 

@@ -10,7 +10,7 @@ import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
 import { fetchWithAuth, fetchWithRetry } from '../utils/api';
 
 const ProfileForm = () => {
-  const { userInfo, isReady, setHasCompletedProfile } = useWebApp();
+  const { userInfo, isReady, setHasCompletedProfile, hasCompletedProfile } = useWebApp();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -115,16 +115,65 @@ const ProfileForm = () => {
           });
         } else if (response.status === 404) {
           // Профиля нет - это нормально, оставляем форму пустой для создания
-          // Не логируем и не показываем ошибку пользователю
+          console.log('[ProfileForm] Profile not found (404) - showing empty form for creation');
           setIsEditing(false);
+          // Обновляем состояние в контексте
+          if (setHasCompletedProfile) {
+            setHasCompletedProfile(false);
+          }
         } else {
           if (!isMounted) return;
-          // Другая ошибка - логируем только в консоль, не показываем пользователю
-          console.warn('Unexpected error loading profile:', response.status);
+          // Другая ошибка - возможно сервер спит или недоступен
+          console.warn('[ProfileForm] Unexpected error loading profile:', response.status);
+          
+          // Проверяем, существует ли профиль на сервере через check endpoint
+          try {
+            const checkResponse = await fetchWithAuth(API_ENDPOINTS.CHECK_PROFILE(userInfo.id), { retry: false });
+            if (checkResponse.ok) {
+              const checkData = await checkResponse.json();
+              if (checkData.exists) {
+                // Профиль существует, но не загрузился - показываем сообщение
+                console.log('[ProfileForm] Profile exists but failed to load - retrying...');
+                // Повторная попытка загрузки через небольшую задержку
+                setTimeout(() => {
+                  if (isMounted) {
+                    loadProfile();
+                  }
+                }, 2000);
+                return;
+              }
+            }
+          } catch (checkError) {
+            console.error('[ProfileForm] Error checking profile existence:', checkError);
+          }
+          
           setIsEditing(false);
         }
       } catch (error) {
         if (!isMounted) return;
+        
+        // При ошибке сети проверяем существование профиля
+        if (error.name === 'AbortError' || error.message?.includes('timeout') || error.message?.includes('network')) {
+          console.warn('[ProfileForm] Network error loading profile, checking if profile exists...');
+          try {
+            const checkResponse = await fetchWithAuth(API_ENDPOINTS.CHECK_PROFILE(userInfo.id), { retry: false });
+            if (checkResponse.ok) {
+              const checkData = await checkResponse.json();
+              if (checkData.exists) {
+                // Профиль существует, но не загрузился - повторяем попытку
+                console.log('[ProfileForm] Profile exists but failed to load due to network error - retrying...');
+                setTimeout(() => {
+                  if (isMounted) {
+                    loadProfile();
+                  }
+                }, 3000);
+                return;
+              }
+            }
+          } catch (checkError) {
+            console.error('[ProfileForm] Error checking profile existence:', checkError);
+          }
+        }
         if (error.name === 'AbortError') {
           console.warn('Request timeout');
         } else if (process.env.NODE_ENV === 'development') {
