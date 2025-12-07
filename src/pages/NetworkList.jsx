@@ -206,6 +206,9 @@ const NetworkList = () => {
         if (!isMounted) return;
         if (error.name === 'AbortError') {
           console.warn('[NetworkList] Request timeout');
+        } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          console.error('[NetworkList] Network error - backend not reachable:', error);
+          alert('Не удалось подключиться к серверу. Проверьте, что бэкенд запущен и доступен по адресу: ' + API_ENDPOINTS.MATCHES);
         } else {
           console.error('[NetworkList] Error fetching matches:', error);
         }

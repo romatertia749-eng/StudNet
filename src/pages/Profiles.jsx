@@ -486,11 +486,15 @@ const Profiles = () => {
         if (!isMounted) return;
         if (error.name === 'AbortError') {
           console.warn('[Profiles] Request timeout');
+          alert('Запрос превысил время ожидания. Проверьте подключение к интернету.');
+        } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          console.error('[Profiles] Network error - backend not reachable');
+          alert('Ошибка сети: Failed to Fetch\n\nНе удалось подключиться к серверу. Проверьте:\n1. Запущен ли бэкенд\n2. Правильно ли настроен REACT_APP_API_BASE_URL\n3. Доступен ли сервер по адресу: ' + API_ENDPOINTS.PROFILES);
         } else {
           console.error('[Profiles] Full error:', error);
+          alert(`Ошибка сети: ${error.message}`);
         }
         setAllProfiles([]);
-        alert(`Ошибка сети: ${error.message}`);
       } finally {
         console.log('[Profiles] ===== FETCH COMPLETE =====');
         if (isMounted) {

@@ -7,6 +7,8 @@ import Autocomplete from '../components/Autocomplete';
 import MultiSelect from '../components/MultiSelect';
 import { russianCities, universities, interests, goals } from '../data/formData';
 import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
+import { checkBackendHealth } from '../utils/backendCheck';
+import BackendStatus from '../components/BackendStatus';
 
 const ProfileForm = () => {
   const { userInfo, isReady, setHasCompletedProfile } = useWebApp();
@@ -34,6 +36,8 @@ const ProfileForm = () => {
   });
 
   const [errors, setErrors] = useState({});
+  const [showBackendStatus, setShowBackendStatus] = useState(false);
+  const [backendError, setBackendError] = useState(null);
 
   // Загрузка существующего профиля
   useEffect(() => {
@@ -133,6 +137,11 @@ const ProfileForm = () => {
         if (!isMounted) return;
         if (error.name === 'AbortError') {
           console.warn('Request timeout');
+        } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          console.error('Network error - backend not reachable:', error);
+          if (process.env.NODE_ENV === 'development') {
+            alert('Не удалось подключиться к серверу. Проверьте, что бэкенд запущен по адресу: ' + API_ENDPOINTS.PROFILE_BY_USER_ID(userInfo.id));
+          }
         } else if (process.env.NODE_ENV === 'development') {
           console.error('Error loading profile:', error);
         }
@@ -309,6 +318,20 @@ const ProfileForm = () => {
       setLoading(false);
       return;
     }
+
+    // Автоматическая проверка доступности бэкенда перед отправкой
+    try {
+      const healthCheck = await checkBackendHealth();
+      if (!healthCheck.available) {
+        setBackendError(healthCheck);
+        setShowBackendStatus(true);
+        setLoading(false);
+        return;
+      }
+    } catch (healthError) {
+      console.warn('Health check failed, but continuing with submission:', healthError);
+      // Продолжаем отправку, даже если health check не прошел
+    }
     
     try {
       const formDataToSend = new FormData();
@@ -469,7 +492,9 @@ const ProfileForm = () => {
       if (error.name === 'AbortError' || error.message.includes('превысил время ожидания')) {
         errorMessage = 'Запрос превысил время ожидания. Проверьте подключение к интернету и попробуйте снова.';
       } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        errorMessage = 'Не удалось подключиться к серверу. Проверьте, что бэкенд запущен и доступен.';
+        errorMessage = `Не удалось подключиться к серверу. Проверьте, что бэкенд запущен и доступен по адресу: ${API_ENDPOINTS.PROFILES}`;
+        // Показываем компонент диагностики при ошибке сети
+        setShowBackendStatus(true);
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -595,6 +620,9 @@ const ProfileForm = () => {
 
   return (
     <div className="min-w-[320px] min-h-[600px] max-w-2xl w-full mx-auto p-4 md:p-6 pb-20 md:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+      {showBackendStatus && (
+        <BackendStatus onClose={() => setShowBackendStatus(false)} />
+      )}
       <Card className="mt-4">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           {isEditing ? 'Редактировать профиль' : 'Добавить мой профиль'}

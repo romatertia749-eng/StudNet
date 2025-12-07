@@ -3,6 +3,12 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:808
 console.log('API_BASE_URL:', API_BASE_URL);
 console.log('REACT_APP_API_BASE_URL from env:', process.env.REACT_APP_API_BASE_URL);
 
+// Предупреждение, если используется localhost в продакшене
+if (process.env.NODE_ENV === 'production' && API_BASE_URL.includes('localhost')) {
+  console.warn('⚠️ WARNING: API_BASE_URL points to localhost in production!');
+  console.warn('Set REACT_APP_API_BASE_URL environment variable to your production backend URL.');
+}
+
 export const API_ENDPOINTS = {
   AUTH: `${API_BASE_URL}/api/auth/`, // Со слэшем для надежности
   PROFILES: `${API_BASE_URL}/api/profiles/`, // Со слэшем для надежности
