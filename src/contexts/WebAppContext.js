@@ -80,7 +80,9 @@ export const WebAppProvider = ({ children }) => {
         
         // Авторизация выполняется асинхронно в фоне
         if (initData) {
-          fetch(`${API_ENDPOINTS.AUTH || 'http://localhost:8080/api/auth'}`, {
+          const authUrl = `${API_ENDPOINTS.AUTH || 'http://localhost:8080/api/auth'}`;
+          console.log('Attempting authentication to:', authUrl);
+          fetch(authUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -88,10 +90,14 @@ export const WebAppProvider = ({ children }) => {
             }
           })
           .then(response => {
+            console.log('Auth response status:', response.status);
             if (response.ok) {
               return response.json();
             } else {
-              throw new Error('Authentication failed');
+              return response.text().then(text => {
+                console.error('Auth failed, response:', text);
+                throw new Error(`Authentication failed: ${response.status} - ${text}`);
+              });
             }
           })
           .then(data => {
@@ -102,6 +108,8 @@ export const WebAppProvider = ({ children }) => {
           })
           .catch(error => {
             console.error('Error authenticating with backend:', error);
+            console.error('Auth URL was:', authUrl);
+            console.error('This might be a CORS or connectivity issue. Check backend CORS settings.');
           });
         }
       } else {

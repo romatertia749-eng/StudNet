@@ -320,13 +320,12 @@ const ProfileForm = () => {
     }
 
     // Автоматическая проверка доступности бэкенда перед отправкой
+    // Временно отключена строгая проверка - продолжаем даже если health check не прошел
     try {
       const healthCheck = await checkBackendHealth();
       if (!healthCheck.available) {
-        setBackendError(healthCheck);
-        setShowBackendStatus(true);
-        setLoading(false);
-        return;
+        console.warn('Health check failed, but continuing with submission:', healthCheck);
+        // Не блокируем отправку - продолжаем
       }
     } catch (healthError) {
       console.warn('Health check failed, but continuing with submission:', healthError);
@@ -392,15 +391,18 @@ const ProfileForm = () => {
         const apiUrl = API_ENDPOINTS.PROFILES;
         console.log('=== SENDING PROFILE REQUEST ===');
         console.log('Full URL:', apiUrl);
+        console.log('API_BASE_URL:', process.env.REACT_APP_API_BASE_URL);
         console.log('Method: POST');
         console.log('Body type: FormData');
         console.log('Is editing:', isEditing);
+        console.log('User ID:', userInfo.id);
         
         const startTime = Date.now();
         response = await fetch(apiUrl, {
           method: 'POST',  // POST используется и для создания, и для обновления
           body: formDataToSend,
           signal: controller.signal,
+          mode: 'cors', // Явно указываем CORS режим
           // НЕ добавляем Content-Type для FormData - браузер сам установит multipart/form-data с boundary
           // НЕ добавляем Authorization здесь - это FormData, токен не нужен для создания/обновления профиля
         });
@@ -409,11 +411,26 @@ const ProfileForm = () => {
         clearTimeout(timeoutId);
       } catch (fetchError) {
         clearTimeout(timeoutId);
-        console.error('Fetch error details:', {
-          name: fetchError.name,
-          message: fetchError.message,
-          stack: fetchError.stack,
-        });
+        console.error('=== FETCH ERROR DETAILS ===');
+        console.error('Error name:', fetchError.name);
+        console.error('Error message:', fetchError.message);
+        console.error('Error stack:', fetchError.stack);
+        console.error('Full error:', fetchError);
+        console.error('API URL was:', apiUrl);
+        console.error('Request method: POST');
+        console.error('Request mode: cors');
+        
+        // Проверяем, это ли CORS ошибка
+        if (fetchError.message && (
+          fetchError.message.includes('CORS') || 
+          fetchError.message.includes('Failed to fetch') ||
+          fetchError.message.includes('NetworkError') ||
+          fetchError.message.includes('Network request failed')
+        )) {
+          console.error('⚠️ CORS or Network Error detected');
+          throw new Error(`Ошибка сети или CORS. Проверьте:\n1. Бэкенд доступен: ${apiUrl}\n2. CORS настроен правильно\n3. Туннель Cloudflare работает`);
+        }
+        
         if (fetchError.name === 'AbortError') {
           throw new Error('Запрос превысил время ожидания. Проверьте подключение к интернету и попробуйте снова.');
         }

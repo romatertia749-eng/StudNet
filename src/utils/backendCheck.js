@@ -5,21 +5,41 @@ import { API_ENDPOINTS } from '../config/api';
  * @returns {Promise<{available: boolean, url: string, error?: string}>}
  */
 export const checkBackendHealth = async () => {
-  const healthUrl = `${API_ENDPOINTS.PROFILES.replace('/api/profiles/', '')}/health`;
+  // Получаем базовый URL правильно
+  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+  const healthUrl = `${apiBaseUrl}/health`;
+  
+  console.log('[BackendCheck] Checking health at:', healthUrl);
+  console.log('[BackendCheck] API_BASE_URL:', apiBaseUrl);
+  console.log('[BackendCheck] REACT_APP_API_BASE_URL:', process.env.REACT_APP_API_BASE_URL);
   
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Увеличил таймаут до 10 секунд
+    
+    console.log('[BackendCheck] Sending request...');
+    const startTime = Date.now();
     
     const response = await fetch(healthUrl, {
       method: 'GET',
       signal: controller.signal,
+      // Добавляем режим cors для обхода CORS проблем
+      mode: 'cors',
     });
     
+    const endTime = Date.now();
     clearTimeout(timeoutId);
+    
+    console.log('[BackendCheck] Response received:', {
+      status: response.status,
+      ok: response.ok,
+      time: `${endTime - startTime}ms`,
+      headers: Object.fromEntries(response.headers.entries())
+    });
     
     if (response.ok) {
       const data = await response.json();
+      console.log('[BackendCheck] Health check successful:', data);
       return {
         available: true,
         url: healthUrl,
@@ -27,35 +47,39 @@ export const checkBackendHealth = async () => {
         data,
       };
     } else {
+      const errorText = await response.text().catch(() => '');
+      console.error('[BackendCheck] Health check failed:', response.status, errorText);
       return {
         available: false,
         url: healthUrl,
         status: response.status,
-        error: `HTTP ${response.status}`,
+        error: `HTTP ${response.status}: ${errorText.substring(0, 100)}`,
       };
     }
   } catch (error) {
+    console.error('[BackendCheck] Health check error:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
+    
     if (error.name === 'AbortError') {
       return {
         available: false,
         url: healthUrl,
-        error: 'Timeout - сервер не отвечает в течение 5 секунд',
+        error: 'Timeout - сервер не отвечает в течение 10 секунд. Проверьте доступность бэкенда.',
       };
     } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
       return {
         available: false,
         url: healthUrl,
-        error: 'Не удалось подключиться. Возможные причины:\n' +
-               '1. Бэкенд не запущен\n' +
-               '2. Неправильный URL в REACT_APP_API_BASE_URL\n' +
-               '3. Проблемы с CORS\n' +
-               '4. Блокировка файрволом',
+        error: `Не удалось подключиться к ${healthUrl}.\n\nВозможные причины:\n1. Бэкенд не запущен\n2. Неправильный URL: ${apiBaseUrl}\n3. Проблемы с CORS\n4. Cloudflare Tunnel недоступен\n5. Блокировка файрволом`,
       };
     } else {
       return {
         available: false,
         url: healthUrl,
-        error: error.message || 'Неизвестная ошибка',
+        error: `${error.name}: ${error.message}`,
       };
     }
   }
