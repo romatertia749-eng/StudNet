@@ -309,6 +309,14 @@ const ProfileForm = () => {
     }
 
     console.log('Starting form submission...');
+    
+    // Проверяем наличие userInfo
+    if (!userInfo || !userInfo.id) {
+      console.error('userInfo is missing:', userInfo);
+      alert('Ошибка: данные пользователя не загружены. Пожалуйста, перезагрузите страницу.');
+      return;
+    }
+    
     setLoading(true);
     
     // Проверяем доступность API перед отправкой
@@ -334,6 +342,11 @@ const ProfileForm = () => {
     
     try {
       const formDataToSend = new FormData();
+      
+      // Проверяем все обязательные поля перед добавлением
+      if (!userInfo.id) {
+        throw new Error('user_id отсутствует');
+      }
       formDataToSend.append('user_id', userInfo.id.toString());
       formDataToSend.append('username', userInfo.username || '');
       formDataToSend.append('first_name', userInfo.first_name || '');
@@ -381,6 +394,16 @@ const ProfileForm = () => {
         goals: formData.goals.length,
       };
       console.log('Required fields check:', requiredFields);
+      
+      // Логируем содержимое FormData (для отладки)
+      console.log('=== FORM DATA CONTENTS ===');
+      for (const [key, value] of formDataToSend.entries()) {
+        if (value instanceof File) {
+          console.log(`${key}: [File] ${value.name}, ${value.size} bytes`);
+        } else {
+          console.log(`${key}: ${value}`);
+        }
+      }
 
       // Создаем AbortController для таймаута
       const controller = new AbortController();
@@ -477,13 +500,42 @@ const ProfileForm = () => {
         return; // Выходим, чтобы не выполнять код дальше
       } else {
         const errorText = await response.text();
-        console.error('Server error:', response.status, errorText);
+        console.error('=== SERVER ERROR RESPONSE ===');
+        console.error('Status:', response.status);
+        console.error('Response text:', errorText);
+        console.error('Response headers:', Object.fromEntries(response.headers.entries()));
+        
         let errorMessage = 'Ошибка при сохранении профиля';
         try {
           const errorData = JSON.parse(errorText);
-          errorMessage = errorData.detail || errorMessage;
+          console.error('Parsed error data:', errorData);
+          
+          // Обработка 422 (Validation Error)
+          if (response.status === 422 && Array.isArray(errorData.detail)) {
+            const missingFields = errorData.detail
+              .filter(err => err.type === 'missing')
+              .map(err => err.loc.join('.'))
+              .join(', ');
+            
+            if (missingFields) {
+              errorMessage = `Не заполнены обязательные поля: ${missingFields}`;
+            } else {
+              const errors = errorData.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join('\n');
+              errorMessage = `Ошибка валидации:\n${errors}`;
+            }
+          } else if (errorData.detail) {
+            // Если detail - строка
+            if (typeof errorData.detail === 'string') {
+              errorMessage = errorData.detail;
+            } else if (Array.isArray(errorData.detail)) {
+              errorMessage = errorData.detail.map(e => e.msg || JSON.stringify(e)).join('\n');
+            } else {
+              errorMessage = JSON.stringify(errorData.detail);
+            }
+          }
         } catch (e) {
-          errorMessage = `Ошибка ${response.status}: ${errorText.substring(0, 100)}`;
+          console.error('Error parsing error response:', e);
+          errorMessage = `Ошибка ${response.status}: ${errorText.substring(0, 200)}`;
         }
         
         // Специальная обработка для Method not Allowed
@@ -495,6 +547,7 @@ const ProfileForm = () => {
           console.error('Status: 405');
         }
         
+        console.error('Final error message:', errorMessage);
         alert(errorMessage);
       }
     } catch (error) {
