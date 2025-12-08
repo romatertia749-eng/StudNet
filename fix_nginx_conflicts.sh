@@ -66,3 +66,4 @@ echo ""
 echo "API endpoint (должен вернуть ошибку, но не HTML):"
 curl -s -I http://localhost/api/profiles/ 2>&1 | head -3
 
+

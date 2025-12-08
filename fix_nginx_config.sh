@@ -127,3 +127,4 @@ echo "=== ГОТОВО ==="
 echo "Конфигурация: $NGINX_CONFIG"
 echo "Резервная копия: $BACKUP"
 
+

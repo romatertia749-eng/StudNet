@@ -322,16 +322,16 @@ const Profiles = () => {
       console.log('[Profiles] userInfo:', userInfo);
       console.log('[Profiles] userInfo.id:', userInfo?.id);
       
+      // УПРОЩЕННЫЙ ЗАПРОС БЕЗ ФИЛЬТРОВ
+      // Убираем trailing slash для совместимости
+      const baseUrl = API_ENDPOINTS.PROFILES.endsWith('/') 
+        ? API_ENDPOINTS.PROFILES.slice(0, -1) 
+        : API_ENDPOINTS.PROFILES;
+      const url = `${baseUrl}?user_id=${userInfo.id}&page=0&size=50`;
+      
       try {
         controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
-        
-        // УПРОЩЕННЫЙ ЗАПРОС БЕЗ ФИЛЬТРОВ
-        // Убираем trailing slash для совместимости
-        const baseUrl = API_ENDPOINTS.PROFILES.endsWith('/') 
-          ? API_ENDPOINTS.PROFILES.slice(0, -1) 
-          : API_ENDPOINTS.PROFILES;
-        const url = `${baseUrl}?user_id=${userInfo.id}&page=0&size=50`;
         console.log('[Profiles] Fetching profiles from:', url);
         console.log('[Profiles] API_ENDPOINTS.PROFILES:', API_ENDPOINTS.PROFILES);
         console.log('[Profiles] baseUrl (without trailing slash):', baseUrl);

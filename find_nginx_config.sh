@@ -50,3 +50,4 @@ if [ -f "/etc/nginx/nginx.conf" ]; then
     cat /etc/nginx/nginx.conf | head -30
 fi
 
+

@@ -75,3 +75,4 @@ npm run build && scp -r build/* root@155.212.170.255:/var/www/studnet/public/
 
 Это всё, что нужно для обновления!
 
+
