@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, status, Depends, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from app.routers import profiles, matches, auth
@@ -18,8 +18,12 @@ app = FastAPI(title="Networking App API", version="1.0.0", redirect_slashes=Fals
 # CORS
 allowed_origins = [
     "http://localhost:3000",
+    "http://localhost:8080",
     "https://web.telegram.org",
     "https://telegram.org",
+    "https://desktop.telegram.org",
+    "https://webk.telegram.org",
+    "https://webz.telegram.org",
 ]
 
 # Добавляем домен из переменной окружения, если указан
@@ -36,29 +40,24 @@ if cors_origins and cors_origins[0]:
 # Убираем дубликаты
 allowed_origins = list(dict.fromkeys(allowed_origins))
 
-# Для Render, Koyeb и других платформ добавляем поддержку Telegram доменов
-# Это необходимо для работы Telegram Mini Apps
-# Примечание: FastAPI не поддерживает wildcard в CORS, поэтому добавляем конкретные домены
-is_production = (
-    os.getenv("RENDER") or 
-    os.getenv("RENDER_EXTERNAL_URL") or 
-    os.getenv("KOYEB") or 
-    os.getenv("KOYEB_SERVICE_NAME") or
-    os.getenv("RAILWAY_ENVIRONMENT") or
-    os.getenv("VERCEL") or
-    os.getenv("PRODUCTION", "").lower() == "true"
-)
+# Определяем production окружение
+is_production = os.getenv("PRODUCTION", "").lower() == "true"
 
 if is_production:
-    # Telegram использует несколько доменов, добавляем основные
+    # Telegram использует несколько доменов, добавляем все возможные варианты
     telegram_domains = [
         "https://web.telegram.org",
         "https://telegram.org",
         "https://desktop.telegram.org",
+        "https://webk.telegram.org",
+        "https://webz.telegram.org",
     ]
     for domain in telegram_domains:
         if domain not in allowed_origins:
             allowed_origins.append(domain)
+
+# Логируем разрешенные origins для отладки
+print(f"[CORS] Allowed origins: {allowed_origins}")
 
 # Middleware для логирования и обработки trailing slash
 class TrailingSlashMiddleware(BaseHTTPMiddleware):
@@ -79,14 +78,62 @@ class TrailingSlashMiddleware(BaseHTTPMiddleware):
         return response
 
 app.add_middleware(TrailingSlashMiddleware)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Явно указываем все методы
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
+
+# Кастомный CORS middleware для поддержки regex паттернов Telegram доменов
+class CustomCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin")
+        
+        # Проверяем, разрешен ли origin
+        is_allowed = False
+        if origin:
+            # Проверяем точное совпадение
+            if origin in allowed_origins:
+                is_allowed = True
+            # Проверяем Telegram домены по regex
+            elif is_production:
+                import re
+                telegram_pattern = re.compile(r"^https://(web|webk|webz|desktop)\.telegram\.org$")
+                if telegram_pattern.match(origin):
+                    is_allowed = True
+        
+        # Если origin разрешен, добавляем CORS заголовки
+        response = await call_next(request)
+        if is_allowed and origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            response.headers["Access-Control-Expose-Headers"] = "*"
+        
+        # Обрабатываем preflight запросы
+        if request.method == "OPTIONS" and is_allowed:
+            return Response(status_code=200, headers=dict(response.headers))
+        
+        return response
+
+# Используем кастомный CORS middleware в production для поддержки всех Telegram доменов
+# В development используем стандартный CORSMiddleware
+if is_production:
+    app.add_middleware(CustomCORSMiddleware)
+    # Также добавляем стандартный для совместимости
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
 
 # Роутеры - ВАЖНО: регистрируем в правильном порядке
 # Сначала более специфичные, потом общие

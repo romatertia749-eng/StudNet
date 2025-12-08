@@ -25,18 +25,62 @@ export const getAuthHeaders = () => {
   return headers;
 };
 
-// Обертка для fetch с автоматической авторизацией
+// Обертка для fetch с автоматической авторизацией и улучшенной обработкой ошибок
 export const fetchWithAuth = async (url, options = {}) => {
   const headers = {
     ...getAuthHeaders(),
     ...(options.headers || {}),
   };
   
-  // Используем signal из options, если он передан
-  // НЕ создаем автоматический таймаут - это может блокировать запросы
-  return fetch(url, {
-    ...options,
-    headers,
-  });
+  // Удаляем Content-Type для FormData - браузер сам установит правильный заголовок
+  if (options.body instanceof FormData && headers['Content-Type']) {
+    delete headers['Content-Type'];
+  }
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      mode: options.mode || 'cors', // Явно указываем CORS режим по умолчанию
+      credentials: 'include', // Включаем cookies для CORS
+    });
+    
+    // Логируем детали ответа для отладки
+    if (!response.ok) {
+      console.error('[fetchWithAuth] Request failed:', {
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+    }
+    
+    return response;
+  } catch (error) {
+    // Детальное логирование ошибок сети
+    console.error('[fetchWithAuth] Network error:', {
+      url,
+      errorName: error.name,
+      errorMessage: error.message,
+      errorStack: error.stack,
+    });
+    
+    // Проверяем тип ошибки
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      // Это ошибка сети - возможно CORS или недоступен сервер
+      const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+      throw new Error(
+        `Не удалось подключиться к серверу: ${url}\n\n` +
+        `Возможные причины:\n` +
+        `1. Бэкенд недоступен по адресу: ${apiBaseUrl}\n` +
+        `2. Проблема с CORS - проверьте настройки бэкенда\n` +
+        `3. Cloudflare Tunnel не работает\n` +
+        `4. Блокировка файрволом или антивирусом\n\n` +
+        `Проверьте консоль браузера (F12) для деталей.`
+      );
+    }
+    
+    throw error;
+  }
 };
 

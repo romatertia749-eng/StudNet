@@ -336,8 +336,17 @@ const Profiles = () => {
         console.log('[Profiles] API_ENDPOINTS.PROFILES:', API_ENDPOINTS.PROFILES);
         console.log('[Profiles] baseUrl (without trailing slash):', baseUrl);
         
+        console.log('[Profiles] ===== SENDING REQUEST =====');
+        console.log('[Profiles] URL:', url);
+        console.log('[Profiles] API_BASE_URL:', process.env.REACT_APP_API_BASE_URL);
+        console.log('[Profiles] Request options:', {
+          signal: controller.signal ? 'AbortController active' : 'no signal',
+          mode: 'cors'
+        });
+        
         const response = await fetchWithAuth(url, {
-          signal: controller.signal
+          signal: controller.signal,
+          mode: 'cors' // Явно указываем CORS режим
         });
         
         console.log('[Profiles] ===== RESPONSE RECEIVED =====');
@@ -489,7 +498,25 @@ const Profiles = () => {
           alert('Запрос превысил время ожидания. Проверьте подключение к интернету.');
         } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
           console.error('[Profiles] Network error - backend not reachable');
-          alert('Ошибка сети: Failed to Fetch\n\nНе удалось подключиться к серверу. Проверьте:\n1. Запущен ли бэкенд\n2. Правильно ли настроен REACT_APP_API_BASE_URL\n3. Доступен ли сервер по адресу: ' + API_ENDPOINTS.PROFILES);
+          console.error('[Profiles] Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+            url: url,
+            apiBaseUrl: process.env.REACT_APP_API_BASE_URL
+          });
+          
+          // Проверяем, это ли CORS ошибка
+          if (error.message && (
+            error.message.includes('CORS') || 
+            error.message.includes('Failed to fetch') ||
+            error.message.includes('NetworkError') ||
+            error.message.includes('Network request failed')
+          )) {
+            alert(`Ошибка сети: Failed to Fetch\n\nВозможные причины:\n1. Бэкенд недоступен: ${url}\n2. Проблема с CORS\n3. Туннель Cloudflare не работает\n\nПроверьте консоль браузера (F12) для деталей.`);
+          } else {
+            alert('Ошибка сети: Failed to Fetch\n\nНе удалось подключиться к серверу. Проверьте:\n1. Запущен ли бэкенд\n2. Правильно ли настроен REACT_APP_API_BASE_URL\n3. Доступен ли сервер по адресу: ' + API_ENDPOINTS.PROFILES);
+          }
         } else {
           console.error('[Profiles] Full error:', error);
           alert(`Ошибка сети: ${error.message}`);

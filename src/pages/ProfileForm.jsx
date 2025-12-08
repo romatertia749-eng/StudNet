@@ -409,9 +409,10 @@ const ProfileForm = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
 
+      // Определяем apiUrl до блока try, чтобы он был доступен в catch
+      const apiUrl = API_ENDPOINTS.PROFILES;
       let response;
       try {
-        const apiUrl = API_ENDPOINTS.PROFILES;
         console.log('=== SENDING PROFILE REQUEST ===');
         console.log('Full URL:', apiUrl);
         console.log('API_BASE_URL:', process.env.REACT_APP_API_BASE_URL);
@@ -439,7 +440,7 @@ const ProfileForm = () => {
         console.error('Error message:', fetchError.message);
         console.error('Error stack:', fetchError.stack);
         console.error('Full error:', fetchError);
-        console.error('API URL was:', apiUrl);
+        console.error('API URL was:', API_ENDPOINTS.PROFILES);
         console.error('Request method: POST');
         console.error('Request mode: cors');
         
@@ -451,7 +452,7 @@ const ProfileForm = () => {
           fetchError.message.includes('Network request failed')
         )) {
           console.error('⚠️ CORS or Network Error detected');
-          throw new Error(`Ошибка сети или CORS. Проверьте:\n1. Бэкенд доступен: ${apiUrl}\n2. CORS настроен правильно\n3. Туннель Cloudflare работает`);
+          throw new Error(`Ошибка сети или CORS. Проверьте:\n1. Бэкенд доступен: ${API_ENDPOINTS.PROFILES}\n2. CORS настроен правильно\n3. Туннель Cloudflare работает`);
         }
         
         if (fetchError.name === 'AbortError') {
@@ -562,7 +563,25 @@ const ProfileForm = () => {
       if (error.name === 'AbortError' || error.message.includes('превысил время ожидания')) {
         errorMessage = 'Запрос превысил время ожидания. Проверьте подключение к интернету и попробуйте снова.';
       } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        errorMessage = `Не удалось подключиться к серверу. Проверьте, что бэкенд запущен и доступен по адресу: ${API_ENDPOINTS.PROFILES}`;
+        console.error('⚠️ Network/Fetch Error detected');
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          url: API_ENDPOINTS.PROFILES,
+          apiBaseUrl: process.env.REACT_APP_API_BASE_URL
+        });
+        
+        // Проверяем, это ли CORS ошибка
+        if (error.message && (
+          error.message.includes('CORS') || 
+          error.message.includes('Failed to fetch') ||
+          error.message.includes('NetworkError') ||
+          error.message.includes('Network request failed')
+        )) {
+          errorMessage = `Ошибка сети: Failed to Fetch\n\nВозможные причины:\n1. Бэкенд недоступен: ${API_ENDPOINTS.PROFILES}\n2. Проблема с CORS\n3. Туннель Cloudflare не работает\n\nПроверьте консоль браузера (F12) для деталей.`;
+        } else {
+          errorMessage = `Не удалось подключиться к серверу. Проверьте, что бэкенд запущен и доступен по адресу: ${API_ENDPOINTS.PROFILES}\n\nПроверьте консоль браузера (F12) для деталей.`;
+        }
         // Показываем компонент диагностики при ошибке сети
         setShowBackendStatus(true);
       } else if (error.message) {
