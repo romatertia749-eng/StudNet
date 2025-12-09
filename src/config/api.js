@@ -1,12 +1,21 @@
+// В Create React App переменные окружения должны начинаться с REACT_APP_
+// Они встраиваются в код во время сборки (build time), не runtime!
+// В Vercel: Settings → Environment Variables → добавить REACT_APP_API_BASE_URL
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
 
 console.log('API_BASE_URL:', API_BASE_URL);
 console.log('REACT_APP_API_BASE_URL from env:', process.env.REACT_APP_API_BASE_URL);
+console.log('NODE_ENV:', process.env.NODE_ENV);
 
 // Предупреждение, если используется localhost в продакшене
 if (process.env.NODE_ENV === 'production' && API_BASE_URL.includes('localhost')) {
-  console.warn('⚠️ WARNING: API_BASE_URL points to localhost in production!');
-  console.warn('Set REACT_APP_API_BASE_URL environment variable to your production backend URL.');
+  console.error('❌ ERROR: API_BASE_URL points to localhost in production!');
+  console.error('This will not work! Set REACT_APP_API_BASE_URL in Vercel:');
+  console.error('1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables');
+  console.error('2. Add: REACT_APP_API_BASE_URL = https://your-koyeb-app.koyeb.app');
+  console.error('3. Redeploy the project');
+  // В production это критическая ошибка, но не можем остановить приложение
+  // Пользователь увидит ошибки в консоли и в UI
 }
 
 export const API_ENDPOINTS = {

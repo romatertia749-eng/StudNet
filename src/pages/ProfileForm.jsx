@@ -319,8 +319,11 @@ const ProfileForm = () => {
     
     setLoading(true);
     
+    // Определяем apiUrl в начале функции, чтобы он был доступен во всех блоках
+    const apiUrl = API_ENDPOINTS.PROFILES;
+    
     // Проверяем доступность API перед отправкой
-    if (!API_ENDPOINTS.PROFILES) {
+    if (!apiUrl) {
       console.error('API_ENDPOINTS.PROFILES is not defined');
       alert('Ошибка конфигурации: API endpoint не найден. Обратитесь к разработчику.');
       setLoading(false);
@@ -409,8 +412,6 @@ const ProfileForm = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
 
-      // Определяем apiUrl до блока try, чтобы он был доступен в catch
-      const apiUrl = API_ENDPOINTS.PROFILES;
       let response;
       try {
         console.log('=== SENDING PROFILE REQUEST ===');

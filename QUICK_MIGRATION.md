@@ -24,7 +24,7 @@
    IMAGEKIT_PUBLIC_KEY = ваш-ключ
    IMAGEKIT_PRIVATE_KEY = ваш-ключ
    IMAGEKIT_URL_ENDPOINT = ваш-endpoint
-   TELEGRAM_BOT_TOKEN = ваш-токен-бота-телеграм
+   TELEGRAM_BOT_TOKEN = 8282153203:AAEFZSTuQna3U7wJ_Yi9PgWuaumZAAAi22w
    PRODUCTION = true
    CORS_ORIGINS = https://web.telegram.org,https://telegram.org,https://desktop.telegram.org,https://webk.telegram.org,https://webz.telegram.org
    FRONTEND_URL = https://your-app.vercel.app (пока заглушка, обновите после деплоя фронта)
@@ -39,10 +39,13 @@
    - Framework: Create React App
    - Build: `npm run build`
    - Output: `build`
-4. Environment Variables:
-   ```
-   REACT_APP_API_BASE_URL = https://xxx.koyeb.app (URL из шага 2)
-   ```
+4. **Environment Variables (КРИТИЧЕСКИ ВАЖНО!):**
+   - Перейдите в Settings → Environment Variables
+   - Добавьте переменную:
+     - **Key**: `REACT_APP_API_BASE_URL`
+     - **Value**: `https://xxx.koyeb.app` (URL вашего бэкенда из шага 2)
+     - **Environment**: Production, Preview, Development (выберите все)
+   - ⚠️ **ВАЖНО**: Без этой переменной приложение будет пытаться подключиться к `localhost:8080`, что не работает в production!
 5. Deploy → скопируйте URL (например: `https://xxx.vercel.app`)
 
 ## 4. Финальная настройка
@@ -69,6 +72,10 @@
 - Убедитесь, что `FRONTEND_URL` правильный
 
 **Фронт не видит API:**
-- Проверьте `REACT_APP_API_BASE_URL` в Vercel
-- Пересоберите проект (Redeploy)
+- ⚠️ **Проверьте `REACT_APP_API_BASE_URL` в Vercel** (Settings → Environment Variables)
+- Убедитесь, что значение начинается с `https://` (не `http://`)
+- Убедитесь, что URL правильный (ваш Koyeb URL)
+- ⚠️ **ВАЖНО**: После изменения переменных окружения нужно передеплоить проект (Redeploy)
+- Проверьте логи сборки в Vercel - там должно быть видно, какое значение `API_BASE_URL` используется
+- Откройте консоль браузера (F12) - там будут логи с `API_BASE_URL` и предупреждения, если что-то не так
 
