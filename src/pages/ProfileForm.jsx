@@ -435,13 +435,12 @@ const ProfileForm = () => {
         clearTimeout(timeoutId);
       } catch (fetchError) {
         clearTimeout(timeoutId);
-        const errorApiUrl = API_ENDPOINTS.PROFILES;
         console.error('=== FETCH ERROR DETAILS ===');
         console.error('Error name:', fetchError.name);
         console.error('Error message:', fetchError.message);
         console.error('Error stack:', fetchError.stack);
         console.error('Full error:', fetchError);
-        console.error('API URL was:', errorApiUrl);
+        console.error('API URL was:', apiUrl);
         console.error('Request method: POST');
         console.error('Request mode: cors');
         
@@ -453,7 +452,7 @@ const ProfileForm = () => {
           fetchError.message.includes('Network request failed')
         )) {
           console.error('⚠️ CORS or Network Error detected');
-          throw new Error(`Ошибка сети или CORS. Проверьте:\n1. Бэкенд доступен: ${errorApiUrl}\n2. CORS настроен правильно\n3. Туннель Cloudflare работает`);
+          throw new Error(`Ошибка сети или CORS. Проверьте:\n1. Бэкенд доступен: ${apiUrl}\n2. CORS настроен правильно\n3. Туннель Cloudflare работает`);
         }
         
         if (fetchError.name === 'AbortError') {
