@@ -174,8 +174,8 @@ def health():
     return {"status": "ok"}
 
 # Обслуживание статических файлов фронтенда
-# Включается только если фронт и бэкенд на одном сервере (монолитный деплой)
-# Если фронт на отдельном домене (Vercel/Netlify), установи FRONTEND_ON_SAME_DOMAIN=false
+# В production фронтенд на Vercel, поэтому статика не нужна
+# Включается только для локальной разработки или монолитного деплоя
 serve_frontend = os.getenv("FRONTEND_ON_SAME_DOMAIN", "false").lower() == "true"
 
 if serve_frontend:

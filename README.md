@@ -8,9 +8,10 @@ React-приложение для нетворкинга, работающее �
 
 ## Технологический стек
 
-- **Frontend**: React, Tailwind CSS
-- **Backend**: FastAPI (Python)
-- **База данных**: PostgreSQL
+- **Frontend**: React, Tailwind CSS (деплой на Vercel)
+- **Backend**: FastAPI (Python, деплой на Koyeb)
+- **База данных**: Neon PostgreSQL
+- **File Storage**: ImageKit
 - **Платформа**: Telegram Web Apps
 
 ## Структура проекта
@@ -34,19 +35,22 @@ React-приложение для нетворкинга, работающее �
 
 ## Быстрый старт
 
-### 1. База данных
+### Production деплой (Vercel + Koyeb + Neon)
 
-```bash
-# Создайте базу данных
-psql -U postgres
-CREATE DATABASE networking_app;
-\q
+См. `QUICK_MIGRATION.md` для пошаговой инструкции.
 
-# Примените схему
-psql -U postgres -d networking_app -f database/schema.sql
-```
+### Локальная разработка
 
-### 2. Бэкенд
+#### 1. База данных (Neon)
+
+1. Создайте проект на [neon.tech](https://neon.tech)
+2. Скопируйте connection string
+3. Примените схему через SQL Editor в Neon Dashboard:
+   ```sql
+   -- Вставьте содержимое database/schema.sql
+   ```
+
+#### 2. Бэкенд
 
 ```bash
 cd backend_python
@@ -60,8 +64,10 @@ venv\Scripts\activate
 # Установите зависимости
 pip install -r requirements.txt
 
-# Создайте .env файл (см. backend_python/ENV_EXPLANATION.md)
-# DATABASE_URL=postgresql://user:password@localhost:5432/networking_app
+# Создайте .env файл на основе env.example
+# DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+# JWT_SECRET=your-secret-key
+# ... (см. env.example)
 
 # Запустите сервер
 uvicorn app.main:app --reload --port 8080
@@ -71,7 +77,7 @@ API будет доступен на `http://localhost:8080`
 - Swagger UI: `http://localhost:8080/docs`
 - ReDoc: `http://localhost:8080/redoc`
 
-### 3. Фронтенд
+#### 3. Фронтенд
 
 ```bash
 # Установите зависимости
@@ -145,21 +151,36 @@ function MyComponent() {
 
 ### Production деплой
 
-1. **Фронтенд** (Vercel/Netlify):
-   ```bash
-   npm run build
-   # Загрузите build/ на хостинг
-   ```
+**Архитектура:**
+- **Frontend**: Vercel (автоматический деплой из Git)
+- **Backend**: Koyeb (автоматический деплой из Git)
+- **Database**: Neon PostgreSQL
 
-2. **Бэкенд** (Koyeb/Railway/Render):
-   - Настройте переменные окружения
-   - Подключите PostgreSQL
-   - Деплой через Git
+**Быстрая инструкция:**
 
-3. **Настройка бота**:
+1. **База данных (Neon)**:
+   - Создайте проект на [neon.tech](https://neon.tech)
+   - Примените схему из `database/schema.sql`
+   - Скопируйте connection string
+
+2. **Бэкенд (Koyeb)**:
+   - Подключите GitHub репозиторий
+   - Root Path: `backend_python`
+   - Настройте Environment Variables (см. `QUICK_MIGRATION.md`)
+   - Деплой автоматический
+
+3. **Фронтенд (Vercel)**:
+   - Подключите GitHub репозиторий
+   - Framework: Create React App
+   - Environment Variable: `REACT_APP_API_BASE_URL` = ваш Koyeb URL
+   - Деплой автоматический
+
+4. **Настройка бота**:
    - Откройте [@BotFather](https://t.me/BotFather)
    - `/myapps` → выберите приложение
-   - `Edit Web App URL` → укажите URL фронтенда
+   - `Edit Web App URL` → укажите Vercel URL
+
+Подробнее: `QUICK_MIGRATION.md`
 
 ## API Endpoints
 

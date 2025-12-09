@@ -1,58 +1,20 @@
 #!/bin/bash
 
-# Скрипт для деплоя на сервер
-# Использование: ./deploy.sh [frontend|backend|all]
+# ⚠️ УСТАРЕЛО: Этот скрипт для деплоя на собственный сервер
+# Теперь используется автоматический деплой через Vercel + Koyeb
+# См. QUICK_MIGRATION.md для инструкций
 
-DEPLOY_TYPE=${1:-all}
-SERVER="root@155.212.170.255"
-FRONTEND_PATH="/var/www/studnet/public"
-BACKEND_PATH="/var/www/studnet/backend_python"
+# Для деплоя просто сделайте:
+# git add . && git commit -m "Update" && git push origin main
+# Vercel и Koyeb автоматически задеплоят изменения
 
-echo "=== ДЕПЛОЙ НА СЕРВЕР ==="
-echo "Тип: $DEPLOY_TYPE"
+echo "⚠️  Этот скрипт устарел!"
 echo ""
-
-if [ "$DEPLOY_TYPE" = "frontend" ] || [ "$DEPLOY_TYPE" = "all" ]; then
-    echo "=== ДЕПЛОЙ ФРОНТЕНДА ==="
-    echo "1. Сборка проекта..."
-    npm run build
-    
-    if [ $? -ne 0 ]; then
-        echo "❌ Ошибка сборки"
-        exit 1
-    fi
-    
-    echo "2. Загрузка на сервер..."
-    scp -r build/* $SERVER:$FRONTEND_PATH/
-    
-    if [ $? -eq 0 ]; then
-        echo "✅ Фронтенд загружен"
-    else
-        echo "❌ Ошибка загрузки фронтенда"
-        exit 1
-    fi
-fi
-
-if [ "$DEPLOY_TYPE" = "backend" ] || [ "$DEPLOY_TYPE" = "all" ]; then
-    echo ""
-    echo "=== ДЕПЛОЙ БЭКЕНДА ==="
-    echo "Обновление бэкенда на сервере..."
-    
-    ssh $SERVER << 'ENDSSH'
-cd /var/www/studnet/backend_python
-git pull origin main
-if [ $? -eq 0 ]; then
-    echo "✅ Бэкенд обновлен"
-    systemctl restart studnet-backend.service
-    echo "✅ Бэкенд перезапущен"
-else
-    echo "❌ Ошибка обновления бэкенда"
-    exit 1
-fi
-ENDSSH
-fi
-
+echo "Используйте автоматический деплой:"
+echo "  git add . && git commit -m 'Update' && git push origin main"
 echo ""
-echo "=== ДЕПЛОЙ ЗАВЕРШЕН ==="
+echo "Vercel и Koyeb автоматически задеплоят изменения."
+echo "См. QUICK_MIGRATION.md для подробностей."
+exit 0
 
 

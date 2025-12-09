@@ -3,23 +3,18 @@ type: web
 build:
   type: buildpack
 run:
-  env:
-    - name: DATABASE_URL
-      value: "postgresql://user:password@host/dbname?sslmode=require"
-    - name: JWT_SECRET
-      value: "Ie4u1NrxB9nGyEqV7TR-LX7NALj23NXj3n1CONxqU-78vjvjLUDamXNEUuXM3nWv"
-    - name: IMAGEKIT_PUBLIC_KEY
-      value: "your_public_key_here"
-    - name: IMAGEKIT_PRIVATE_KEY
-      value: "your_private_key_here"
-    - name: IMAGEKIT_URL_ENDPOINT
-      value: "https://ik.imagekit.io/your_imagekit_id"
-    - name: TELEGRAM_BOT_TOKEN
-      value: "your_telegram_bot_token_here"
-    - name: CORS_ORIGINS
-      value: "https://web.telegram.org,https://telegram.org,https://desktop.telegram.org,https://webk.telegram.org,https://webz.telegram.org"
-    - name: FRONTEND_URL
-      value: "https://your-app.vercel.app"
-    - name: PRODUCTION
-      value: "true"
+  # Все переменные окружения настраиваются через Koyeb Dashboard
+  # Settings → Environment Variables
+  # Не добавляйте секреты напрямую в этот файл!
+  # 
+  # Обязательные переменные:
+  # - DATABASE_URL (Neon PostgreSQL connection string)
+  # - JWT_SECRET
+  # - IMAGEKIT_PUBLIC_KEY
+  # - IMAGEKIT_PRIVATE_KEY
+  # - IMAGEKIT_URL_ENDPOINT
+  # - TELEGRAM_BOT_TOKEN
+  # - PRODUCTION=true
+  # - CORS_ORIGINS
+  # - FRONTEND_URL (Vercel URL)
 
