@@ -34,12 +34,16 @@ export const WebAppProvider = ({ children }) => {
     fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'WebAppContext.js:loadFromLocalStorage:values',message:'LocalStorage values loaded',data:{savedMainGoal:!!savedMainGoal,savedOnboarding,savedProfile,userId:localStorage.getItem('user_id')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
     // #endregion
     
-    if (savedMainGoal) {
-      setMainGoalState(savedMainGoal);
-    }
-    if (savedOnboarding === 'true') {
-      setHasCompletedOnboardingState(true);
-    }
+    // ВРЕМЕННО ОТКЛЮЧЕНО: онбординг с целями
+    // if (savedMainGoal) {
+    //   setMainGoalState(savedMainGoal);
+    // }
+    // Принудительно устанавливаем онбординг как завершенный
+    setHasCompletedOnboardingState(true);
+    localStorage.setItem('maxnet_onboarding_completed', 'true');
+    // if (savedOnboarding === 'true') {
+    //   setHasCompletedOnboardingState(true);
+    // }
     if (savedProfile === 'true') {
       setHasCompletedProfileState(true);
       // #region agent log

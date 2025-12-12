@@ -12,8 +12,11 @@ const Home = () => {
   
   // ВРЕМЕННО ОТКЛЮЧЕНО: автоматически помечаем онбординг как завершенный
   useEffect(() => {
+    // Принудительно устанавливаем онбординг как завершенный
     setHasCompletedOnboarding(true);
     localStorage.setItem('maxnet_onboarding_completed', 'true');
+    // Очищаем старые значения цели (если есть)
+    localStorage.removeItem('maxnet_main_goal');
   }, [setHasCompletedOnboarding]);
 
   useEffect(() => {
