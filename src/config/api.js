@@ -1,6 +1,6 @@
 // В Create React App переменные окружения должны начинаться с REACT_APP_
 // Они встраиваются в код во время сборки (build time), не runtime!
-// В Vercel: Settings → Environment Variables → добавить REACT_APP_API_BASE_URL
+// В Netlify: Site settings → Environment variables → добавить REACT_APP_API_BASE_URL
 let API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 // Fallback для production: если переменная не установлена, используем Koyeb URL
@@ -37,9 +37,9 @@ console.log('All REACT_APP_ vars:', Object.keys(process.env).filter(k => k.start
 if (process.env.NODE_ENV === 'production' && API_BASE_URL.includes('localhost')) {
   console.error('❌ ERROR: API_BASE_URL points to localhost in production!');
   console.error('This will not work! Set REACT_APP_API_BASE_URL in Vercel:');
-  console.error('1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables');
+  console.error('1. Go to Netlify Dashboard → Your Site → Site settings → Environment variables');
   console.error('2. Add: REACT_APP_API_BASE_URL = https://your-koyeb-app.koyeb.app');
-  console.error('3. Redeploy the project');
+  console.error('3. Redeploy the site');
   // В production это критическая ошибка, но не можем остановить приложение
   // Пользователь увидит ошибки в консоли и в UI
 }

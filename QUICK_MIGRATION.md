@@ -31,22 +31,22 @@
    ```
 7. Deploy → скопируйте URL (например: `https://xxx.koyeb.app`)
 
-## 3. Фронтенд (Vercel) - 5 минут
+## 3. Фронтенд (Netlify) - 5 минут
 
-1. [vercel.com](https://vercel.com) → Sign Up
-2. Add New Project → Import GitHub repo
-3. Settings:
-   - Framework: Create React App
-   - Build: `npm run build`
-   - Output: `build`
-4. **Environment Variables (КРИТИЧЕСКИ ВАЖНО!):**
-   - Перейдите в Settings → Environment Variables
+1. [netlify.com](https://netlify.com) → Sign Up
+2. Add new site → Import an existing project
+3. Connect to Git provider → выберите GitHub → выберите репозиторий
+4. Build settings (автоматически из `netlify.toml`):
+   - Build command: `npm run build`
+   - Publish directory: `build`
+5. **Environment Variables (КРИТИЧЕСКИ ВАЖНО!):**
+   - Нажми "Show advanced" → "New variable"
    - Добавьте переменную:
      - **Key**: `REACT_APP_API_BASE_URL`
      - **Value**: `https://xxx.koyeb.app` (URL вашего бэкенда из шага 2)
-     - **Environment**: Production, Preview, Development (выберите все)
+     - **Scopes**: Production, Deploy previews, Branch deploys (выберите все)
    - ⚠️ **ВАЖНО**: Без этой переменной приложение будет пытаться подключиться к `localhost:8080`, что не работает в production!
-5. Deploy → скопируйте URL (например: `https://xxx.vercel.app`)
+6. Deploy site → скопируйте URL (например: `https://xxx.netlify.app`)
 
 ## 4. Финальная настройка
 
@@ -72,10 +72,11 @@
 - Убедитесь, что `FRONTEND_URL` правильный
 
 **Фронт не видит API:**
-- ⚠️ **Проверьте `REACT_APP_API_BASE_URL` в Vercel** (Settings → Environment Variables)
+- ⚠️ **Проверьте `REACT_APP_API_BASE_URL` в Netlify** (Site settings → Environment variables)
 - Убедитесь, что значение начинается с `https://` (не `http://`)
 - Убедитесь, что URL правильный (ваш Koyeb URL)
-- ⚠️ **ВАЖНО**: После изменения переменных окружения нужно передеплоить проект (Redeploy)
-- Проверьте логи сборки в Vercel - там должно быть видно, какое значение `API_BASE_URL` используется
+- Убедитесь, что переменная включена для всех scopes (Production, Deploy previews, Branch deploys)
+- ⚠️ **ВАЖНО**: После изменения переменных окружения нужно передеплоить сайт (Trigger deploy → Deploy site)
+- Проверьте логи сборки в Netlify - там должно быть видно, какое значение `API_BASE_URL` используется
 - Откройте консоль браузера (F12) - там будут логи с `API_BASE_URL` и предупреждения, если что-то не так
 
