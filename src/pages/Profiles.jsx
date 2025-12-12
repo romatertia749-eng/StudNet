@@ -1278,7 +1278,15 @@ const Profiles = () => {
                           decoding="async"
                           style={{ willChange: 'auto' }}
                           onError={(e) => {
+                            console.error('[Profiles] Image load error:', {
+                              src: photos[0],
+                              photo_url: currentProfile.photo_url,
+                              photos: currentProfile.photos
+                            });
                             e.target.style.display = 'none';
+                          }}
+                          onLoad={() => {
+                            console.log('[Profiles] Image loaded successfully:', photos[0]);
                           }}
                         />
                       </div>

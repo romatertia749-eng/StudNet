@@ -59,17 +59,30 @@ export const API_ENDPOINTS = {
 
 // Функция для формирования полного URL фотографии
 export const getPhotoUrl = (photoPath) => {
-  if (!photoPath) return null;
+  if (!photoPath) {
+    console.log('[getPhotoUrl] photoPath is null/undefined');
+    return null;
+  }
+  
+  console.log('[getPhotoUrl] Input photoPath:', photoPath, 'Type:', typeof photoPath);
+  
   // Если уже полный URL (начинается с http), возвращаем как есть
   if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
+    console.log('[getPhotoUrl] Already full URL, returning as is:', photoPath);
     return photoPath;
   }
+  
   // Если относительный путь (старый формат), добавляем базовый URL бэкенда
   if (photoPath.startsWith('/')) {
-    return `${API_BASE_URL}${photoPath}`;
+    const url = `${API_BASE_URL}${photoPath}`;
+    console.log('[getPhotoUrl] Relative path, constructed URL:', url);
+    return url;
   }
+  
   // Если путь без слэша, добавляем /uploads/photos/
-  return `${API_BASE_URL}/uploads/photos/${photoPath}`;
+  const url = `${API_BASE_URL}/uploads/photos/${photoPath}`;
+  console.log('[getPhotoUrl] Path without slash, constructed URL:', url);
+  return url;
 };
 
 console.log('API_ENDPOINTS.PROFILES:', API_ENDPOINTS.PROFILES);
