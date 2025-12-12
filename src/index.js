@@ -6,8 +6,10 @@ import reportWebVitals from './reportWebVitals';
 import { WebAppProvider } from './contexts/WebAppContext';
 import { MatchProvider } from './contexts/MatchContext';
 
+// ВРЕМЕННО ОТКЛЮЧЕНО: Предзагрузка фона (9MB - может вызывать проблемы производительности)
 // КРИТИЧЕСКИ ВАЖНО: Предзагрузка фона ДО рендера React для максимальной скорости
 // Это позволяет браузеру начать загрузку фона еще до того, как React загрузится
+/* ОРИГИНАЛЬНЫЙ КОД - ЗАКОММЕНТИРОВАН
 if (typeof window !== 'undefined') {
   const preloadLink = document.createElement('link');
   preloadLink.rel = 'preload';
@@ -24,6 +26,7 @@ if (typeof window !== 'undefined') {
     img.fetchPriority = 'high';
   }
 }
+*/
 
 // Глобальная обработка ошибок - скрываем 404 ошибки от пользователя
 window.addEventListener('error', (event) => {

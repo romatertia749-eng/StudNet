@@ -56,8 +56,14 @@ function App() {
   const { isReady } = useWebApp();
   const [backgroundLoaded, setBackgroundLoaded] = useState(false);
 
+  // ВРЕМЕННО ОТКЛЮЧЕНО: загрузка фонового изображения (9MB - может вызывать проблемы производительности)
   // Агрессивная предзагрузка фонового изображения
   useEffect(() => {
+    // ВРЕМЕННО: не загружаем фон для тестирования производительности
+    setBackgroundLoaded(false); // Всегда false - используем только градиент
+    return;
+    
+    /* ОРИГИНАЛЬНЫЙ КОД - ЗАКОММЕНТИРОВАН
     let isMounted = true;
     
     // Создаем изображение с максимальным приоритетом
@@ -101,6 +107,7 @@ function App() {
       isMounted = false;
       clearTimeout(timeoutId);
     };
+    */
   }, []);
 
   if (!isReady) {
@@ -117,7 +124,16 @@ function App() {
           position: 'relative',
         }}
       >
-        {/* Placeholder градиент пока грузится фон */}
+        {/* ВРЕМЕННО ОТКЛЮЧЕНО: фоновое изображение (9MB) - используем только градиент */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            zIndex: 0,
+          }}
+        />
+        
+        {/* ВРЕМЕННО ОТКЛЮЧЕНО: фоновое изображение
         {!backgroundLoaded && (
           <div 
             className="absolute inset-0"
@@ -128,7 +144,6 @@ function App() {
           />
         )}
         
-        {/* Фоновое изображение с максимальной оптимизацией загрузки */}
         <img
           src="/assets/stuff/background.jpg"
           alt=""
@@ -138,11 +153,8 @@ function App() {
             transition: backgroundLoaded ? 'opacity 0.1s ease-in' : 'none',
             zIndex: 0,
             willChange: 'opacity',
-            // Оптимизация рендеринга
             imageRendering: 'auto',
-            // Принудительное использование GPU для плавности
             transform: 'translateZ(0)',
-            // Отключаем сглаживание для более быстрого рендеринга
             backfaceVisibility: 'hidden',
           }}
           loading="eager"
@@ -150,6 +162,7 @@ function App() {
           decoding="async"
           crossOrigin="anonymous"
         />
+        */}
         
         {/* Затемнение для лучшей читаемости контента */}
         <div 

@@ -9,6 +9,16 @@ const OnboardingMainGoal = () => {
   const navigate = useNavigate();
   const { setMainGoal, setHasCompletedOnboarding } = useWebApp();
 
+  // ВРЕМЕННО ОТКЛЮЧЕНО: онбординг - сразу редиректим на анкеты
+  useEffect(() => {
+    setHasCompletedOnboarding(true);
+    localStorage.setItem('maxnet_onboarding_completed', 'true');
+    navigate('/profiles', { replace: true });
+  }, [navigate, setHasCompletedOnboarding]);
+
+  return null; // Не показываем онбординг
+
+  /* ОРИГИНАЛЬНЫЙ КОД - ЗАКОММЕНТИРОВАН
   useEffect(() => {
     // Оптимизация: используем requestAnimationFrame для плавной прокрутки
     requestAnimationFrame(() => {
