@@ -463,7 +463,7 @@ const ProfileForm = () => {
           fetchError.message.includes('Network request failed')
         )) {
           console.error('⚠️ CORS or Network Error detected');
-          throw new Error(`Ошибка сети или CORS. Проверьте:\n1. Бэкенд доступен: ${apiUrl}\n2. CORS настроен правильно в Koyeb\n3. FRONTEND_URL в Koyeb настроен на stud-net.vercel.app`);
+          throw new Error(`Ошибка сети или CORS. Проверьте:\n1. Бэкенд доступен: ${apiUrl}\n2. CORS настроен правильно в Koyeb\n3. FRONTEND_URL в Koyeb настроен на ваш Netlify URL`);
         }
         
         if (fetchError.name === 'AbortError') {

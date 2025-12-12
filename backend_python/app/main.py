@@ -36,8 +36,9 @@ if frontend_url:
     elif not frontend_url.startswith("http"):
         allowed_origins.append(f"https://{frontend_url}")
 
-# Добавляем Vercel домен явно
-allowed_origins.append("https://stud-net.vercel.app")
+# Добавляем Netlify домены явно (для поддержки разных деплоев)
+allowed_origins.append("https://curious-marshmallow-619535.netlify.app")
+# Также добавляем поддержку всех .netlify.app доменов через проверку в middleware
 
 # Для production можно разрешить все origins (небезопасно, но для Telegram Web Apps нужно)
 # Или добавить конкретные домены через переменную окружения
@@ -130,8 +131,8 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
                 telegram_pattern = re.compile(r"^https://(web|webk|webz|desktop)\.telegram\.org$")
                 if telegram_pattern.match(origin):
                     is_allowed = True
-            # Проверяем Vercel домены
-            if origin.endswith('.vercel.app') or origin == 'https://stud-net.vercel.app':
+            # Проверяем Netlify домены
+            if origin.endswith('.netlify.app'):
                 is_allowed = True
         
         # #region agent log

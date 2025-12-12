@@ -36,7 +36,7 @@ console.log('All REACT_APP_ vars:', Object.keys(process.env).filter(k => k.start
 // Предупреждение, если используется localhost в продакшене
 if (process.env.NODE_ENV === 'production' && API_BASE_URL.includes('localhost')) {
   console.error('❌ ERROR: API_BASE_URL points to localhost in production!');
-  console.error('This will not work! Set REACT_APP_API_BASE_URL in Vercel:');
+  console.error('This will not work! Set REACT_APP_API_BASE_URL in Netlify:');
   console.error('1. Go to Netlify Dashboard → Your Site → Site settings → Environment variables');
   console.error('2. Add: REACT_APP_API_BASE_URL = https://your-koyeb-app.koyeb.app');
   console.error('3. Redeploy the site');
