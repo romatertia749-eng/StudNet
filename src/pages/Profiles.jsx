@@ -1216,13 +1216,18 @@ const Profiles = () => {
         {/* Карточка профиля с плавной анимацией появления через Framer Motion */}
         {/* GLOW-АНИМАЦИЯ: после завершения эффекта карточка появляется с неоновой подсветкой */}
         <AnimatePresence mode="wait">
-          {currentProfile && (
+              {currentProfile && (
             (activeTab === 'all' && !loading) || 
             (activeTab === 'incoming' && !loadingIncoming && incomingLikes.length > 0)
           ) && (
             <motion.div
               key={currentProfile.id}
               ref={cardRef}
+              // #region agent log
+              onAnimationStart={() => {
+                fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:cardAnimation:start',message:'Card animation starting',data:{profileId:currentProfile.id,activeTab,hasPhotos:currentProfile.photos?.length>0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+              }}
+              // #endregion
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
@@ -1349,6 +1354,9 @@ const Profiles = () => {
                           decoding="async"
                           style={{ willChange: 'auto' }}
                           onError={(e) => {
+                            // #region agent log
+                            fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:imageError',message:'Image load error',data:{src:photos[0],profileId:currentProfile.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                            // #endregion
                             console.error('[Profiles] Image load error:', {
                               src: photos[0],
                               photo_url: currentProfile.photo_url,
@@ -1356,7 +1364,11 @@ const Profiles = () => {
                             });
                             e.target.style.display = 'none';
                           }}
-                          onLoad={() => {
+                          onLoad={(e) => {
+                            // #region agent log
+                            const imgLoadTime = performance.now();
+                            fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:imageLoad',message:'Image loaded',data:{src:photos[0],profileId:currentProfile.id,imgWidth:e.target.naturalWidth,imgHeight:e.target.naturalHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                            // #endregion
                             console.log('[Profiles] Image loaded successfully:', photos[0]);
                           }}
                         />

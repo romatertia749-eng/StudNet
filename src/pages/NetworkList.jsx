@@ -141,6 +141,10 @@ const NetworkList = () => {
         const timeoutId = setTimeout(() => controller.abort(), 8000);
         
         const url = `${API_ENDPOINTS.MATCHES}?user_id=${userId}`;
+        // #region agent log
+        const networkFetchStartTime = Date.now();
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:networkStart',message:'Network fetch starting (no auth)',data:{url,requestId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         const response = await fetch(url, {
           signal: controller.signal
         });
@@ -148,7 +152,8 @@ const NetworkList = () => {
         // #region agent log
         const fetchEndTime = Date.now();
         const fetchDuration = fetchEndTime - fetchStartTime;
-        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:response',message:'Matches fetch response received',data:{status:response.status,ok:response.ok,durationMs:fetchDuration},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        const networkDuration = fetchEndTime - networkFetchStartTime;
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:response',message:'Matches fetch response received',data:{status:response.status,ok:response.ok,durationMs:fetchDuration,networkDurationMs:networkDuration},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
         
         clearTimeout(timeoutId);

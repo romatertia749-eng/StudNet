@@ -116,6 +116,9 @@ export const WebAppProvider = ({ children }) => {
           const authUrl = `${API_ENDPOINTS.AUTH || 'http://localhost:8080/api/auth'}`;
           console.log('Attempting authentication to:', authUrl);
           const authStartTime = Date.now();
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'WebAppContext.js:auth:requestStart',message:'Authentication request starting',data:{authUrl,hasInitData:!!initData,initDataLength:initData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+          // #endregion
           fetch(authUrl, {
             method: 'POST',
             headers: {
@@ -124,6 +127,10 @@ export const WebAppProvider = ({ children }) => {
             }
           })
           .then(response => {
+            // #region agent log
+            const authResponseTime = Date.now() - authStartTime;
+            fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'WebAppContext.js:auth:response',message:'Authentication response received',data:{status:response.status,ok:response.ok,durationMs:authResponseTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
             console.log('Auth response status:', response.status);
             if (response.ok) {
               return response.json();
