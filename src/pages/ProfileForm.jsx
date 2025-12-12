@@ -11,7 +11,7 @@ import { checkBackendHealth } from '../utils/backendCheck';
 import BackendStatus from '../components/BackendStatus';
 
 const ProfileForm = () => {
-  const { userInfo, isReady, setHasCompletedProfile } = useWebApp();
+  const { userInfo, isReady, setHasCompletedProfile, setHasCompletedOnboarding } = useWebApp();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -511,6 +511,9 @@ const ProfileForm = () => {
         // Если это создание нового профиля, переходим на выбор цели
         if (!isEditing) {
           setHasCompletedProfile(true);
+          // Принудительно помечаем онбординг как завершенный
+          setHasCompletedOnboarding(true);
+          localStorage.setItem('maxnet_onboarding_completed', 'true');
           // navigate('/onboarding-main-goal'); // ВРЕМЕННО ОТКЛЮЧЕНО
           navigate('/profiles', { replace: true }); // Вместо онбординга сразу на анкеты
         } else {

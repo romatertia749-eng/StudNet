@@ -7,8 +7,14 @@ import { API_ENDPOINTS } from '../config/api';
 
 const Home = () => {
   const navigate = useNavigate();
-  const { hasCompletedProfile, setHasCompletedProfile, userInfo } = useWebApp();
+  const { hasCompletedProfile, setHasCompletedProfile, setHasCompletedOnboarding, userInfo } = useWebApp();
   const [isCheckingProfile, setIsCheckingProfile] = useState(true);
+  
+  // ВРЕМЕННО ОТКЛЮЧЕНО: автоматически помечаем онбординг как завершенный
+  useEffect(() => {
+    setHasCompletedOnboarding(true);
+    localStorage.setItem('maxnet_onboarding_completed', 'true');
+  }, [setHasCompletedOnboarding]);
 
   useEffect(() => {
     const checkProfileExists = async () => {
@@ -70,8 +76,12 @@ const Home = () => {
   
   // Вместо онбординга сразу редиректим на анкеты
   useEffect(() => {
+    // Принудительно устанавливаем онбординг как завершенный
+    setHasCompletedOnboarding(true);
+    localStorage.setItem('maxnet_onboarding_completed', 'true');
+    // Редирект на анкеты
     navigate('/profiles', { replace: true });
-  }, [navigate]);
+  }, [navigate, setHasCompletedOnboarding]);
   
   return null; // Пока идет редирект
 };

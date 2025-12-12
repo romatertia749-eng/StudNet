@@ -9,7 +9,7 @@ import ProfileForm from './pages/ProfileForm';
 import Profiles from './pages/Profiles';
 import UserCard from './pages/UserCard';
 import NetworkList from './pages/NetworkList';
-import OnboardingMainGoal from './components/OnboardingMainGoal';
+// import OnboardingMainGoal from './components/OnboardingMainGoal'; // ВРЕМЕННО ОТКЛЮЧЕНО
 
 function AppContent() {
   const location = useLocation();
@@ -38,7 +38,9 @@ function AppContent() {
           <Route path="/home" element={<Home />} />
           <Route path="/welcome" element={<Home />} />
           <Route path="/profile/edit" element={<ProfileForm />} />
-          <Route path="/onboarding-main-goal" element={<OnboardingMainGoal />} />
+          {/* ВРЕМЕННО ОТКЛЮЧЕНО: онбординг с целями */}
+          {/* <Route path="/onboarding-main-goal" element={<OnboardingMainGoal />} /> */}
+          <Route path="/onboarding-main-goal" element={<Navigate to="/profiles" replace />} />
           <Route path="/profiles" element={<Profiles />} />
           <Route path="/profiles/:id" element={<UserCard />} />
           <Route path="/network" element={<NetworkList />} />
