@@ -2,6 +2,7 @@ name: networking-app-backend
 type: web
 build:
   type: buildpack
+  buildpack: heroku/python
 run:
   # Все переменные окружения настраиваются через Koyeb Dashboard
   # Settings → Environment Variables

@@ -77,7 +77,7 @@ MatchCard.displayName = 'MatchCard';
 
 const NetworkList = () => {
   const navigate = useNavigate();
-  const { setMatchedProfiles: setContextMatchedProfiles, updateConnectsCount } = useMatches();
+  const { setMatchedProfiles: setContextMatchedProfiles } = useMatches();
   const { userInfo, isReady } = useWebApp();
   const [matchedProfiles, setMatchedProfiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -230,7 +230,7 @@ const NetworkList = () => {
         controller.abort();
       }
     };
-  }, [isReady, userInfo?.id]); // Убрали setContextMatchedProfiles и используем только userInfo?.id
+  }, [isReady, userInfo?.id, setContextMatchedProfiles]);
 
   // Мемоизированные обработчики для предотвращения пересоздания при каждом рендере
   const handleViewProfile = useCallback((id) => {

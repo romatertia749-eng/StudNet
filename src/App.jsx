@@ -9,7 +9,6 @@ import ProfileForm from './pages/ProfileForm';
 import Profiles from './pages/Profiles';
 import UserCard from './pages/UserCard';
 import NetworkList from './pages/NetworkList';
-import NotFound from './pages/NotFound';
 import OnboardingMainGoal from './components/OnboardingMainGoal';
 
 function App() {

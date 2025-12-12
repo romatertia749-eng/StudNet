@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWebApp } from '../contexts/WebAppContext';
 import { useMatches } from '../contexts/MatchContext';
-import { API_ENDPOINTS } from '../config/api';
 import HeaderConnectsBadge from './HeaderConnectsBadge';
 
 const Header = () => {

@@ -11,7 +11,6 @@ import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
 import { fetchWithAuth } from '../utils/api';
 
 const Profiles = () => {
-  const navigate = useNavigate();
   const { addMatch } = useMatches();
   const { userInfo, isReady } = useWebApp();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -61,7 +60,8 @@ const Profiles = () => {
   // Оптимизация: RAF для плавности touch-событий (предотвращает блокировку скролла)
   const rafId = useRef(null);
 
-  // Моковые данные для fallback
+  // Моковые данные для fallback (закомментировано, не используется)
+  /*
   const getMockProfiles = () => [
     {
       id: 1,
@@ -152,6 +152,7 @@ const Profiles = () => {
       photos: [],
     },
   ];
+  */
 
   // Убрана блокирующая проверка профиля - загрузка происходит сразу
 
@@ -295,6 +296,7 @@ const Profiles = () => {
       setIncomingLikes([]); // Очищаем старые данные сразу, чтобы не показывать их
       fetchIncomingLikes();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isReady, userInfo?.id]);
 
   // Загрузка профилей с бэкенда
@@ -513,7 +515,7 @@ const Profiles = () => {
             error.message.includes('NetworkError') ||
             error.message.includes('Network request failed')
           )) {
-            alert(`Ошибка сети: Failed to Fetch\n\nВозможные причины:\n1. Бэкенд недоступен: ${url}\n2. Проблема с CORS\n3. Туннель Cloudflare не работает\n\nПроверьте консоль браузера (F12) для деталей.`);
+            alert(`Ошибка сети: Failed to Fetch\n\nВозможные причины:\n1. Бэкенд недоступен: ${url}\n2. Проблема с CORS - проверьте FRONTEND_URL в Koyeb\n3. Неправильная настройка переменных окружения\n\nПроверьте консоль браузера (F12) для деталей.`);
           } else {
             alert('Ошибка сети: Failed to Fetch\n\nНе удалось подключиться к серверу. Проверьте:\n1. Запущен ли бэкенд\n2. Правильно ли настроен REACT_APP_API_BASE_URL\n3. Доступен ли сервер по адресу: ' + API_ENDPOINTS.PROFILES);
           }
@@ -538,6 +540,7 @@ const Profiles = () => {
         controller.abort();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, userInfo?.id, activeTab, selectedCity, selectedUniversity, selectedInterests]);
 
   // УБРАНА фильтрация на фронтенде - фильтры применяются только на бэкенде
@@ -601,6 +604,7 @@ const Profiles = () => {
       setCurrentIndex(0);
       setSwipedProfiles([]); // Очищаем свайпы при загрузке новых профилей
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allProfiles.length]);
 
   useEffect(() => {
@@ -673,7 +677,7 @@ const Profiles = () => {
           });
           
           if (response.ok) {
-            const data = await response.json();
+            await response.json();
             isMatched = true; // При accept всегда мэтч
             // Удаляем из входящих
             setIncomingLikes(prev => prev.filter(p => p.id !== currentProfile.id));

@@ -30,6 +30,14 @@ allowed_origins = [
 frontend_url = os.getenv("FRONTEND_URL")
 if frontend_url:
     allowed_origins.append(frontend_url)
+    # Также добавляем без протокола, если указан с протоколом
+    if frontend_url.startswith("https://"):
+        allowed_origins.append(frontend_url)
+    elif not frontend_url.startswith("http"):
+        allowed_origins.append(f"https://{frontend_url}")
+
+# Добавляем Vercel домен явно
+allowed_origins.append("https://stud-net.vercel.app")
 
 # Для production можно разрешить все origins (небезопасно, но для Telegram Web Apps нужно)
 # Или добавить конкретные домены через переменную окружения
@@ -83,6 +91,32 @@ app.add_middleware(TrailingSlashMiddleware)
 class CustomCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         origin = request.headers.get("origin")
+        method = request.method
+        path = request.url.path
+        
+        # #region agent log
+        import json
+        log_data = {
+            "location": "main.py:84",
+            "message": "CORS middleware check",
+            "data": {
+                "origin": origin,
+                "method": method,
+                "path": path,
+                "allowed_origins": allowed_origins,
+                "is_production": is_production
+            },
+            "timestamp": int(__import__('time').time() * 1000),
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "C"
+        }
+        try:
+            with open("c:\\Users\\Lenovo\\max-networking-app\\.cursor\\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps(log_data) + "\n")
+        except:
+            pass
+        # #endregion
         
         # Проверяем, разрешен ли origin
         is_allowed = False
@@ -96,6 +130,30 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
                 telegram_pattern = re.compile(r"^https://(web|webk|webz|desktop)\.telegram\.org$")
                 if telegram_pattern.match(origin):
                     is_allowed = True
+            # Проверяем Vercel домены
+            if origin.endswith('.vercel.app') or origin == 'https://stud-net.vercel.app':
+                is_allowed = True
+        
+        # #region agent log
+        log_data2 = {
+            "location": "main.py:108",
+            "message": "CORS decision",
+            "data": {
+                "origin": origin,
+                "is_allowed": is_allowed,
+                "method": method
+            },
+            "timestamp": int(__import__('time').time() * 1000),
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "C"
+        }
+        try:
+            with open("c:\\Users\\Lenovo\\max-networking-app\\.cursor\\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps(log_data2) + "\n")
+        except:
+            pass
+        # #endregion
         
         # Если origin разрешен, добавляем CORS заголовки
         response = await call_next(request)

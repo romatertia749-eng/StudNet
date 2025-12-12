@@ -73,7 +73,7 @@ export const checkBackendHealth = async () => {
       return {
         available: false,
         url: healthUrl,
-        error: `Не удалось подключиться к ${healthUrl}.\n\nВозможные причины:\n1. Бэкенд не запущен\n2. Неправильный URL: ${apiBaseUrl}\n3. Проблемы с CORS\n4. Cloudflare Tunnel недоступен\n5. Блокировка файрволом`,
+        error: `Не удалось подключиться к ${healthUrl}.\n\nВозможные причины:\n1. Бэкенд не запущен\n2. Неправильный URL: ${apiBaseUrl}\n3. Проблемы с CORS - проверьте FRONTEND_URL в Koyeb\n4. Неправильная настройка переменных окружения\n5. Блокировка файрволом`,
       };
     } else {
       return {

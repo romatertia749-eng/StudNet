@@ -37,7 +37,6 @@ const ProfileForm = () => {
 
   const [errors, setErrors] = useState({});
   const [showBackendStatus, setShowBackendStatus] = useState(false);
-  const [backendError, setBackendError] = useState(null);
 
   // Загрузка существующего профиля
   useEffect(() => {
@@ -320,7 +319,7 @@ const ProfileForm = () => {
     setLoading(true);
     
     // Определяем apiUrl в начале функции, чтобы он был доступен во всех блоках
-    const apiUrl = API_ENDPOINTS.PROFILES;
+    const apiUrl = API_ENDPOINTS.PROFILES || '';
     
     // Проверяем доступность API перед отправкой
     if (!apiUrl) {
@@ -414,9 +413,13 @@ const ProfileForm = () => {
 
       let response;
       try {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProfileForm.jsx:416',message:'Sending profile request',data:{url:apiUrl,apiBaseUrl:process.env.REACT_APP_API_BASE_URL,origin:window.location.origin,method:'POST'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         console.log('=== SENDING PROFILE REQUEST ===');
         console.log('Full URL:', apiUrl);
         console.log('API_BASE_URL:', process.env.REACT_APP_API_BASE_URL);
+        console.log('Origin:', window.location.origin);
         console.log('Method: POST');
         console.log('Body type: FormData');
         console.log('Is editing:', isEditing);
@@ -432,16 +435,23 @@ const ProfileForm = () => {
           // НЕ добавляем Authorization здесь - это FormData, токен не нужен для создания/обновления профиля
         });
         const endTime = Date.now();
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProfileForm.jsx:434',message:'Response received',data:{status:response.status,ok:response.ok,headers:Object.fromEntries(response.headers.entries()),time:endTime-startTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         console.log(`Fetch completed in ${endTime - startTime}ms`);
         clearTimeout(timeoutId);
       } catch (fetchError) {
         clearTimeout(timeoutId);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProfileForm.jsx:437',message:'Fetch error caught',data:{errorName:fetchError.name,errorMessage:fetchError.message,url:apiUrl,origin:window.location.origin,isCorsError:fetchError.message&&(fetchError.message.includes('CORS')||fetchError.message.includes('Failed to fetch'))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         console.error('=== FETCH ERROR DETAILS ===');
         console.error('Error name:', fetchError.name);
         console.error('Error message:', fetchError.message);
         console.error('Error stack:', fetchError.stack);
         console.error('Full error:', fetchError);
         console.error('API URL was:', apiUrl);
+        console.error('Origin:', window.location.origin);
         console.error('Request method: POST');
         console.error('Request mode: cors');
         
@@ -453,7 +463,7 @@ const ProfileForm = () => {
           fetchError.message.includes('Network request failed')
         )) {
           console.error('⚠️ CORS or Network Error detected');
-          throw new Error(`Ошибка сети или CORS. Проверьте:\n1. Бэкенд доступен: ${apiUrl}\n2. CORS настроен правильно\n3. Туннель Cloudflare работает`);
+          throw new Error(`Ошибка сети или CORS. Проверьте:\n1. Бэкенд доступен: ${apiUrl}\n2. CORS настроен правильно в Koyeb\n3. FRONTEND_URL в Koyeb настроен на stud-net.vercel.app`);
         }
         
         if (fetchError.name === 'AbortError') {
@@ -579,7 +589,7 @@ const ProfileForm = () => {
           error.message.includes('NetworkError') ||
           error.message.includes('Network request failed')
         )) {
-          errorMessage = `Ошибка сети: Failed to Fetch\n\nВозможные причины:\n1. Бэкенд недоступен: ${API_ENDPOINTS.PROFILES}\n2. Проблема с CORS\n3. Туннель Cloudflare не работает\n\nПроверьте консоль браузера (F12) для деталей.`;
+          errorMessage = `Ошибка сети: Failed to Fetch\n\nВозможные причины:\n1. Бэкенд недоступен: ${API_ENDPOINTS.PROFILES}\n2. Проблема с CORS - проверьте FRONTEND_URL в Koyeb\n3. Неправильная настройка переменных окружения\n\nПроверьте консоль браузера (F12) для деталей.`;
         } else {
           errorMessage = `Не удалось подключиться к серверу. Проверьте, что бэкенд запущен и доступен по адресу: ${API_ENDPOINTS.PROFILES}\n\nПроверьте консоль браузера (F12) для деталей.`;
         }
