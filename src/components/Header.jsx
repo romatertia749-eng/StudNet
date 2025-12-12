@@ -3,12 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import { useWebApp } from '../contexts/WebAppContext';
 import { useMatches } from '../contexts/MatchContext';
 import HeaderConnectsBadge from './HeaderConnectsBadge';
+import DebugLogs from './DebugLogs';
+import { getLogs } from '../utils/debugLog';
 
 const Header = () => {
   const navigate = useNavigate();
   const { userInfo, isReady } = useWebApp();
   const { updateConnectsCount } = useMatches();
   const [logoHeight, setLogoHeight] = useState('76.8px');
+  const [showDebugLogs, setShowDebugLogs] = useState(false);
+  const [logsCount, setLogsCount] = useState(0);
+  
+  useEffect(() => {
+    const updateLogsCount = () => {
+      setLogsCount(getLogs().length);
+    };
+    updateLogsCount();
+    const interval = setInterval(updateLogsCount, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!isReady || !userInfo?.id) return;
@@ -69,7 +82,23 @@ const Header = () => {
 
         <div className="flex items-center gap-2 flex-shrink-0">
           <HeaderConnectsBadge />
+          <button
+            onClick={() => setShowDebugLogs(true)}
+            className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded text-gray-700 relative"
+            title="Debug Logs"
+          >
+            🐛 Debug
+            {logsCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {logsCount > 99 ? '99+' : logsCount}
+              </span>
+            )}
+          </button>
         </div>
+        
+        {showDebugLogs && (
+          <DebugLogs onClose={() => setShowDebugLogs(false)} />
+        )}
       </div>
     </header>
   );
