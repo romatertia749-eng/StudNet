@@ -1,7 +1,18 @@
 // В Create React App переменные окружения должны начинаться с REACT_APP_
 // Они встраиваются в код во время сборки (build time), не runtime!
 // В Vercel: Settings → Environment Variables → добавить REACT_APP_API_BASE_URL
-let API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+let API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
+// Fallback для production: если переменная не установлена, используем Koyeb URL
+if (!API_BASE_URL || API_BASE_URL === 'undefined' || API_BASE_URL === '') {
+  if (process.env.NODE_ENV === 'production') {
+    // В production используем Koyeb URL по умолчанию
+    API_BASE_URL = 'https://unique-reptile-dk-it1-69845c61.koyeb.app';
+  } else {
+    // В development используем localhost
+    API_BASE_URL = 'http://localhost:8080';
+  }
+}
 
 // Нормализация URL: добавляем протокол, если отсутствует
 if (API_BASE_URL && !API_BASE_URL.startsWith('http://') && !API_BASE_URL.startsWith('https://')) {
