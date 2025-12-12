@@ -118,7 +118,6 @@ def get_available_profiles(
     step_start = time.time()
     matched_user_ids = set()
     # Один запрос вместо двух - используем OR для поиска мэтчей где user_id в user1_id или user2_id
-    from sqlalchemy import or_
     matches = db.query(Match).filter(
         or_(Match.user1_id == user_id, Match.user2_id == user_id)
     ).all()
@@ -257,7 +256,9 @@ def get_available_profiles(
     
     total_duration = (time.time() - query_start_time) * 1000
     print(f"[get_available_profiles] ===== RETURNING ===== content.length={len(profiles)}, total_elements={total}")
-    print(f"[get_available_profiles] ⏱️ QUERY TIMING: total={total_duration:.2f}ms, swiped_query={swiped_duration:.2f}ms, matches_query={matches_duration:.2f}ms, count={count_duration:.2f}ms, fetch={fetch_duration:.2f}ms")
+    # matches_duration может быть не определена, если matches запрос не выполнился
+    matches_duration_str = f"{matches_duration:.2f}ms" if 'matches_duration' in locals() else "N/A"
+    print(f"[get_available_profiles] ⏱️ QUERY TIMING: total={total_duration:.2f}ms, swiped_query={swiped_duration:.2f}ms, matches_query={matches_duration_str}, count={count_duration:.2f}ms, fetch={fetch_duration:.2f}ms")
     
     # #region agent log
     try:
