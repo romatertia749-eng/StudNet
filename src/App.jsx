@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useWebApp } from './contexts/WebAppContext';
 import Loader from './components/Loader';
@@ -10,6 +10,45 @@ import Profiles from './pages/Profiles';
 import UserCard from './pages/UserCard';
 import NetworkList from './pages/NetworkList';
 import OnboardingMainGoal from './components/OnboardingMainGoal';
+
+function AppContent() {
+  const location = useLocation();
+  
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:routeChange',message:'Route changed',data:{pathname:location.pathname,search:location.search},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+  }, [location.pathname]);
+  // #endregion
+  
+  return (
+    <>
+      <Header />
+      <main 
+        className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto -webkit-overflow-scrolling-touch pb-20 md:pb-20 relative"
+        style={{
+          zIndex: 2,
+          willChange: 'scroll-position',
+          transform: 'translateZ(0)',
+          contain: 'layout style paint',
+          paddingBottom: '4rem',
+        }}
+      >
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/welcome" element={<Home />} />
+          <Route path="/profile/edit" element={<ProfileForm />} />
+          <Route path="/onboarding-main-goal" element={<OnboardingMainGoal />} />
+          <Route path="/profiles" element={<Profiles />} />
+          <Route path="/profiles/:id" element={<UserCard />} />
+          <Route path="/network" element={<NetworkList />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+      <BottomNav />
+    </>
+  );
+}
 
 function App() {
   const { isReady } = useWebApp();
@@ -118,34 +157,7 @@ function App() {
             willChange: 'auto',
           }}
         />
-        <Header />
-        <main 
-          className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto -webkit-overflow-scrolling-touch pb-20 md:pb-20 relative"
-          style={{
-            zIndex: 2,
-            // Оптимизация для плавного скролла
-            willChange: 'scroll-position',
-            // Включаем аппаратное ускорение для прокручиваемого контента
-            transform: 'translateZ(0)',
-            // Предотвращаем лишние рефлоу
-            contain: 'layout style paint',
-            // Отступ снизу для fixed bottom nav (уменьшен на 20%)
-            paddingBottom: '4rem',
-          }}
-        >
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/welcome" element={<Home />} />
-            <Route path="/profile/edit" element={<ProfileForm />} />
-            <Route path="/onboarding-main-goal" element={<OnboardingMainGoal />} />
-            <Route path="/profiles" element={<Profiles />} />
-            <Route path="/profiles/:id" element={<UserCard />} />
-            <Route path="/network" element={<NetworkList />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-        <BottomNav />
+        <AppContent />
       </div>
     </Router>
   );

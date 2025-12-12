@@ -40,6 +40,12 @@ const ProfileForm = () => {
 
   // Загрузка существующего профиля
   useEffect(() => {
+    // #region agent log
+    const loadStartTime = Date.now();
+    const localStorageProfile = localStorage.getItem('mn_hasCompletedProfile');
+    fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProfileForm.jsx:loadProfile:start',message:'Starting profile load',data:{isReady,userId:userInfo?.id,localStorageProfile,isEditing},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+    // #endregion
+    
     if (!isReady || !userInfo?.id) {
       setLoadingProfile(false);
       return;
@@ -66,8 +72,15 @@ const ProfileForm = () => {
         if (!isMounted) return;
         console.log('Profile load response status:', response.status);
         
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProfileForm.jsx:loadProfile:response',message:'Profile load response',data:{status:response.status,ok:response.ok,loadDuration:Date.now()-loadStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+        // #endregion
+        
         if (response.ok) {
           const data = await response.json();
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProfileForm.jsx:loadProfile:success',message:'Profile loaded successfully',data:{profileId:data.id,hasName:!!data.name,loadDuration:Date.now()-loadStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+          // #endregion
           setIsEditing(true);
           setViewMode(true);
           
@@ -124,11 +137,16 @@ const ProfileForm = () => {
           });
         } else if (response.status === 404) {
           // Профиля нет - это нормально, оставляем форму пустой для создания
-          // Не логируем и не показываем ошибку пользователю
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProfileForm.jsx:loadProfile:404',message:'Profile not found (404)',data:{userId:userInfo.id,loadDuration:Date.now()-loadStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+          // #endregion
           setIsEditing(false);
         } else {
           if (!isMounted) return;
           // Другая ошибка - логируем только в консоль, не показываем пользователю
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProfileForm.jsx:loadProfile:error',message:'Profile load error',data:{status:response.status,userId:userInfo.id,loadDuration:Date.now()-loadStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+          // #endregion
           console.warn('Unexpected error loading profile:', response.status);
           setIsEditing(false);
         }

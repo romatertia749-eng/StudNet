@@ -6,6 +6,8 @@ from app.schemas import ProfileCreate
 from app.services.file_storage import store_file
 from fastapi import UploadFile
 import math
+import time
+import json
 
 def create_or_update_profile(
     db: Session,
@@ -60,10 +62,13 @@ def get_available_profiles(
     page: int = 0,
     size: int = 20
 ) -> dict:
+    query_start_time = time.time()
     print(f"[get_available_profiles] ===== START ===== user_id={user_id}, city={city}, university={university}, interests={interests}, page={page}, size={size}")
     
     # Находим текущий профиль
+    step_start = time.time()
     current_profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    step_duration = (time.time() - step_start) * 1000
     if not current_profile:
         print(f"[get_available_profiles] ❌ Current user {user_id} has no profile")
         return {
@@ -81,9 +86,11 @@ def get_available_profiles(
     # (лайк, пасс, любой свайп - все действия создают запись в Swipe)
     # ВАЖНО: учитываем только свайпы, которые сделал ТЕКУЩИЙ пользователь
     # НЕ учитываем свайпы, которые сделали ДРУГИЕ пользователи на текущего
+    step_start = time.time()
     swiped_records = db.query(Swipe.target_profile_id, Swipe.action).filter(
         Swipe.user_id == user_id
     ).distinct().all()
+    swiped_duration = (time.time() - step_start) * 1000
     swiped_profile_ids = [row[0] for row in swiped_records]
     print(f"[get_available_profiles] Swiped profile IDs (swipes made by user {user_id}): {swiped_profile_ids}")
     if swiped_records:
@@ -161,7 +168,9 @@ def get_available_profiles(
             #     query = query.filter(or_(*conditions))
     
     # Подсчет общего количества
+    step_start = time.time()
     total = query.count()
+    count_duration = (time.time() - step_start) * 1000
     print(f"[get_available_profiles] Total profiles before pagination: {total}")
     
     if total == 0:
@@ -169,7 +178,9 @@ def get_available_profiles(
         print(f"[get_available_profiles] Query filters applied: user_id!={user_id}, excluded_ids={excluded_profile_ids}, city={city}, university={university}")
     
     # Пагинация
+    step_start = time.time()
     profiles = query.offset(page * size).limit(size).all()
+    fetch_duration = (time.time() - step_start) * 1000
     
     # Логируем найденные профили
     print(f"[get_available_profiles] ===== RESULT ===== Found {len(profiles)} profiles after all filters:")
@@ -217,7 +228,36 @@ def get_available_profiles(
         "number": page
     }
     
+    total_duration = (time.time() - query_start_time) * 1000
     print(f"[get_available_profiles] ===== RETURNING ===== content.length={len(profiles)}, total_elements={total}")
+    print(f"[get_available_profiles] ⏱️ QUERY TIMING: total={total_duration:.2f}ms, swiped_query={swiped_duration:.2f}ms, count={count_duration:.2f}ms, fetch={fetch_duration:.2f}ms")
+    
+    # #region agent log
+    try:
+        log_data = {
+            "location": "profile_service.py:get_available_profiles",
+            "message": "Query completed",
+            "data": {
+                "userId": user_id,
+                "totalDurationMs": round(total_duration, 2),
+                "swipedQueryMs": round(swiped_duration, 2),
+                "countMs": round(count_duration, 2),
+                "fetchMs": round(fetch_duration, 2),
+                "resultCount": len(profiles),
+                "totalElements": total,
+                "swipedCount": len(swiped_profile_ids)
+            },
+            "timestamp": int(time.time() * 1000),
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "E"
+        }
+        with open(r"c:\Users\Lenovo\max-networking-app\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_data, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print(f"[get_available_profiles] Failed to write log: {e}")
+    # #endregion
+    
     return result
 
 def get_profile_by_id(db: Session, profile_id: int) -> Optional[Profile]:

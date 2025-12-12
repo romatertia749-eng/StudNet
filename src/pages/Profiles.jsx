@@ -21,6 +21,21 @@ const Profiles = () => {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [allProfiles, setAllProfiles] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:mount',message:'Profiles component mounted',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    return () => {
+      fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:unmount',message:'Profiles component unmounting',data:{swipedProfilesCount:swipedProfiles.length,allProfilesCount:allProfiles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    };
+  }, []);
+  // #endregion
+  
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:swipedProfiles',message:'swipedProfiles state changed',data:{count:swipedProfiles.length,ids:swipedProfiles.slice(0,10)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  }, [swipedProfiles.length]);
+  // #endregion
   // Убрана блокирующая проверка профиля
   const [showSwipeTutorial, setShowSwipeTutorial] = useState(false);
   
@@ -298,6 +313,9 @@ const Profiles = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isReady, userInfo?.id]);
 
+  // Счетчик активных запросов для отслеживания накопления
+  const activeRequestsRef = useRef(0);
+  
   // Загрузка профилей с бэкенда
   useEffect(() => {
     // Не загружаем профили, пока WebApp не готов или нет user_id
@@ -315,8 +333,26 @@ const Profiles = () => {
     let controller = null;
     
     const fetchProfiles = async () => {
+      // #region agent log
+      activeRequestsRef.current += 1;
+      const requestId = activeRequestsRef.current;
+      fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:fetchProfiles:requestStart',message:'New fetch request started',data:{requestId,activeRequests:activeRequestsRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
+      
+      if (!isMounted) {
+        // #region agent log
+        activeRequestsRef.current -= 1;
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:fetchProfiles:requestCancelled',message:'Request cancelled - not mounted',data:{requestId,activeRequests:activeRequestsRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+        // #endregion
+        return;
+      }
       if (!isMounted) return;
       setLoading(true);
+      
+      // #region agent log
+      const fetchStartTime = Date.now();
+      fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:fetchProfiles:start',message:'Starting profiles fetch',data:{userId:userInfo?.id,existingProfilesCount:allProfiles.length,swipedCount:swipedProfiles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       
       console.log('[Profiles] ===== STARTING FETCH =====');
       console.log('[Profiles] isReady:', isReady);
@@ -349,6 +385,12 @@ const Profiles = () => {
           signal: controller.signal,
           mode: 'cors' // Явно указываем CORS режим
         });
+        
+        // #region agent log
+        const fetchEndTime = Date.now();
+        const fetchDuration = fetchEndTime - fetchStartTime;
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:fetchProfiles:response',message:'Profiles fetch response received',data:{status:response.status,ok:response.ok,durationMs:fetchDuration},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         
         console.log('[Profiles] ===== RESPONSE RECEIVED =====');
         
@@ -464,6 +506,9 @@ const Profiles = () => {
               }
             });
               console.log('[Profiles] Setting profiles:', processedProfiles.length);
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:fetchProfiles:setProfiles',message:'Setting allProfiles state',data:{newCount:processedProfiles.length,oldCount:allProfiles.length,swipedCountBefore:swipedProfiles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+              // #endregion
               setAllProfiles(processedProfiles);
               setCurrentIndex(0); // СБРАСЫВАЕМ ИНДЕКС
               setSwipedProfiles([]); // ОЧИЩАЕМ СВАЙПЫ
@@ -489,12 +534,23 @@ const Profiles = () => {
           alert(`Ошибка загрузки анкет: ${response.status}\n${errorText.substring(0, 200)}`);
         }
       } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:fetchProfiles:error',message:'Fetch error caught',data:{errorName:error.name,errorMessage:error.message,isAbortError:error.name==='AbortError',isMounted},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+        // #endregion
         console.error('[Profiles] ===== FETCH ERROR =====');
         console.error('[Profiles] Error name:', error.name);
         console.error('[Profiles] Error message:', error.message);
         console.error('[Profiles] Error stack:', error.stack);
-        if (!isMounted) return;
+        if (!isMounted) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:fetchProfiles:error:unmounted',message:'Error after unmount - request not cancelled',data:{errorName:error.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+          // #endregion
+          return;
+        }
         if (error.name === 'AbortError') {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:fetchProfiles:abortError',message:'AbortError - request was cancelled or timed out',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+          // #endregion
           console.warn('[Profiles] Request timeout');
           alert('Запрос превысил время ожидания. Проверьте подключение к интернету.');
         } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
@@ -524,6 +580,10 @@ const Profiles = () => {
         }
         setAllProfiles([]);
       } finally {
+        // #region agent log
+        activeRequestsRef.current = Math.max(0, activeRequestsRef.current - 1);
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:fetchProfiles:requestComplete',message:'Fetch request completed',data:{requestId,activeRequests:activeRequestsRef.current,isMounted},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+        // #endregion
         console.log('[Profiles] ===== FETCH COMPLETE =====');
         if (isMounted) {
           setLoading(false);
@@ -534,9 +594,15 @@ const Profiles = () => {
     fetchProfiles();
     
     return () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:fetchProfiles:cleanup',message:'Cleaning up fetchProfiles',data:{hasController:!!controller,isLoading:loading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
       isMounted = false;
       if (controller) {
         controller.abort();
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:fetchProfiles:abort',message:'AbortController.abort() called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+        // #endregion
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -717,6 +783,9 @@ const Profiles = () => {
       setSwipedProfiles(prev => {
         const newList = [...prev, currentProfile.id];
         console.log('[Profiles] Added to swipedProfiles:', currentProfile.id, 'Total swiped:', newList.length);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:handleLike:swiped',message:'Added profile to swipedProfiles',data:{profileId:currentProfile.id,newCount:newList.length,oldCount:prev.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         return newList;
       });
     }

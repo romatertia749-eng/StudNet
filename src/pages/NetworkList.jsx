@@ -87,6 +87,16 @@ const NetworkList = () => {
   // Используем useRef для отслеживания, загружались ли уже данные
   const hasLoadedRef = useRef(false);
   const lastUserIdRef = useRef(null);
+  const activeRequestsRef = useRef(0);
+  
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:mount',message:'NetworkList component mounted',data:{hasLoaded:hasLoadedRef.current,userId:userInfo?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    return () => {
+      fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:unmount',message:'NetworkList component unmounting',data:{matchedProfilesCount:matchedProfiles.length,activeRequests:activeRequestsRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    };
+  }, []);
+  // #endregion
 
   useEffect(() => {
     // Загружаем мэтчи сразу, не ждем проверку профиля
@@ -106,8 +116,25 @@ const NetworkList = () => {
     let controller = null;
 
     const fetchMatches = async () => {
-      if (!isMounted) return;
+      // #region agent log
+      activeRequestsRef.current += 1;
+      const requestId = activeRequestsRef.current;
+      fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:requestStart',message:'New fetch request started',data:{requestId,activeRequests:activeRequestsRef.current,userId,hasLoaded:hasLoadedRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
+      
+      if (!isMounted) {
+        // #region agent log
+        activeRequestsRef.current = Math.max(0, activeRequestsRef.current - 1);
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:requestCancelled',message:'Request cancelled - not mounted',data:{requestId,activeRequests:activeRequestsRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+        // #endregion
+        return;
+      }
       setLoading(true);
+      
+      // #region agent log
+      const fetchStartTime = Date.now();
+      fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:start',message:'Starting matches fetch',data:{requestId,userId,hasLoaded:hasLoadedRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       
       try {
         controller = new AbortController();
@@ -117,6 +144,12 @@ const NetworkList = () => {
         const response = await fetch(url, {
           signal: controller.signal
         });
+        
+        // #region agent log
+        const fetchEndTime = Date.now();
+        const fetchDuration = fetchEndTime - fetchStartTime;
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:response',message:'Matches fetch response received',data:{status:response.status,ok:response.ok,durationMs:fetchDuration},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         
         clearTimeout(timeoutId);
         
@@ -187,6 +220,9 @@ const NetworkList = () => {
           }).filter(match => match !== null);
           
           if (isMounted) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:setMatches',message:'Setting matchedProfiles state',data:{newCount:formattedMatches.length,oldCount:matchedProfiles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
             setMatchedProfiles(formattedMatches);
             // Обновляем контекст с мэтчами - это единственный источник данных
             if (formattedMatches.length > 0) {
@@ -203,8 +239,19 @@ const NetworkList = () => {
           }
         }
       } catch (error) {
-        if (!isMounted) return;
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:error',message:'Fetch error caught',data:{errorName:error.name,errorMessage:error.message,isAbortError:error.name==='AbortError',isMounted},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+        // #endregion
+        if (!isMounted) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:error:unmounted',message:'Error after unmount - request not cancelled',data:{errorName:error.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+          // #endregion
+          return;
+        }
         if (error.name === 'AbortError') {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:abortError',message:'AbortError - request was cancelled or timed out',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+          // #endregion
           console.warn('[NetworkList] Request timeout');
         } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
           console.error('[NetworkList] Network error - backend not reachable:', error);
@@ -216,6 +263,10 @@ const NetworkList = () => {
         hasLoadedRef.current = true;
         lastUserIdRef.current = userId;
       } finally {
+        // #region agent log
+        activeRequestsRef.current = Math.max(0, activeRequestsRef.current - 1);
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:requestComplete',message:'Fetch request completed',data:{requestId,activeRequests:activeRequestsRef.current,isMounted},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+        // #endregion
         if (isMounted) {
           setLoading(false);
         }
@@ -225,9 +276,15 @@ const NetworkList = () => {
     fetchMatches();
     
     return () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:cleanup',message:'Cleaning up fetchMatches',data:{hasController:!!controller,isLoading:loading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
       isMounted = false;
       if (controller) {
         controller.abort();
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NetworkList.jsx:fetchMatches:abort',message:'AbortController.abort() called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+        // #endregion
       }
     };
   }, [isReady, userInfo?.id, setContextMatchedProfiles]);

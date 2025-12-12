@@ -139,20 +139,21 @@ def store_file(file: UploadFile) -> str:
             if upload_result:
                 # Сначала проверяем, является ли это словарем
                 if isinstance(upload_result, dict):
-                    url = upload_result.get('url') or upload_result.get('URL') or upload_result.get('fileUrl') or upload_result.get('fileId')
+                    # Пробуем разные варианты ключей для URL
+                    url = (upload_result.get('url') or 
+                           upload_result.get('URL') or 
+                           upload_result.get('fileUrl') or
+                           upload_result.get('fileURL'))
+                    # Если нет прямого URL, но есть fileId, можем построить URL
+                    if not url and upload_result.get('fileId'):
+                        file_id = upload_result.get('fileId')
+                        if IMAGEKIT_URL_ENDPOINT:
+                            url = f"{IMAGEKIT_URL_ENDPOINT}/{upload_result.get('filePath', file_id)}"
                 else:
-                    # Пробуем получить через метод .json(), если это Response объект
-                    try:
-                        if hasattr(upload_result, 'json'):
-                            result_dict = upload_result.json()
-                            if isinstance(result_dict, dict):
-                                url = result_dict.get('url') or result_dict.get('URL') or result_dict.get('fileUrl') or result_dict.get('fileId')
-                    except (AttributeError, TypeError, ValueError):
-                        pass
-                    
                     # Если это объект, пробуем получить атрибуты через getattr (безопаснее чем hasattr)
-                    if not url:
-                        url = getattr(upload_result, 'url', None) or getattr(upload_result, 'fileUrl', None) or getattr(upload_result, 'fileId', None)
+                    url = (getattr(upload_result, 'url', None) or 
+                           getattr(upload_result, 'fileUrl', None) or
+                           getattr(upload_result, 'fileURL', None))
                     
                     # Если не получили URL, пробуем через response_metadata
                     if not url:
@@ -163,12 +164,41 @@ def store_file(file: UploadFile) -> str:
                         except (AttributeError, TypeError):
                             pass
                     
+                    # Пробуем получить через метод .json(), если это Response объект
+                    if not url:
+                        try:
+                            json_method = getattr(upload_result, 'json', None)
+                            if json_method and callable(json_method):
+                                result_dict = json_method()
+                                if isinstance(result_dict, dict):
+                                    url = (result_dict.get('url') or 
+                                           result_dict.get('URL') or 
+                                           result_dict.get('fileUrl') or
+                                           result_dict.get('fileURL'))
+                                    # Если нет прямого URL, но есть fileId, можем построить URL
+                                    if not url and result_dict.get('fileId'):
+                                        file_id = result_dict.get('fileId')
+                                        file_path = result_dict.get('filePath', file_id)
+                                        if IMAGEKIT_URL_ENDPOINT:
+                                            url = f"{IMAGEKIT_URL_ENDPOINT}/{file_path}"
+                        except (AttributeError, TypeError, ValueError):
+                            pass
+                    
                     # Если все еще нет URL, пробуем преобразовать объект в словарь через vars()
                     if not url:
                         try:
                             result_dict = vars(upload_result)
                             if isinstance(result_dict, dict):
-                                url = result_dict.get('url') or result_dict.get('URL') or result_dict.get('fileUrl') or result_dict.get('fileId')
+                                url = (result_dict.get('url') or 
+                                       result_dict.get('URL') or 
+                                       result_dict.get('fileUrl') or
+                                       result_dict.get('fileURL'))
+                                # Если нет прямого URL, но есть fileId, можем построить URL
+                                if not url and result_dict.get('fileId'):
+                                    file_id = result_dict.get('fileId')
+                                    file_path = result_dict.get('filePath', file_id)
+                                    if IMAGEKIT_URL_ENDPOINT:
+                                        url = f"{IMAGEKIT_URL_ENDPOINT}/{file_path}"
                         except (TypeError, AttributeError):
                             pass
         except Exception as e:

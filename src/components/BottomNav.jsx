@@ -16,6 +16,32 @@ const BottomNav = () => {
     }
     return location.pathname.startsWith(path);
   };
+  
+  const handleNavigate = (path) => {
+    // #region agent log
+    const navStartTime = Date.now();
+    const memoryBefore = performance.memory ? {
+      usedJSHeapSize: performance.memory.usedJSHeapSize,
+      totalJSHeapSize: performance.memory.totalJSHeapSize,
+      jsHeapSizeLimit: performance.memory.jsHeapSizeLimit
+    } : null;
+    fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BottomNav.jsx:navigate',message:'Navigation started',data:{from:location.pathname,to:path,memoryBefore},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    
+    navigate(path);
+    
+    // #region agent log
+    setTimeout(() => {
+      const memoryAfter = performance.memory ? {
+        usedJSHeapSize: performance.memory.usedJSHeapSize,
+        totalJSHeapSize: performance.memory.totalJSHeapSize,
+        jsHeapSizeLimit: performance.memory.jsHeapSizeLimit
+      } : null;
+      const navDuration = Date.now() - navStartTime;
+      fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BottomNav.jsx:navigate:complete',message:'Navigation completed',data:{from:location.pathname,to:path,navDuration,memoryAfter,memoryDelta:memoryBefore&&memoryAfter?{usedJSHeapSize:memoryAfter.usedJSHeapSize-memoryBefore.usedJSHeapSize,totalJSHeapSize:memoryAfter.totalJSHeapSize-memoryBefore.totalJSHeapSize}:null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    }, 100);
+    // #endregion
+  };
 
   return (
     <nav 
@@ -35,7 +61,7 @@ const BottomNav = () => {
         {navItems.map((item) => (
           <button
             key={item.path}
-            onClick={() => navigate(item.path)}
+            onClick={() => handleNavigate(item.path)}
             className={`flex flex-col items-center justify-center flex-1 px-2 rounded-xl transition-all ${
               isActive(item.path)
                 ? 'text-black bg-white/30 backdrop-blur-md'

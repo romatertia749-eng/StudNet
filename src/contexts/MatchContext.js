@@ -54,6 +54,9 @@ export const MatchProvider = ({ children }) => {
 
   const addMatch = (profile) => {
     const updated = [...matchedProfiles, profile];
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MatchContext.js:addMatch',message:'Adding match to context',data:{profileId:profile?.id,newCount:updated.length,oldCount:matchedProfiles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     setMatchedProfiles(updated);
     // НЕ обновляем connectsCount здесь - он обновится через updateConnectsCount
   };
