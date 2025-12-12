@@ -47,6 +47,10 @@ CREATE INDEX IF NOT EXISTS idx_swipes_user_id ON swipes(user_id);
 CREATE INDEX IF NOT EXISTS idx_swipes_target_profile_id ON swipes(target_profile_id);
 CREATE INDEX IF NOT EXISTS idx_swipes_action ON swipes(action);
 CREATE INDEX IF NOT EXISTS idx_swipes_created_at ON swipes(created_at);
+-- Составной индекс для частого запроса: поиск свайпов по user_id и target_profile_id
+CREATE INDEX IF NOT EXISTS idx_swipes_user_target ON swipes(user_id, target_profile_id);
+-- Составной индекс для поиска лайков на профиль
+CREATE INDEX IF NOT EXISTS idx_swipes_target_action ON swipes(target_profile_id, action) WHERE action = 'like';
 
 -- Таблица мэтчей (взаимные лайки)
 CREATE TABLE IF NOT EXISTS matches (
@@ -64,6 +68,29 @@ CREATE TABLE IF NOT EXISTS matches (
 CREATE INDEX IF NOT EXISTS idx_matches_user1_id ON matches(user1_id);
 CREATE INDEX IF NOT EXISTS idx_matches_user2_id ON matches(user2_id);
 CREATE INDEX IF NOT EXISTS idx_matches_matched_at ON matches(matched_at);
+-- Составной индекс для поиска мэтчей (ускоряет запросы с OR условием)
+CREATE INDEX IF NOT EXISTS idx_matches_user1_user2 ON matches(user1_id, user2_id);
+
+-- Таблица отметок полезности коннекта
+CREATE TABLE IF NOT EXISTS connection_feedbacks (
+    id BIGSERIAL PRIMARY KEY,
+    match_id BIGINT NOT NULL,
+    from_user_id BIGINT NOT NULL,
+    to_user_id BIGINT NOT NULL,
+    feedback_type VARCHAR(50) NOT NULL CHECK (feedback_type IN ('HELPED_ME', 'I_HELPED', 'PROJECT_TOGETHER', 'EVENT_TOGETHER')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(match_id, from_user_id, feedback_type),
+    FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+    FOREIGN KEY (from_user_id) REFERENCES profiles(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (to_user_id) REFERENCES profiles(user_id) ON DELETE CASCADE
+);
+
+-- Индексы для таблицы connection_feedbacks
+CREATE INDEX IF NOT EXISTS idx_connection_feedbacks_match_id ON connection_feedbacks(match_id);
+CREATE INDEX IF NOT EXISTS idx_connection_feedbacks_from_user_id ON connection_feedbacks(from_user_id);
+CREATE INDEX IF NOT EXISTS idx_connection_feedbacks_to_user_id ON connection_feedbacks(to_user_id);
+CREATE INDEX IF NOT EXISTS idx_connection_feedbacks_feedback_type ON connection_feedbacks(feedback_type);
+CREATE INDEX IF NOT EXISTS idx_connection_feedbacks_created_at ON connection_feedbacks(created_at);
 
 -- Функция для автоматического обновления updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -97,6 +124,7 @@ GROUP BY p.id, p.user_id, p.name;
 COMMENT ON TABLE profiles IS 'Профили пользователей';
 COMMENT ON TABLE swipes IS 'История свайпов (лайки и дизлайки)';
 COMMENT ON TABLE matches IS 'Мэтчи между пользователями (взаимные лайки)';
+COMMENT ON TABLE connection_feedbacks IS 'Отметки полезности коннекта между пользователями';
 
 COMMENT ON COLUMN profiles.interests IS 'JSON массив интересов: ["IT", "Дизайн"]';
 COMMENT ON COLUMN profiles.goals IS 'JSON массив целей: ["Совместная учёба", "Хакатон"]';
@@ -104,4 +132,5 @@ COMMENT ON COLUMN profiles.photo_url IS 'URL фотографии профиля
 COMMENT ON COLUMN swipes.action IS 'Действие: like (лайк) или pass (пропуск)';
 COMMENT ON COLUMN matches.user1_id IS 'ID первого пользователя (всегда меньше user2_id)';
 COMMENT ON COLUMN matches.user2_id IS 'ID второго пользователя (всегда больше user1_id)';
+
 

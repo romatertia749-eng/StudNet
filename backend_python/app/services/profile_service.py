@@ -93,38 +93,76 @@ def get_available_profiles(
     swiped_duration = (time.time() - step_start) * 1000
     swiped_profile_ids = [row[0] for row in swiped_records]
     print(f"[get_available_profiles] Swiped profile IDs (swipes made by user {user_id}): {swiped_profile_ids}")
-    if swiped_records:
-        print(f"[get_available_profiles] Swipe details:")
-        for target_id, action in swiped_records:
-            target_profile = db.query(Profile).filter(Profile.id == target_id).first()
-            if target_profile:
-                print(f"  - Swiped profile id={target_id}, user_id={target_profile.user_id}, name={target_profile.name}, action={action}")
+    # #region agent log
+    try:
+        log_data = {
+            "location": "profile_service.py:get_available_profiles",
+            "message": "Swiped profiles query completed",
+            "data": {
+                "userId": user_id,
+                "swipedCount": len(swiped_profile_ids),
+                "durationMs": round(swiped_duration, 2)
+            },
+            "timestamp": int(time.time() * 1000),
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "A"
+        }
+        with open(r"c:\Users\Lenovo\max-networking-app\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_data, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print(f"[get_available_profiles] Failed to write log: {e}")
+    # #endregion
     
-    # Проверяем, есть ли профиль брата в базе (для отладки)
-    all_other_profiles = db.query(Profile).filter(Profile.user_id != user_id).all()
-    print(f"[get_available_profiles] All other profiles in DB ({len(all_other_profiles)} total):")
-    for p in all_other_profiles:
-        print(f"  - Profile id={p.id}, user_id={p.user_id}, name={p.name}, city={p.city}, university={p.university}")
-    
-    # Получаем user_id пользователей, с которыми уже есть мэтч
+    # ОПТИМИЗАЦИЯ: Объединяем два запроса matches в один с OR условием
+    step_start = time.time()
     matched_user_ids = set()
-    matches_as_user1 = db.query(Match.user2_id).filter(Match.user1_id == user_id).all()
-    matches_as_user2 = db.query(Match.user1_id).filter(Match.user2_id == user_id).all()
-    for row in matches_as_user1:
-        matched_user_ids.add(row[0])
-    for row in matches_as_user2:
-        matched_user_ids.add(row[0])
+    # Один запрос вместо двух - используем OR для поиска мэтчей где user_id в user1_id или user2_id
+    from sqlalchemy import or_
+    matches = db.query(Match).filter(
+        or_(Match.user1_id == user_id, Match.user2_id == user_id)
+    ).all()
+    for match in matches:
+        if match.user1_id == user_id:
+            matched_user_ids.add(match.user2_id)
+        else:
+            matched_user_ids.add(match.user1_id)
+    matches_duration = (time.time() - step_start) * 1000
     print(f"[get_available_profiles] Matched user IDs: {matched_user_ids}")
     
     # Получаем ID профилей, с которыми уже есть мэтч
     matched_profile_ids = []
     if matched_user_ids:
+        step_start = time.time()
         matched_profile_ids = [
             row[0] for row in db.query(Profile.id).filter(
                 Profile.user_id.in_(matched_user_ids)
             ).all()
         ]
-    print(f"[get_available_profiles] Matched profile IDs: {matched_profile_ids}")
+        matched_profiles_duration = (time.time() - step_start) * 1000
+        print(f"[get_available_profiles] Matched profile IDs: {matched_profile_ids}")
+        # #region agent log
+        try:
+            log_data = {
+                "location": "profile_service.py:get_available_profiles",
+                "message": "Matched profiles query completed",
+                "data": {
+                    "userId": user_id,
+                    "matchedCount": len(matched_profile_ids),
+                    "durationMs": round(matched_profiles_duration, 2)
+                },
+                "timestamp": int(time.time() * 1000),
+                "sessionId": "debug-session",
+                "runId": "run1",
+                "hypothesisId": "B"
+            }
+            with open(r"c:\Users\Lenovo\max-networking-app\.cursor\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps(log_data, ensure_ascii=False) + "\n")
+        except Exception as e:
+            print(f"[get_available_profiles] Failed to write log: {e}")
+        # #endregion
+    else:
+        print(f"[get_available_profiles] Matched profile IDs: []")
     
     # Объединяем все исключаемые ID профилей
     excluded_profile_ids = set(swiped_profile_ids) | set(matched_profile_ids)
@@ -182,41 +220,30 @@ def get_available_profiles(
     profiles = query.offset(page * size).limit(size).all()
     fetch_duration = (time.time() - step_start) * 1000
     
-    # Логируем найденные профили
-    print(f"[get_available_profiles] ===== RESULT ===== Found {len(profiles)} profiles after all filters:")
-    for profile in profiles:
-        print(f"  - Profile id={profile.id}, user_id={profile.user_id}, name={profile.name}, city={profile.city}, university={profile.university}, interests={profile.interests}")
-    
-    # Проверяем, какие профили были исключены и почему
-    excluded_profiles = []
-    for p in all_other_profiles:
-        if p.id in excluded_profile_ids:
-            excluded_profiles.append((p.id, p.user_id, p.name, "excluded (swiped or matched)"))
-        elif p.id not in [pr.id for pr in profiles]:
-            # Проверяем, почему профиль был отфильтрован
-            reason_parts = []
-            if city and p.city != city:
-                reason_parts.append(f"city mismatch ({p.city} != {city})")
-            if university and p.university != university:
-                reason_parts.append(f"university mismatch ({p.university} != {university})")
-            if interests:
-                interest_list = [i.strip() for i in interests.split(',') if i.strip()]
-                if interest_list:
-                    # Проверяем, есть ли совпадение интересов
-                    profile_interests_str = p.interests or "[]"
-                    has_match = False
-                    for interest in interest_list:
-                        if f'"{interest}"' in profile_interests_str or f"'{interest}'" in profile_interests_str or interest.lower() in profile_interests_str.lower():
-                            has_match = True
-                            break
-                    if not has_match:
-                        reason_parts.append(f"interests mismatch (profile: {profile_interests_str}, filter: {interest_list})")
-            reason = "filtered out: " + (", ".join(reason_parts) if reason_parts else "unknown reason")
-            excluded_profiles.append((p.id, p.user_id, p.name, reason))
-    if excluded_profiles:
-        print(f"[get_available_profiles] Excluded/filtered profiles ({len(excluded_profiles)}):")
-        for p_id, u_id, name, reason in excluded_profiles:
-            print(f"  - Profile id={p_id}, user_id={u_id}, name={name}, reason={reason}")
+    # Логируем найденные профили (только количество для производительности)
+    print(f"[get_available_profiles] ===== RESULT ===== Found {len(profiles)} profiles after all filters")
+    # #region agent log
+    try:
+        log_data = {
+            "location": "profile_service.py:get_available_profiles",
+            "message": "Profiles fetched",
+            "data": {
+                "userId": user_id,
+                "resultCount": len(profiles),
+                "totalElements": total,
+                "fetchDurationMs": round(fetch_duration, 2),
+                "countDurationMs": round(count_duration, 2)
+            },
+            "timestamp": int(time.time() * 1000),
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "C"
+        }
+        with open(r"c:\Users\Lenovo\max-networking-app\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_data, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print(f"[get_available_profiles] Failed to write log: {e}")
+    # #endregion
     
     total_pages = math.ceil(total / size) if total > 0 else 0
     
@@ -230,7 +257,7 @@ def get_available_profiles(
     
     total_duration = (time.time() - query_start_time) * 1000
     print(f"[get_available_profiles] ===== RETURNING ===== content.length={len(profiles)}, total_elements={total}")
-    print(f"[get_available_profiles] ⏱️ QUERY TIMING: total={total_duration:.2f}ms, swiped_query={swiped_duration:.2f}ms, count={count_duration:.2f}ms, fetch={fetch_duration:.2f}ms")
+    print(f"[get_available_profiles] ⏱️ QUERY TIMING: total={total_duration:.2f}ms, swiped_query={swiped_duration:.2f}ms, matches_query={matches_duration:.2f}ms, count={count_duration:.2f}ms, fetch={fetch_duration:.2f}ms")
     
     # #region agent log
     try:

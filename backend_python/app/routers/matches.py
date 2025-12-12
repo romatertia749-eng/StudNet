@@ -105,54 +105,118 @@ def respond_to_like(
 @router.get("/matches", response_model=List[MatchResponse])
 def get_matches(user_id: int, db: Session = Depends(get_db)):
     """Получает список мэтчей для пользователя"""
+    import time
+    import json
+    query_start_time = time.time()
     try:
-        print(f"[get_matches] Request received for user_id={user_id} (type: {type(user_id)})")
+        # #region agent log
+        try:
+            log_data = {
+                "location": "matches.py:get_matches",
+                "message": "Request started",
+                "data": {"userId": user_id},
+                "timestamp": int(time.time() * 1000),
+                "sessionId": "debug-session",
+                "runId": "run1",
+                "hypothesisId": "D"
+            }
+            with open(r"c:\Users\Lenovo\max-networking-app\.cursor\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps(log_data, ensure_ascii=False) + "\n")
+        except Exception as e:
+            print(f"[get_matches] Failed to write log: {e}")
+        # #endregion
         
         # Проверяем, что user_id правильный тип
         user_id = int(user_id)
         
+        # Получаем мэтчи
+        step_start = time.time()
         matches = match_service.get_matches(db, user_id)
+        matches_duration = (time.time() - step_start) * 1000
         print(f"[get_matches] Found {len(matches)} matches for user_id {user_id}")
         
         if len(matches) == 0:
-            print(f"[get_matches] No matches found. Checking if user_id exists in matches table...")
-            # Проверяем все мэтчи для отладки
-            all_matches = db.query(Match).all()
-            print(f"[get_matches] Total matches in DB: {len(all_matches)}")
-            for m in all_matches:
-                print(f"[get_matches] DB match: id={m.id}, user1_id={m.user1_id} (type: {type(m.user1_id)}), user2_id={m.user2_id} (type: {type(m.user2_id)})")
+            return []
         
+        # ОПТИМИЗАЦИЯ: Загружаем все профили одним запросом вместо N+1
+        other_user_ids = []
+        for match in matches:
+            other_user_id = match.user2_id if match.user1_id == user_id else match.user1_id
+            other_user_ids.append(other_user_id)
+        
+        # Один запрос для всех профилей
+        step_start = time.time()
+        from app.models import Profile
+        profiles_dict = {}
+        if other_user_ids:
+            profiles = db.query(Profile).filter(Profile.user_id.in_(other_user_ids)).all()
+            profiles_dict = {p.user_id: p for p in profiles}
+        profiles_duration = (time.time() - step_start) * 1000
+        
+        # #region agent log
+        try:
+            log_data = {
+                "location": "matches.py:get_matches",
+                "message": "Profiles bulk loaded",
+                "data": {
+                    "userId": user_id,
+                    "matchesCount": len(matches),
+                    "profilesLoaded": len(profiles_dict),
+                    "matchesDurationMs": round(matches_duration, 2),
+                    "profilesDurationMs": round(profiles_duration, 2)
+                },
+                "timestamp": int(time.time() * 1000),
+                "sessionId": "debug-session",
+                "runId": "run1",
+                "hypothesisId": "D"
+            }
+            with open(r"c:\Users\Lenovo\max-networking-app\.cursor\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps(log_data, ensure_ascii=False) + "\n")
+        except Exception as e:
+            print(f"[get_matches] Failed to write log: {e}")
+        # #endregion
+        
+        # Создаем ответы
         responses = []
         for match in matches:
-            # Находим профиль второго пользователя
             other_user_id = match.user2_id if match.user1_id == user_id else match.user1_id
-            print(f"[get_matches] Processing match {match.id}: user1_id={match.user1_id}, user2_id={match.user2_id}, other_user_id={other_user_id}")
-            
-            other_profile = profile_service.get_profile_by_user_id(db, other_user_id)
+            other_profile = profiles_dict.get(other_user_id)
             
             if not other_profile:
                 print(f"[get_matches] WARNING: Profile not found for user_id {other_user_id} in match {match.id}")
-                # Проверяем, есть ли профиль с таким user_id вообще
-                from app.models import Profile
-                all_profiles = db.query(Profile).filter(Profile.user_id == other_user_id).all()
-                print(f"[get_matches] Profiles with user_id {other_user_id}: {len(all_profiles)}")
                 continue
             
-            print(f"[get_matches] Found profile for user_id {other_user_id}: id={other_profile.id}, name={other_profile.name}, user_id={other_profile.user_id}")
-            
-            # Создаем MatchResponse
             match_response = MatchResponse(
                 id=match.id,
                 matched_profile=other_profile,
                 matched_at=match.matched_at
             )
-            
-            print(f"[get_matches] Created MatchResponse: id={match_response.id}, profile_id={match_response.matched_profile.id if match_response.matched_profile else None}")
             responses.append(match_response)
         
-        print(f"[get_matches] Returning {len(responses)} match responses")
-        if len(responses) > 0:
-            print(f"[get_matches] First response profile: {responses[0].matched_profile.name if responses[0].matched_profile else 'None'}")
+        total_duration = (time.time() - query_start_time) * 1000
+        print(f"[get_matches] Returning {len(responses)} match responses (total: {total_duration:.2f}ms)")
+        
+        # #region agent log
+        try:
+            log_data = {
+                "location": "matches.py:get_matches",
+                "message": "Request completed",
+                "data": {
+                    "userId": user_id,
+                    "resultCount": len(responses),
+                    "totalDurationMs": round(total_duration, 2)
+                },
+                "timestamp": int(time.time() * 1000),
+                "sessionId": "debug-session",
+                "runId": "run1",
+                "hypothesisId": "D"
+            }
+            with open(r"c:\Users\Lenovo\max-networking-app\.cursor\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps(log_data, ensure_ascii=False) + "\n")
+        except Exception as e:
+            print(f"[get_matches] Failed to write log: {e}")
+        # #endregion
+        
         return responses
     except Exception as e:
         import traceback
