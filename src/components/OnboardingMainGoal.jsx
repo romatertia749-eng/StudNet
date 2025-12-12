@@ -1,13 +1,12 @@
-import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWebApp } from '../contexts/WebAppContext';
-import { MainGoal, MAIN_GOAL_LABELS, MAIN_GOAL_DESCRIPTIONS, REDIRECT_AFTER_GOAL } from '../types/onboarding';
-import Card from './Card';
+// import { MainGoal, MAIN_GOAL_LABELS, MAIN_GOAL_DESCRIPTIONS, REDIRECT_AFTER_GOAL } from '../types/onboarding';
+// import Card from './Card';
 
 const OnboardingMainGoal = () => {
   const navigate = useNavigate();
-  const { setMainGoal, setHasCompletedOnboarding } = useWebApp();
+  const { setHasCompletedOnboarding } = useWebApp();
 
   // ВРЕМЕННО ОТКЛЮЧЕНО: онбординг - сразу редиректим на анкеты
   useEffect(() => {
@@ -18,9 +17,10 @@ const OnboardingMainGoal = () => {
 
   return null; // Не показываем онбординг
 
-  /* ОРИГИНАЛЬНЫЙ КОД - ЗАКОММЕНТИРОВАН
+  /* ОРИГИНАЛЬНЫЙ КОД - ЗАКОММЕНТИРОВАН ДЛЯ ТЕСТИРОВАНИЯ
+  const { setMainGoal } = useWebApp();
+
   useEffect(() => {
-    // Оптимизация: используем requestAnimationFrame для плавной прокрутки
     requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'instant' });
     });
@@ -91,8 +91,7 @@ const OnboardingMainGoal = () => {
       </div>
     </div>
   );
+  */
 };
 
 export default OnboardingMainGoal;
-
-
