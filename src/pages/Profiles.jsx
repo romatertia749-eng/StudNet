@@ -8,6 +8,7 @@ import { useMatches } from '../contexts/MatchContext';
 import { useWebApp } from '../contexts/WebAppContext';
 import { API_ENDPOINTS, getPhotoUrl, default as API_BASE_URL } from '../config/api';
 import { fetchWithAuth } from '../utils/api';
+import { sendDebugLog } from '../utils/debugLog';
 
 const Profiles = () => {
   const { addMatch } = useMatches();
@@ -24,7 +25,7 @@ const Profiles = () => {
   
   // #region agent log
   useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:mount',message:'Profiles component mounted',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      sendDebugLog({location:'Profiles.jsx:mount',message:'Profiles component mounted',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'});
     return () => {
       fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profiles.jsx:unmount',message:'Profiles component unmounting',data:{swipedProfilesCount:swipedProfiles.length,allProfilesCount:allProfiles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
     };
