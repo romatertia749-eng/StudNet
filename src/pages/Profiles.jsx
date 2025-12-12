@@ -7,7 +7,7 @@ import EffectOverlay from '../components/EffectOverlay';
 import { russianCities, universities, interests } from '../data/formData';
 import { useMatches } from '../contexts/MatchContext';
 import { useWebApp } from '../contexts/WebAppContext';
-import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
+import { API_ENDPOINTS, getPhotoUrl, default as API_BASE_URL } from '../config/api';
 import { fetchWithAuth } from '../utils/api';
 
 const Profiles = () => {
@@ -340,7 +340,7 @@ const Profiles = () => {
         
         console.log('[Profiles] ===== SENDING REQUEST =====');
         console.log('[Profiles] URL:', url);
-        console.log('[Profiles] API_BASE_URL:', process.env.REACT_APP_API_BASE_URL);
+        console.log('[Profiles] API_BASE_URL:', API_ENDPOINTS.PROFILES?.replace('/api/profiles/', '') || 'unknown');
         console.log('[Profiles] Request options:', {
           signal: controller.signal ? 'AbortController active' : 'no signal',
           mode: 'cors'
@@ -505,7 +505,7 @@ const Profiles = () => {
             message: error.message,
             stack: error.stack,
             url: url,
-            apiBaseUrl: process.env.REACT_APP_API_BASE_URL
+            apiBaseUrl: API_BASE_URL
           });
           
           // Проверяем, это ли CORS ошибка

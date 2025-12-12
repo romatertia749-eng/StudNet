@@ -3,6 +3,12 @@
 // В Vercel: Settings → Environment Variables → добавить REACT_APP_API_BASE_URL
 let API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
 
+// Нормализация URL: добавляем протокол, если отсутствует
+if (API_BASE_URL && !API_BASE_URL.startsWith('http://') && !API_BASE_URL.startsWith('https://')) {
+  // Если переменная установлена без протокола (например, только домен)
+  API_BASE_URL = `https://${API_BASE_URL}`;
+}
+
 // Убираем trailing slash, если есть
 if (API_BASE_URL.endsWith('/')) {
   API_BASE_URL = API_BASE_URL.slice(0, -1);

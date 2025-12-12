@@ -6,7 +6,7 @@ import Card from '../components/Card';
 import Autocomplete from '../components/Autocomplete';
 import MultiSelect from '../components/MultiSelect';
 import { russianCities, universities, interests, goals } from '../data/formData';
-import { API_ENDPOINTS, getPhotoUrl } from '../config/api';
+import { API_ENDPOINTS, getPhotoUrl, default as API_BASE_URL } from '../config/api';
 import { checkBackendHealth } from '../utils/backendCheck';
 import BackendStatus from '../components/BackendStatus';
 
@@ -414,11 +414,11 @@ const ProfileForm = () => {
       let response;
       try {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProfileForm.jsx:416',message:'Sending profile request',data:{url:apiUrl,apiBaseUrl:process.env.REACT_APP_API_BASE_URL,origin:window.location.origin,method:'POST'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/8b72b830-67b6-40e1-815d-599564ead6f1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProfileForm.jsx:416',message:'Sending profile request',data:{url:apiUrl,apiBaseUrl:API_BASE_URL,origin:window.location.origin,method:'POST'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
         console.log('=== SENDING PROFILE REQUEST ===');
         console.log('Full URL:', apiUrl);
-        console.log('API_BASE_URL:', process.env.REACT_APP_API_BASE_URL);
+        console.log('API_BASE_URL:', API_ENDPOINTS.PROFILES?.replace('/api/profiles/', '') || 'unknown');
         console.log('Origin:', window.location.origin);
         console.log('Method: POST');
         console.log('Body type: FormData');
@@ -579,7 +579,7 @@ const ProfileForm = () => {
           name: error.name,
           message: error.message,
           url: API_ENDPOINTS.PROFILES,
-          apiBaseUrl: process.env.REACT_APP_API_BASE_URL
+          apiBaseUrl: API_BASE_URL
         });
         
         // Проверяем, это ли CORS ошибка

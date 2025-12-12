@@ -1,12 +1,12 @@
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS, default as API_BASE_URL } from '../config/api';
 
 /**
  * Проверяет доступность бэкенда
  * @returns {Promise<{available: boolean, url: string, error?: string}>}
  */
 export const checkBackendHealth = async () => {
-  // Получаем базовый URL правильно
-  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+  // Используем централизованный API_BASE_URL
+  const apiBaseUrl = API_BASE_URL;
   const healthUrl = `${apiBaseUrl}/health`;
   
   console.log('[BackendCheck] Checking health at:', healthUrl);
@@ -118,7 +118,8 @@ export const checkEndpoint = async (endpoint) => {
  * Получает информацию о текущей конфигурации API
  */
 export const getApiConfig = () => {
-  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+  // Используем централизованный API_BASE_URL
+  const apiBaseUrl = API_BASE_URL;
   const isLocalhost = apiBaseUrl.includes('localhost') || apiBaseUrl.includes('127.0.0.1');
   const isProduction = process.env.NODE_ENV === 'production';
   
@@ -126,7 +127,7 @@ export const getApiConfig = () => {
     apiBaseUrl,
     isLocalhost,
     isProduction,
-    hasEnvVar: !!process.env.REACT_APP_API_BASE_URL,
+    hasEnvVar: !!API_BASE_URL && !API_BASE_URL.includes('localhost'),
     endpoints: {
       health: `${apiBaseUrl}/health`,
       profiles: API_ENDPOINTS.PROFILES,

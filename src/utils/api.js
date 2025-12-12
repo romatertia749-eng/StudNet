@@ -1,3 +1,5 @@
+import API_BASE_URL from '../config/api';
+
 export const handleApiError = async (response) => {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Ошибка сервера' }));
@@ -68,7 +70,7 @@ export const fetchWithAuth = async (url, options = {}) => {
     // Проверяем тип ошибки
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       // Это ошибка сети - возможно CORS или недоступен сервер
-      const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+      const apiBaseUrl = API_BASE_URL;
       throw new Error(
         `Не удалось подключиться к серверу: ${url}\n\n` +
         `Возможные причины:\n` +
