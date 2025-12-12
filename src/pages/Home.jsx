@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWebApp } from '../contexts/WebAppContext';
-import OnboardingMainGoal from '../components/OnboardingMainGoal';
+// import OnboardingMainGoal from '../components/OnboardingMainGoal'; // ВРЕМЕННО ОТКЛЮЧЕНО
 import WelcomeCreateProfileScreen from '../components/WelcomeCreateProfileScreen';
 import { API_ENDPOINTS } from '../config/api';
 
 const Home = () => {
+  const navigate = useNavigate();
   const { hasCompletedProfile, setHasCompletedProfile, userInfo } = useWebApp();
   const [isCheckingProfile, setIsCheckingProfile] = useState(true);
 
@@ -63,7 +65,15 @@ const Home = () => {
     return <WelcomeCreateProfileScreen />;
   }
 
-  return <OnboardingMainGoal />;
+  // ВРЕМЕННО ОТКЛЮЧЕНО: онбординг с целями
+  // return <OnboardingMainGoal />;
+  
+  // Вместо онбординга сразу редиректим на анкеты
+  useEffect(() => {
+    navigate('/profiles', { replace: true });
+  }, [navigate]);
+  
+  return null; // Пока идет редирект
 };
 
 export default Home;

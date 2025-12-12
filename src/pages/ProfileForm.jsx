@@ -507,10 +507,12 @@ const ProfileForm = () => {
         
         alert(isEditing ? 'Профиль успешно обновлён!' : 'Профиль успешно создан!');
         
+        // ВРЕМЕННО ОТКЛЮЧЕНО: онбординг с целями
         // Если это создание нового профиля, переходим на выбор цели
         if (!isEditing) {
           setHasCompletedProfile(true);
-          navigate('/onboarding-main-goal');
+          // navigate('/onboarding-main-goal'); // ВРЕМЕННО ОТКЛЮЧЕНО
+          navigate('/profiles', { replace: true }); // Вместо онбординга сразу на анкеты
         } else {
           // Обновляем данные профиля для отображения
           const updatedProfileData = {
