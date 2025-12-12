@@ -114,6 +114,7 @@ def store_file(file: UploadFile) -> str:
         unique_filename = f"profile_{uuid.uuid4()}.{file_extension}"
         
         # Загружаем в ImageKit
+        upload_result = None
         try:
             upload_result = imagekit.upload_file(
                 file=output_buffer.getvalue(),
@@ -133,23 +134,54 @@ def store_file(file: UploadFile) -> str:
         
         # Возвращаем URL загруженного изображения
         # ImageKit возвращает объект с атрибутом url или словарь
-        if upload_result:
-            # Проверяем разные варианты структуры ответа
-            if hasattr(upload_result, 'url'):
-                return upload_result.url
-            elif hasattr(upload_result, 'fileUrl'):
-                return upload_result.fileUrl
-            elif isinstance(upload_result, dict):
-                url = upload_result.get('url') or upload_result.get('URL') or upload_result.get('fileUrl')
-                if url:
-                    return url
-            elif hasattr(upload_result, 'response_metadata'):
-                # Если это объект с response_metadata
-                metadata = upload_result.response_metadata
-                if isinstance(metadata, dict):
-                    url = metadata.get('url') or metadata.get('URL') or metadata.get('fileUrl')
-                    if url:
-                        return url
+        url = None
+        try:
+            if upload_result:
+                # Сначала проверяем, является ли это словарем
+                if isinstance(upload_result, dict):
+                    url = upload_result.get('url') or upload_result.get('URL') or upload_result.get('fileUrl') or upload_result.get('fileId')
+                else:
+                    # Пробуем получить через метод .json(), если это Response объект
+                    try:
+                        if hasattr(upload_result, 'json'):
+                            result_dict = upload_result.json()
+                            if isinstance(result_dict, dict):
+                                url = result_dict.get('url') or result_dict.get('URL') or result_dict.get('fileUrl') or result_dict.get('fileId')
+                    except (AttributeError, TypeError, ValueError):
+                        pass
+                    
+                    # Если это объект, пробуем получить атрибуты через getattr (безопаснее чем hasattr)
+                    if not url:
+                        url = getattr(upload_result, 'url', None) or getattr(upload_result, 'fileUrl', None) or getattr(upload_result, 'fileId', None)
+                    
+                    # Если не получили URL, пробуем через response_metadata
+                    if not url:
+                        try:
+                            metadata = getattr(upload_result, 'response_metadata', None)
+                            if metadata and isinstance(metadata, dict):
+                                url = metadata.get('url') or metadata.get('URL') or metadata.get('fileUrl')
+                        except (AttributeError, TypeError):
+                            pass
+                    
+                    # Если все еще нет URL, пробуем преобразовать объект в словарь через vars()
+                    if not url:
+                        try:
+                            result_dict = vars(upload_result)
+                            if isinstance(result_dict, dict):
+                                url = result_dict.get('url') or result_dict.get('URL') or result_dict.get('fileUrl') or result_dict.get('fileId')
+                        except (TypeError, AttributeError):
+                            pass
+        except Exception as e:
+            # Если возникла ошибка при обработке ответа, выводим информацию для отладки
+            print(f"Error processing ImageKit response: {e}")
+            print(f"upload_result type: {type(upload_result)}")
+            try:
+                print(f"upload_result repr: {repr(upload_result)}")
+            except:
+                pass
+        
+        if url:
+            return url
         
         # Если не удалось получить URL, выводим информацию для отладки
         print(f"ImageKit upload_result type: {type(upload_result)}")
