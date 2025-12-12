@@ -1,11 +1,20 @@
 // В Create React App переменные окружения должны начинаться с REACT_APP_
 // Они встраиваются в код во время сборки (build time), не runtime!
 // В Vercel: Settings → Environment Variables → добавить REACT_APP_API_BASE_URL
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+let API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
 
-console.log('API_BASE_URL:', API_BASE_URL);
-console.log('REACT_APP_API_BASE_URL from env:', process.env.REACT_APP_API_BASE_URL);
+// Убираем trailing slash, если есть
+if (API_BASE_URL.endsWith('/')) {
+  API_BASE_URL = API_BASE_URL.slice(0, -1);
+}
+
+console.log('=== API CONFIG DEBUG ===');
+console.log('REACT_APP_API_BASE_URL (raw):', process.env.REACT_APP_API_BASE_URL);
+console.log('REACT_APP_API_BASE_URL (type):', typeof process.env.REACT_APP_API_BASE_URL);
+console.log('REACT_APP_API_BASE_URL (length):', process.env.REACT_APP_API_BASE_URL?.length);
+console.log('API_BASE_URL (normalized):', API_BASE_URL);
 console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('All REACT_APP_ vars:', Object.keys(process.env).filter(k => k.startsWith('REACT_APP_')));
 
 // Предупреждение, если используется localhost в продакшене
 if (process.env.NODE_ENV === 'production' && API_BASE_URL.includes('localhost')) {
