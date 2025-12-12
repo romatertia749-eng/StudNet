@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from '../components/Card';
 import Autocomplete from '../components/Autocomplete';
@@ -589,7 +588,7 @@ const Profiles = () => {
       currentProfilesLength: currentProfiles.length,
       safeIndex
     });
-  }, [activeTab, allProfiles.length, filteredProfiles.length, availableProfiles.length, currentIndex, currentProfile, loading, loadingIncoming, incomingLikes.length, currentProfiles.length, safeIndex]);
+  }, [activeTab, allProfiles.length, filteredProfiles.length, availableProfiles.length, swipedProfiles.length, currentIndex, currentProfile, loading, loadingIncoming, incomingLikes.length, currentProfiles.length, safeIndex]);
 
   // Сброс индекса и очистка свайпов при изменении фильтров
   useEffect(() => {
